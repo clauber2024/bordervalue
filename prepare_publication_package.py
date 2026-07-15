@@ -1,0 +1,433 @@
+from __future__ import annotations
+
+import csv
+import hashlib
+import json
+import shutil
+import zipfile
+from datetime import datetime, timezone
+from pathlib import Path
+
+import pandas as pd
+
+
+ROOT = Path(__file__).resolve().parent
+PACKAGE_DIR = ROOT / "outputs" / "publicacao_border_value_2026"
+
+SOURCE_GROUPS = {
+    "bases/official_2026": ROOT / "outputs" / "official_2026",
+    "bases/final_border_value_2026": ROOT / "outputs" / "final_border_value_2026",
+    "bases/fontes_entrada": ROOT / "inputs" / "official",
+}
+
+REPRODUCTION_FILES = [
+    "operational_pipeline.py",
+    "pipeline_harmonizacao.py",
+    "fontes_reais.py",
+    "build_final_border_value_outputs.py",
+    "build_final_border_value_workbook.mjs",
+    "build_comparacao_periodos.py",
+    "build_rankings_recortes.py",
+    "build_sensibilidade_rateio.py",
+    "build_cadeias_minerais_estrategicas.py",
+    "audit_variacao_ncm.py",
+    "audit_nao_mapeado_prioritario.py",
+    "build_auditoria.mjs",
+    "verify_auditoria.mjs",
+    "inspect_diagnostico.mjs",
+    "config.official.2026.json",
+    "config.historical.2024.json",
+    "test_operational_pipeline.py",
+    "test_pipeline_harmonizacao.py",
+    "test_fontes_reais.py",
+    "package.json",
+    "package-lock.json",
+    "README.md",
+    "DOCUMENTACAO_EXECUCAO.md",
+]
+
+TABLE_DESCRIPTIONS = {
+    "dim_ncm": "Dimensao de codigos NCM observados no comercio exterior.",
+    "dim_prodlist": "Dimensao de produtos PRODLIST-Industria usados na ponte oficial.",
+    "dim_cnae": "Dimensao de classes CNAE derivadas da PRODLIST ou observadas na PIA-Produto.",
+    "bridge_ncm_prodlist_cnae": "Ponte NCM-PRODLIST-CNAE com pesos de alocacao analitica.",
+    "fact_trade": "Fato de comercio exterior por periodo, fluxo e NCM.",
+    "fact_production": "Fato de producao domestica por CNAE a partir da PIA-Produto.",
+    "analytic_trade_cnae": "Comercio alocado por CNAE apos aplicacao dos pesos da ponte.",
+    "border_value_indicators_cnae": "Indicadores Border Value consolidados por CNAE.",
+    "quality_summary": "Metricas de controle, cobertura e reconciliacao.",
+    "audit_unmatched_ncm": "NCMs presentes no comercio sem ponte oficial para PRODLIST.",
+    "audit_generic_ncm": "NCMs com terminacoes genericas que exigem atencao qualitativa.",
+    "audit_unmatched_cnae": "Classes CNAE da producao sem alcance pela ponte de comercio.",
+    "fact_production_prodlist": "Producao domestica por produto PRODLIST.",
+    "comercio_alocado_cnae_prodlist_fluxo_periodo": "Comercio alocado por CNAE, PRODLIST, fluxo e periodo.",
+    "border_value_indicadores_finais_cnae": "Indicadores finais consolidados por CNAE para analise publica.",
+    "border_value_indicadores_finais_cnae_prodlist": "Indicadores finais por CNAE e PRODLIST.",
+    "ncm_sem_ponte_priorizacao": "Priorizacao de NCMs sem ponte para revisao manual.",
+    "nao_mapeado_subbuckets": "Agrupamentos auxiliares de itens nao mapeados.",
+    "ncm_prodlist_overrides_template": "Template para documentar ajustes manuais NCM-PRODLIST.",
+    "rankings_cnae": "Ranking setorial por classe CNAE.",
+    "rankings_prodlist": "Ranking por produto PRODLIST.",
+    "mudancas_mensais_cnae": "Mudancas mensais relevantes por CNAE.",
+    "concentracao_produtos_cnae": "Concentracao de produtos dentro de cada CNAE.",
+}
+
+COLUMN_DESCRIPTIONS = {
+    "ncm_key": "Chave tecnica da NCM no modelo dimensional.",
+    "ncm": "Codigo NCM de oito digitos.",
+    "is_generic_code": "Indicador de codigo NCM generico, tipicamente terminado em 9, 90 ou 99.",
+    "prodlist_key": "Chave tecnica do produto PRODLIST no modelo dimensional.",
+    "prodlist_code": "Codigo PRODLIST-Industria.",
+    "cnae_key": "Chave tecnica da classe CNAE no modelo dimensional.",
+    "cnae_class": "Classe CNAE de quatro digitos.",
+    "allocation_rule": "Regra usada para distribuir uma NCM entre CNAEs candidatas.",
+    "allocation_basis_status": "Situacao da base PIA usada no peso de alocacao.",
+    "allocation_weight": "Peso aplicado a linha da ponte para alocar comercio.",
+    "year": "Ano de referencia.",
+    "month": "Mes de referencia.",
+    "flow": "Fluxo comercial: EXP para exportacao ou IMP para importacao.",
+    "value_usd": "Valor FOB em dolares dos Estados Unidos.",
+    "net_weight_kg": "Peso liquido em quilogramas.",
+    "production_value": "Valor da producao domestica na unidade original da PIA-Produto.",
+    "production_status": "Situacao de publicacao da producao na PIA-Produto.",
+    "allocation_status": "Status da alocacao do comercio na etapa analitica.",
+    "import_value_usd": "Valor FOB importado em dolares dos Estados Unidos.",
+    "export_value_usd": "Valor FOB exportado em dolares dos Estados Unidos.",
+    "trade_balance_usd": "Saldo comercial em dolares dos Estados Unidos.",
+    "import_net_weight_kg": "Peso liquido importado em quilogramas.",
+    "export_net_weight_kg": "Peso liquido exportado em quilogramas.",
+    "domestic_production_value_brl_thousand": "Valor da producao domestica em mil reais.",
+    "domestic_production_status": "Situacao da producao domestica: publicada, sigilosa, ausente ou indisponivel.",
+    "domestic_production_is_confidential": "Indicador de sigilo estatistico na PIA-Produto.",
+    "domestic_production_value_usd_comparable": "Producao convertida para US$ por fator explicito documentado.",
+    "apparent_consumption_value_usd": "Consumo aparente estimado em US$: producao + importacoes - exportacoes.",
+    "external_dependency_ratio": "Razao de dependencia externa: importacoes / consumo aparente.",
+    "external_dependency_status": "Status do calculo da dependencia externa.",
+    "metric": "Nome da metrica de controle.",
+    "value": "Valor da metrica.",
+    "description": "Descricao da metrica ou registro.",
+}
+
+
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def clean_package_dir() -> None:
+    if PACKAGE_DIR.exists():
+        shutil.rmtree(PACKAGE_DIR)
+    for folder in [
+        "bases",
+        "metadados",
+        "dicionario_dados",
+        "reproducao",
+        "pacotes_zip",
+    ]:
+        (PACKAGE_DIR / folder).mkdir(parents=True, exist_ok=True)
+
+
+def copy_tree_files(source: Path, target: Path) -> list[Path]:
+    copied: list[Path] = []
+    if not source.exists():
+        return copied
+    for item in source.rglob("*"):
+        if not item.is_file():
+            continue
+        if item.suffix.lower() in {".png", ".webp", ".ndjson", ".log"}:
+            continue
+        relative = item.relative_to(source)
+        destination = target / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(item, destination)
+        copied.append(destination)
+    return copied
+
+
+def copy_reproduction_files() -> list[Path]:
+    copied: list[Path] = []
+    target = PACKAGE_DIR / "reproducao"
+    for rel in REPRODUCTION_FILES:
+        source = ROOT / rel
+        if not source.exists():
+            continue
+        destination = target / rel
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+        copied.append(destination)
+    return copied
+
+
+def count_csv_rows(path: Path) -> int:
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        return max(sum(1 for _ in handle) - 1, 0)
+
+
+def inspect_csv(path: Path) -> tuple[list[str], dict[str, str], dict[str, int]]:
+    sample = pd.read_csv(path, nrows=10000, low_memory=False)
+    columns = list(sample.columns)
+    dtypes = {column: str(dtype) for column, dtype in sample.dtypes.items()}
+    non_null = {column: int(sample[column].notna().sum()) for column in columns}
+    return columns, dtypes, non_null
+
+
+def table_name_from_path(path: Path) -> str:
+    return path.stem
+
+
+def build_data_dictionary() -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for path in sorted((PACKAGE_DIR / "bases").rglob("*.csv")):
+        table_name = table_name_from_path(path)
+        columns, dtypes, non_null = inspect_csv(path)
+        row_count = count_csv_rows(path)
+        for order, column in enumerate(columns, start=1):
+            rows.append(
+                {
+                    "arquivo": str(path.relative_to(PACKAGE_DIR)).replace("\\", "/"),
+                    "tabela": table_name,
+                    "descricao_tabela": TABLE_DESCRIPTIONS.get(table_name, ""),
+                    "ordem_coluna": order,
+                    "coluna": column,
+                    "tipo_inferido_amostra": dtypes.get(column, ""),
+                    "linhas": row_count,
+                    "nao_nulos_amostra_ate_10000": non_null.get(column, 0),
+                    "descricao_coluna": COLUMN_DESCRIPTIONS.get(column, ""),
+                }
+            )
+    return rows
+
+
+def write_csv(path: Path, rows: list[dict[str, object]], fieldnames: list[str]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def write_markdown_dictionary(rows: list[dict[str, object]]) -> None:
+    target = PACKAGE_DIR / "dicionario_dados" / "dicionario_dados.md"
+    grouped: dict[str, list[dict[str, object]]] = {}
+    for row in rows:
+        grouped.setdefault(str(row["arquivo"]), []).append(row)
+    lines = [
+        "# Dicionario de dados",
+        "",
+        "Dicionario gerado automaticamente a partir dos arquivos CSV incluidos em `bases/`.",
+        "Os tipos sao inferidos por amostra de ate 10.000 linhas; use os CSV como fonte normativa.",
+        "",
+    ]
+    for arquivo, table_rows in grouped.items():
+        first = table_rows[0]
+        lines.extend(
+            [
+                f"## {arquivo}",
+                "",
+                f"- Tabela: `{first['tabela']}`",
+                f"- Linhas: {first['linhas']}",
+                f"- Descricao: {first['descricao_tabela'] or 'Nao informada.'}",
+                "",
+                "| Ordem | Coluna | Tipo inferido | Descricao |",
+                "|---:|---|---|---|",
+            ]
+        )
+        for row in table_rows:
+            description = str(row["descricao_coluna"]).replace("|", "\\|") or "Nao informada."
+            lines.append(
+                f"| {row['ordem_coluna']} | `{row['coluna']}` | `{row['tipo_inferido_amostra']}` | {description} |"
+            )
+        lines.append("")
+    target.write_text("\n".join(lines), encoding="utf-8")
+
+
+def build_checksums() -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for path in sorted(PACKAGE_DIR.rglob("*")):
+        if not path.is_file() or "pacotes_zip" in path.parts:
+            continue
+        rows.append(
+            {
+                "arquivo": str(path.relative_to(PACKAGE_DIR)).replace("\\", "/"),
+                "bytes": path.stat().st_size,
+                "sha256": sha256(path),
+            }
+        )
+    return rows
+
+
+def category_for_file(relative_file: str) -> str:
+    if relative_file.startswith("bases/"):
+        return "base"
+    if relative_file.startswith("metadados/"):
+        return "metadado"
+    if relative_file.startswith("dicionario_dados/"):
+        return "dicionario"
+    if relative_file.startswith("reproducao/"):
+        return "reproducao"
+    return "raiz"
+
+
+def write_inventory(checksums: list[dict[str, object]]) -> None:
+    rows = []
+    for row in checksums:
+        arquivo = str(row["arquivo"])
+        rows.append(
+            {
+                "arquivo": arquivo,
+                "categoria": category_for_file(arquivo),
+                "extensao": Path(arquivo).suffix.lower(),
+                "bytes": row["bytes"],
+                "sha256": row["sha256"],
+            }
+        )
+    write_csv(
+        PACKAGE_DIR / "metadados" / "inventario_arquivos.csv",
+        rows,
+        ["arquivo", "categoria", "extensao", "bytes", "sha256"],
+    )
+
+
+def write_metadata(copied_files: list[Path], dictionary_rows: list[dict[str, object]]) -> None:
+    metadata_dir = PACKAGE_DIR / "metadados"
+    now = datetime.now(timezone.utc).isoformat()
+    source_manifest = ROOT / "outputs" / "official_2026" / "manifest.json"
+    final_manifest = ROOT / "outputs" / "final_border_value_2026" / "manifest.json"
+    if source_manifest.exists():
+        shutil.copy2(source_manifest, metadata_dir / "manifest_official_2026.json")
+    if final_manifest.exists():
+        shutil.copy2(final_manifest, metadata_dir / "manifest_final_border_value_2026.json")
+
+    package_manifest = {
+        "package_name": "publicacao_border_value_2026",
+        "created_at_utc": now,
+        "source_workspace": str(ROOT),
+        "scope": {
+            "trade_period": "2026-01 a 2026-06",
+            "production_period": "2024",
+            "prodlist_version": "2025 (ponte NCM); PIA-Produto em PRODLIST 2022",
+            "allocation_method": "production_value_weighted_cnae_with_equal_fallback",
+        },
+        "folders": {
+            "bases": "Bases de entrada e saidas publicaveis em CSV, Parquet, XLSX, DOCX e PPTX.",
+            "metadados": "Manifestos, fontes, checksums e inventario do pacote.",
+            "dicionario_dados": "Dicionario de dados em CSV e Markdown.",
+            "reproducao": "Scripts, configuracoes, testes e documentacao para reproduzir a execucao.",
+            "pacotes_zip": "Arquivos compactados por bloco e pacote completo.",
+        },
+        "file_count": len(copied_files),
+        "dictionary_rows": len(dictionary_rows),
+    }
+    (metadata_dir / "package_manifest.json").write_text(
+        json.dumps(package_manifest, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    fonte_lines = [
+        "# Fontes e metodos",
+        "",
+        "Este pacote consolida os arquivos de publicacao do projeto Border Value 2026.",
+        "",
+        "## Escopo",
+        "",
+        "- Comercio exterior: Comex Stat, janeiro a junho de 2026, fluxos EXP e IMP.",
+        "- Ponte NCM-PRODLIST: correspondencia oficial CONCLA/IBGE para PRODLIST-Industria 2025.",
+        "- Producao domestica: PIA-Produto 2024, valor da producao em mil R$.",
+        "- Conversao monetaria: fator documentado em `config.official.2026.json`.",
+        "- Rateio: pesos por valor de producao por CNAE, com fallback igualitario quando necessario.",
+        "",
+        "## Como reproduzir",
+        "",
+        "Execute a partir da raiz do projeto:",
+        "",
+        "```powershell",
+        "python -m unittest -v",
+        "python operational_pipeline.py config.official.2026.json",
+        "python build_final_border_value_outputs.py",
+        "node build_final_border_value_workbook.mjs",
+        "python prepare_publication_package.py",
+        "```",
+        "",
+        "Consulte `reproducao/README.md` e `reproducao/DOCUMENTACAO_EXECUCAO.md` para detalhes metodologicos.",
+    ]
+    (metadata_dir / "fontes_e_metodos.md").write_text("\n".join(fonte_lines), encoding="utf-8")
+
+
+def zip_folder(source: Path, destination: Path) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for path in sorted(source.rglob("*")):
+            if path.is_file():
+                archive.write(path, path.relative_to(source))
+
+
+def write_readme() -> None:
+    lines = [
+        "# Pacote de publicacao - Border Value 2026",
+        "",
+        "Conteudo preparado para publicacao e reproducao dos resultados.",
+        "",
+        "## Estrutura",
+        "",
+        "- `bases/`: bases de entrada oficiais e saidas publicaveis do pipeline.",
+        "- `metadados/`: manifestos, inventario, checksums SHA-256 e notas de fontes/metodo.",
+        "- `dicionario_dados/`: dicionario em CSV e Markdown para todas as bases CSV publicadas.",
+        "- `reproducao/`: scripts, configuracoes, testes e documentacao de execucao.",
+        "- `pacotes_zip/`: compactacoes por bloco e pacote completo.",
+        "",
+        "## Verificacao",
+        "",
+        "Use `metadados/checksums_sha256.csv` para conferir integridade dos arquivos.",
+        "O arquivo `metadados/package_manifest.json` registra escopo, periodo, metodo de rateio e data de geracao.",
+    ]
+    (PACKAGE_DIR / "README_PUBLICACAO.md").write_text("\n".join(lines), encoding="utf-8")
+
+
+def main() -> None:
+    clean_package_dir()
+    copied: list[Path] = []
+    for target_rel, source in SOURCE_GROUPS.items():
+        copied.extend(copy_tree_files(source, PACKAGE_DIR / target_rel))
+    copied.extend(copy_reproduction_files())
+
+    dictionary_rows = build_data_dictionary()
+    dictionary_fields = [
+        "arquivo",
+        "tabela",
+        "descricao_tabela",
+        "ordem_coluna",
+        "coluna",
+        "tipo_inferido_amostra",
+        "linhas",
+        "nao_nulos_amostra_ate_10000",
+        "descricao_coluna",
+    ]
+    write_csv(PACKAGE_DIR / "dicionario_dados" / "dicionario_dados.csv", dictionary_rows, dictionary_fields)
+    write_markdown_dictionary(dictionary_rows)
+    write_metadata(copied, dictionary_rows)
+    write_readme()
+
+    checksums = build_checksums()
+    write_csv(PACKAGE_DIR / "metadados" / "checksums_sha256.csv", checksums, ["arquivo", "bytes", "sha256"])
+    (PACKAGE_DIR / "metadados" / "checksums_sha256.json").write_text(
+        json.dumps(checksums, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    write_inventory(checksums)
+
+    zip_folder(PACKAGE_DIR / "bases", PACKAGE_DIR / "pacotes_zip" / "bases_publicacao_border_value_2026.zip")
+    zip_folder(PACKAGE_DIR / "metadados", PACKAGE_DIR / "pacotes_zip" / "metadados_border_value_2026.zip")
+    zip_folder(PACKAGE_DIR / "dicionario_dados", PACKAGE_DIR / "pacotes_zip" / "dicionario_dados_border_value_2026.zip")
+    zip_folder(PACKAGE_DIR / "reproducao", PACKAGE_DIR / "pacotes_zip" / "reproducao_border_value_2026.zip")
+    zip_folder(PACKAGE_DIR, ROOT / "outputs" / "publicacao_border_value_2026_completo.zip")
+
+    print(f"Pacote criado em: {PACKAGE_DIR}")
+    print(f"Arquivos copiados: {len(copied)}")
+    print(f"Linhas no dicionario: {len(dictionary_rows)}")
+
+
+if __name__ == "__main__":
+    main()

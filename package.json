@@ -1,0 +1,15 @@
+{
+  "name": "border-value",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:auditoria": "node build_auditoria.mjs",
+    "build:workbook": "node build_final_border_value_workbook.mjs",
+    "inspect:diagnostico": "node inspect_diagnostico.mjs",
+    "verify:auditoria": "node verify_auditoria.mjs"
+  },
+  "dependencies": {
+    "@oai/artifact-tool": "file:C:/Users/Rosana Santos/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/@oai/artifact-tool"
+  }
+}

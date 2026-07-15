@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Border Value - Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Border Value</p>
+        <h1>Indicadores interativos 2026</h1>
+      </div>
+      <div class="source" id="sourceInfo">Carregando dados...</div>
+    </header>
+
+    <main>
+      <section class="filters" aria-label="Filtros">
+        <label>
+          Periodo
+          <div class="period-control">
+            <button id="prevPeriod" type="button" title="Periodo anterior">‹</button>
+            <select id="periodFilter"></select>
+            <button id="nextPeriod" type="button" title="Proximo periodo">›</button>
+          </div>
+        </label>
+        <label>
+          Fluxo
+          <select id="flowFilter"></select>
+        </label>
+        <label>
+          CNAE
+          <select id="cnaeFilter"></select>
+        </label>
+        <label>
+          PRODLIST
+          <select id="prodlistFilter"></select>
+        </label>
+        <label>
+          NCM
+          <input id="ncmFilter" list="ncmOptions" placeholder="Todos" />
+          <datalist id="ncmOptions"></datalist>
+        </label>
+        <label>
+          Pais (CO_PAIS)
+          <input id="countryFilter" list="countryOptions" placeholder="Todos" />
+          <datalist id="countryOptions"></datalist>
+        </label>
+        <label>
+          Situacao
+          <select id="statusFilter"></select>
+        </label>
+        <button id="clearFilters" type="button">Limpar</button>
+      </section>
+
+      <nav class="tabs" aria-label="Navegacao do dashboard">
+        <button class="tab active" data-tab="overview" type="button">Visao geral</button>
+        <button class="tab" data-tab="sectors" type="button">CNAE</button>
+        <button class="tab" data-tab="products" type="button">PRODLIST</button>
+        <button class="tab" data-tab="ncm" type="button">NCM e pais</button>
+        <button class="tab" data-tab="flows" type="button">Sankey</button>
+        <button class="tab" data-tab="quality" type="button">Mapeamento</button>
+        <button class="tab" data-tab="etl" type="button">ETL</button>
+        <button class="tab" data-tab="method" type="button">Conceitos e fontes</button>
+      </nav>
+
+      <section class="kpis" id="kpis"></section>
+
+      <section class="panel active" id="overview">
+        <div class="grid two">
+          <article class="chart-panel">
+            <h2>Serie mensal por fluxo</h2>
+            <div id="monthlyChart" class="chart"></div>
+          </article>
+          <article class="chart-panel">
+            <h2>Composicao do mapeamento</h2>
+            <div id="statusChart" class="chart"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel" id="sectors">
+        <div class="grid two">
+          <article class="chart-panel">
+            <h2>Top CNAE por valor comercial</h2>
+            <div id="cnaeChart" class="chart tall"></div>
+          </article>
+          <article class="chart-panel">
+            <h2>Indicadores CNAE</h2>
+            <div class="table-wrap"><table id="cnaeTable"></table></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel" id="products">
+        <div class="grid two">
+          <article class="chart-panel">
+            <h2>Top PRODLIST por valor comercial</h2>
+            <div id="prodChart" class="chart tall"></div>
+          </article>
+          <article class="chart-panel">
+            <h2>Indicadores PRODLIST</h2>
+            <div class="table-wrap"><table id="prodTable"></table></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel" id="ncm">
+        <div class="grid two">
+          <article class="chart-panel">
+            <h2>Top NCM</h2>
+            <div id="ncmChart" class="chart tall"></div>
+          </article>
+          <article class="chart-panel">
+            <h2>Top paises</h2>
+            <div id="countryChart" class="chart tall"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel" id="flows">
+        <div class="grid two">
+          <article class="chart-panel">
+            <h2>Sankey: fluxo, mapeamento e CNAE</h2>
+            <div id="sankeyCnaeChart" class="chart sankey"></div>
+          </article>
+          <article class="chart-panel">
+            <h2>Sankey: fluxo, mapeamento e PRODLIST</h2>
+            <div id="sankeyProdChart" class="chart sankey"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel" id="quality">
+        <div class="grid two">
+          <article class="chart-panel">
+            <h2>Situacao do mapeamento</h2>
+            <div class="table-wrap"><table id="statusTable"></table></div>
+          </article>
+          <article class="chart-panel">
+            <h2>Registros filtrados</h2>
+            <div class="table-wrap"><table id="detailTable"></table></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel" id="etl">
+        <div class="grid two">
+          <article class="chart-panel">
+            <h2>Status da atualizacao</h2>
+            <div id="etlSummary" class="etl-summary"></div>
+            <div id="etlRunStatus" class="etl-run-status"></div>
+          </article>
+          <article class="chart-panel">
+            <h2>Calendario e responsaveis</h2>
+            <div class="table-wrap"><table id="etlCalendarTable"></table></div>
+          </article>
+          <article class="chart-panel wide">
+            <h2>Fontes monitoradas</h2>
+            <div class="table-wrap"><table id="etlSourcesTable"></table></div>
+          </article>
+          <article class="chart-panel wide">
+            <h2>Controles automaticos</h2>
+            <div class="table-wrap"><table id="etlControlsTable"></table></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel" id="method">
+        <div class="grid two">
+          <article class="chart-panel">
+            <h2>Padrao de conceitos e unidades</h2>
+            <dl class="method-list">
+              <dt>Valor comercial</dt>
+              <dd>Exportacoes + importacoes, sempre em US$ FOB.</dd>
+              <dt>Saldo comercial</dt>
+              <dd>Exportacoes - importacoes, em US$ FOB.</dd>
+              <dt>Peso liquido</dt>
+              <dd>Quilogramas liquidos alocados pela mesma regra do valor FOB.</dd>
+              <dt>Producao domestica</dt>
+              <dd>PIA-Produto 2024 em mil R$ na fonte; indicadores comparaveis usam US$ pelo cambio medio BCB/SGS 2024 de 5,392016 R$/US$.</dd>
+              <dt>Dependencia externa</dt>
+              <dd>Importacoes / consumo aparente comparavel. Quando o denominador e nulo ou negativo, o indicador nao e calculado.</dd>
+            </dl>
+          </article>
+          <article class="chart-panel">
+            <h2>Limitacoes de leitura</h2>
+            <ul class="method-notes">
+              <li>Comercio: Comex Stat jan-jun/2026 no grao NCM-8, fluxo e mes.</li>
+              <li>Producao: PIA-Produto 2024; ha defasagem temporal entre comercio e producao.</li>
+              <li>Sigilo estatistico PIA (`X`) e indisponibilidade (`-`, `..` ou ausencia) nao sao imputados.</li>
+              <li>NCM sem ponte e codigos genericos 9/90/99 exigem validacao oficial ou manual documentada.</li>
+              <li>Cadeias minerais estrategicas sao recorte analitico transversal e nao alteram a ponte CONCLA/IBGE.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

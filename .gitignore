@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Codex and local working artifacts
+.artifact_work/
+.codex_spreadsheet_work/
+.agents/
+.codex/
+.git.onedrive-placeholder/
+
+# Generated outputs
+outputs/
+dashboard/__pycache__/
+dashboard/data.json
+dashboard/*.parquet
+dados/cache/
+dados/processados/
+inputs/official/
+*.parquet
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+*.tmp
+*.log

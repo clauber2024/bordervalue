@@ -1,0 +1,40 @@
+{
+  "inputs": {
+    "trade": {
+      "read_options": {
+        "sep": ";",
+        "encoding": "utf-8-sig",
+        "dtype": {"CO_NCM": "string"}
+      },
+      "files": [
+        {"path": "dados/cache/comex/EXP_2024.csv", "flow": "EXP"},
+        {"path": "dados/cache/comex/IMP_2024.csv", "flow": "IMP"}
+      ]
+    },
+    "ncm_prodlist": {
+      "path": "dados/cache/ncm_prodlist_2022.xlsx",
+      "read_options": {"dtype": "string"}
+    },
+    "domestic_production": {
+      "path": "inputs/official/pia_2024_value_production.json"
+    }
+  },
+  "settings": {
+    "trade_grain_cols": ["year", "month", "flow"],
+    "production_grain_cols": ["year"],
+    "prodlist_version": "2022",
+    "trade_period": "2024-01 a 2024-12",
+    "production_period": "2024",
+    "production_value_to_trade_value_factor": 185.4593903282186,
+    "production_value_to_trade_value_factor_note": "Conversao de mil R$ da PIA 2024 para US$ usando cambio medio BCB/SGS serie 1 de 2024: 5,392016 R$/US$; fator = 1000 / 5,392016.",
+    "allocation_method": "production_value_weighted_cnae_with_equal_fallback"
+  },
+  "sources": {
+    "comex_export": "https://balanca.economia.gov.br/balanca/bd/comexstat-bd/ncm/EXP_2024.csv",
+    "comex_import": "https://balanca.economia.gov.br/balanca/bd/comexstat-bd/ncm/IMP_2024.csv",
+    "ncm_prodlist_file": "https://concla.ibge.gov.br/images/concla/documentacao/PRODLIST%20Ind%202022%20x%20NCM%202022.xlsx",
+    "pia_api": "https://servicodados.ibge.gov.br/api/v3/agregados/10476/periodos/2024/variaveis/215?localidades=N1%5Ball%5D&classificacao=1264%5Ball%5D",
+    "exchange_rate_bcb_sgs_1_2024": "https://api.bcb.gov.br/dados/serie/bcdata.sgs.1/dados?formato=json&dataInicial=01/01/2024&dataFinal=31/12/2024"
+  },
+  "output_dir": "outputs/official_2024_comparacao"
+}
