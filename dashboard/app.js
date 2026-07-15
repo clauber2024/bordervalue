@@ -1,6 +1,8 @@
 const state = {
   data: null,
   view: null,
+  geoCache: new Map(),
+  mapRequestId: 0,
   filters: {
     period: "all",
     flow: "all",
@@ -9,6 +11,9 @@ const state = {
     ncm: "",
     country: "",
     status: "all",
+    uf: "all",
+    municipality: "all",
+    scope: "all",
   },
 };
 
@@ -23,6 +28,10 @@ function byId(id) {
 
 function money(v) {
   return `US$ ${fmtMoney.format(v || 0)}`;
+}
+
+function brl(v) {
+  return `R$ ${fmtMoney.format(v || 0)}`;
 }
 
 function optionLabel(code, label) {
@@ -52,14 +61,37 @@ function setupFilters() {
   fillSelect(byId("prodlistFilter"), [["all", "Todos"], ...prodlists.map((p) => [p, optionLabel(p, prodMap.get(p))])]);
 
   fillDatalist("ncmOptions", options.ncms);
-  fillDatalist("countryOptions", options.countries);
+  const countryNames = new Map((options.country_labels || []).map((d) => [String(d.country_code), d.country_name]));
+  fillDatalist("countryOptions", options.countries.map((code) => optionLabel(code, countryNames.get(String(code)))));
+  fillSelect(byId("ufFilter"), [["all", "Todas"], ...(options.employment_ufs || []).map((uf) => [uf, uf])]);
+  setupMunicipalityFilter(options.employment_municipality_labels || []);
+  fillSelect(byId("scopeFilter"), [
+    ["all", "Todos"],
+    ["platform_priority", "Prioritarios da plataforma"],
+    ["platform_scope", "No escopo da plataforma"],
+    ["out_of_platform_scope", "Fora do escopo da plataforma"],
+  ]);
 
-  ["period", "flow", "cnae", "prodlist", "status"].forEach((key) => {
+  ["period", "flow", "cnae", "prodlist", "status", "scope"].forEach((key) => {
     byId(`${key}Filter`).addEventListener("change", (event) => {
       state.filters[key] = event.target.value;
       render();
     });
   });
+  byId("ufFilter").addEventListener("change", (event) => {
+    state.filters.uf = event.target.value;
+    state.filters.municipality = "all";
+    byId("municipalityFilter").value = "";
+    updateMunicipalityOptions();
+    render();
+  });
+  byId("municipalityFilter").addEventListener("input", () => {
+    updateMunicipalityOptions(byId("municipalityFilter").value);
+    const previous = state.filters.municipality;
+    state.filters.municipality = resolveMunicipalityFilter(byId("municipalityFilter").value);
+    if (state.filters.municipality !== previous) render();
+  });
+  byId("municipalityFilter").addEventListener("focus", () => updateMunicipalityOptions(byId("municipalityFilter").value));
   byId("ncmFilter").addEventListener("input", (event) => {
     state.filters.ncm = event.target.value.trim();
     render();
@@ -83,6 +115,38 @@ function fillDatalist(id, values) {
   byId(id).innerHTML = values.map((value) => `<option value="${escapeHtml(value)}"></option>`).join("");
 }
 
+function setupMunicipalityFilter(labels) {
+  state.municipalities = labels.map((m) => ({
+    code: String(m.municipality_code || ""),
+    name: String(m.municipality_name || m.municipality_code || ""),
+    uf: m.uf || "",
+    label: `${m.municipality_name || m.municipality_code} (${m.uf || "-"})`,
+  }));
+  state.municipalityByLabel = new Map(state.municipalities.map((m) => [m.label, m.code]));
+  state.municipalityByCode = new Map(state.municipalities.map((m) => [m.code, m.code]));
+  state.municipalityByCodeInfo = new Map(state.municipalities.map((m) => [m.code, m]));
+  updateMunicipalityOptions();
+}
+
+function updateMunicipalityOptions(query = "") {
+  const uf = state.filters.uf;
+  const term = query.trim().toLowerCase();
+  const options = state.municipalities
+    .filter((m) => uf === "all" || m.uf === uf || !m.uf)
+    .filter((m) => !term || m.label.toLowerCase().includes(term) || m.code.includes(term))
+    .slice(0, 150)
+    .map((m) => m.label);
+  fillDatalist("municipalityOptions", options);
+}
+
+function resolveMunicipalityFilter(value) {
+  const text = value.trim();
+  if (!text) return "all";
+  if (state.municipalityByLabel.has(text)) return state.municipalityByLabel.get(text);
+  if (state.municipalityByCode.has(text)) return state.municipalityByCode.get(text);
+  return "all";
+}
+
 function setupTabs() {
   document.querySelectorAll(".tab").forEach((button) => {
     button.addEventListener("click", () => {
@@ -95,10 +159,23 @@ function setupTabs() {
 }
 
 function clearFilters() {
-  state.filters = { period: "all", flow: "all", cnae: "all", prodlist: "all", ncm: "", country: "", status: "all" };
-  ["period", "flow", "cnae", "prodlist", "status"].forEach((key) => (byId(`${key}Filter`).value = "all"));
+  state.filters = {
+    period: "all",
+    flow: "all",
+    cnae: "all",
+    prodlist: "all",
+    ncm: "",
+    country: "",
+    status: "all",
+    uf: "all",
+    municipality: "all",
+    scope: "all",
+  };
+  ["period", "flow", "cnae", "prodlist", "status", "uf", "scope"].forEach((key) => (byId(`${key}Filter`).value = "all"));
+  byId("municipalityFilter").value = "";
   byId("ncmFilter").value = "";
   byId("countryFilter").value = "";
+  updateMunicipalityOptions();
   render();
 }
 
@@ -128,9 +205,14 @@ function filteredTrade() {
 
 async function render() {
   const params = new URLSearchParams(state.filters);
-  const response = await fetch(`/api/query?${params.toString()}`);
+  const [response, employmentResponse] = await Promise.all([
+    fetch(`/api/query?${params.toString()}`),
+    fetch(`/api/employment?${params.toString()}`),
+  ]);
   if (!response.ok) throw new Error("API local indisponivel. Inicie com python dashboard/server.py.");
+  if (!employmentResponse.ok) throw new Error("API local de empregos indisponivel.");
   state.view = await response.json();
+  state.employment = await employmentResponse.json();
   const { groups } = state.view;
   renderKpis(state.view.kpis);
   barChart("monthlyChart", groups.monthly, { horizontal: false });
@@ -141,9 +223,50 @@ async function render() {
   barChart("countryChart", groups.country, { horizontal: true, limit: 20 });
   sankeyChart("sankeyCnaeChart", groups.sankey_cnae);
   sankeyChart("sankeyProdChart", groups.sankey_prodlist);
+  renderEmployment(state.employment);
   renderTables(state.view);
   renderEtl();
   setupEtlButtons();
+}
+
+function renderEmployment(view) {
+  const k = view.kpis || {};
+  const cards = [
+    ["Vinculos formais", fmtNum.format(k.formal_jobs || 0)],
+    ["Massa salarial dez.", brl(k.wage_mass || 0)],
+    ["Salario medio dez.", brl(k.average_wage || 0)],
+    ["CNAEs RAIS", fmtNum.format(k.cnaes || 0)],
+    ["UFs", fmtNum.format(k.ufs || 0)],
+    ["Municipios", fmtNum.format(k.municipalities || 0)],
+  ];
+  byId("employmentKpis").innerHTML = cards.map(([label, value]) => `<article class="kpi"><span>${label}</span><strong>${value}</strong></article>`).join("");
+  renderEmploymentScope(view.scope_summary || []);
+  renderMunicipalityMap("employmentMunicipalityMap", view);
+  barChart("employmentCnaeChart", view.groups.cnae, { horizontal: true, limit: 20, valueFormatter: (v) => fmtNum.format(v || 0) });
+  barChart("employmentUfChart", view.groups.uf, { horizontal: true, limit: 27, valueFormatter: (v) => fmtNum.format(v || 0) });
+  barChart("employmentMunicipalityChart", view.groups.municipality, { horizontal: true, limit: 25, valueFormatter: (v) => fmtNum.format(v || 0) });
+  renderEmploymentTable("employmentTable", view.detail || []);
+  renderEmploymentPlatformTable("employmentPlatformTable", view.platform_cnae || []);
+}
+
+function scopeLabel(value) {
+  return (
+    {
+      platform_priority: "Prioritarios",
+      platform_scope: "No escopo",
+      out_of_platform_scope: "Fora do escopo",
+    }[value] || value || "-"
+  );
+}
+
+function renderEmploymentScope(rows) {
+  const cards = rows.map((row) => [
+    scopeLabel(row.platform_scope_status),
+    `${fmtNum.format(row.formal_jobs || 0)} (${fmtPct.format(row.formal_jobs_share || 0)})`,
+  ]);
+  byId("employmentScopeKpis").innerHTML = cards
+    .map(([label, value]) => `<article class="kpi"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></article>`)
+    .join("");
 }
 
 function renderKpis(kpis) {
@@ -298,6 +421,253 @@ function renderRawTable(id, rows) {
     .join("")}</tbody>`;
 }
 
+function renderEmploymentTable(id, rows) {
+  const headers = ["Ano", "UF", "Municipio", "CNAE", "Vinculos", "Massa dez.", "Salario dez.", "Salario medio RAIS"];
+  byId(id).innerHTML = `<thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows
+    .map(
+      (d) =>
+        `<tr><td>${d.year}</td><td>${d.uf || "-"}</td><td>${escapeHtml(d.municipality_name || d.municipality_code || "-")}</td><td>${d.cnae_class}</td><td>${fmtNum.format(d.formal_jobs || 0)}</td><td>${brl(d.december_wage_mass ?? d.wage_mass ?? 0)}</td><td>${brl(d.average_december_wage ?? d.average_wage ?? 0)}</td><td>${brl(d.average_monthly_wage ?? 0)}</td></tr>`,
+    )
+    .join("")}</tbody>`;
+}
+
+function renderEmploymentPlatformTable(id, rows) {
+  const headers = [
+    "CNAE",
+    "Setor",
+    "Vinculos",
+    "Massa dez.",
+    "Salario dez.",
+    "Salario medio RAIS",
+    "Valor comercial",
+    "Dependencia externa",
+    "Prioridade",
+    "Escopo",
+    "Score preliminar",
+    "Status score",
+  ];
+  byId(id).innerHTML = `<thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows
+    .map((d) => {
+      const cnae = optionLabel(d.cnae_class || "-", d.cnae_name || "");
+      return `<tr><td>${escapeHtml(cnae)}</td><td>${escapeHtml(d.rationale || "-")}</td><td>${fmtNum.format(d.rais_formal_jobs || 0)}</td><td>${brl(d.rais_december_wage_mass ?? d.rais_wage_mass ?? 0)}</td><td>${brl(d.rais_average_december_wage ?? d.rais_average_wage ?? 0)}</td><td>${brl(d.rais_average_monthly_wage ?? 0)}</td><td>${money(d.trade_value_usd || 0)}</td><td>${d.external_dependency_ratio == null ? "-" : fmtPct.format(d.external_dependency_ratio)}</td><td>${escapeHtml(d.priority_tier || "-")}</td><td>${escapeHtml(scopeLabel(d.platform_scope_status))}</td><td>${fmtPct.format(d.employment_platform_prelim_score ?? d.employment_platform_score ?? 0)}</td><td>${escapeHtml(d.employment_platform_score_status || "preliminar")}</td></tr>`;
+    })
+    .join("")}</tbody>`;
+}
+
+const ufTiles = [
+  ["RR", 2, 0],
+  ["AP", 5, 0],
+  ["AM", 1, 1],
+  ["PA", 4, 1],
+  ["MA", 6, 1],
+  ["CE", 8, 1],
+  ["RN", 9, 1],
+  ["AC", 0, 2],
+  ["RO", 1, 2],
+  ["MT", 3, 2],
+  ["TO", 5, 2],
+  ["PI", 7, 2],
+  ["PB", 9, 2],
+  ["PE", 8, 3],
+  ["AL", 9, 3],
+  ["MS", 3, 4],
+  ["GO", 5, 4],
+  ["DF", 6, 4],
+  ["BA", 7, 4],
+  ["SE", 9, 4],
+  ["MG", 6, 5],
+  ["ES", 8, 5],
+  ["SP", 5, 6],
+  ["RJ", 7, 6],
+  ["PR", 4, 7],
+  ["SC", 5, 8],
+  ["RS", 4, 9],
+];
+
+function renderUfMap(id, rows) {
+  const el = byId(id);
+  const byUf = new Map(rows.map((row) => [row.key, row]));
+  const max = Math.max(...rows.map((row) => row.value || 0), 1);
+  const cell = 54;
+  const gap = 8;
+  const width = 10 * (cell + gap) + 28;
+  const height = 10 * (cell + gap) + 28;
+  const tiles = ufTiles
+    .map(([uf, col, row]) => {
+      const item = byUf.get(uf) || { value: 0, wage_mass: 0, average_wage: 0 };
+      const value = item.value || 0;
+      const ratio = Math.sqrt(value / max);
+      const fill = value ? `rgba(34, 107, 95, ${0.18 + ratio * 0.78})` : "#edf1ee";
+      const stroke = state.filters.uf === uf ? "#17332f" : "#ffffff";
+      const strokeWidth = state.filters.uf === uf ? 3 : 1;
+      const x = 14 + col * (cell + gap);
+      const y = 14 + row * (cell + gap);
+      const title = `${uf}: ${fmtNum.format(value)} vínculos; massa ${brl(item.wage_mass || 0)}; salário ${brl(item.average_wage || 0)}`;
+      return `<g class="uf-tile" data-uf="${uf}" role="button" tabindex="0" aria-label="${escapeHtml(title)}"><title>${escapeHtml(title)}</title><rect x="${x}" y="${y}" width="${cell}" height="${cell}" rx="7" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}"></rect><text x="${x + cell / 2}" y="${y + 25}" text-anchor="middle" font-size="14" font-weight="700">${uf}</text><text x="${x + cell / 2}" y="${y + 42}" text-anchor="middle" font-size="10">${escapeHtml(fmtMoney.format(value || 0))}</text></g>`;
+    })
+    .join("");
+  el.innerHTML = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Mapa de UFs por vínculos formais RAIS">${tiles}</svg>`;
+  el.querySelectorAll(".uf-tile").forEach((tile) => {
+    tile.addEventListener("click", () => selectUfFromMap(tile.dataset.uf));
+    tile.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        selectUfFromMap(tile.dataset.uf);
+      }
+    });
+  });
+}
+
+function selectUfFromMap(uf) {
+  state.filters.uf = state.filters.uf === uf ? "all" : uf;
+  state.filters.municipality = "all";
+  byId("ufFilter").value = state.filters.uf;
+  byId("municipalityFilter").value = "";
+  updateMunicipalityOptions();
+  render();
+}
+
+async function renderMunicipalityMap(id, view) {
+  const el = byId(id);
+  const meshes = state.data.options.municipality_meshes || {};
+  const ufRows = view.groups.uf || [];
+  const selectedUf = state.filters.uf !== "all" ? state.filters.uf : ufRows[0]?.key;
+  if (!selectedUf || !meshes[selectedUf]) {
+    el.innerHTML = `<div class="empty">Selecione uma UF com malha municipal cacheada.</div>`;
+    return;
+  }
+
+  const requestId = ++state.mapRequestId;
+  el.innerHTML = `<div class="empty">Carregando malha municipal de ${escapeHtml(selectedUf)}...</div>`;
+  try {
+    const geo = await loadMunicipalityMesh(selectedUf, meshes[selectedUf]);
+    if (requestId !== state.mapRequestId) return;
+    drawMunicipalityMap(el, geo, selectedUf, view.groups.municipality_map || []);
+  } catch (error) {
+    if (requestId === state.mapRequestId) {
+      el.innerHTML = `<div class="empty">Malha municipal de ${escapeHtml(selectedUf)} indisponivel: ${escapeHtml(error.message)}</div>`;
+    }
+  }
+}
+
+async function loadMunicipalityMesh(uf, path) {
+  if (state.geoCache.has(uf)) return state.geoCache.get(uf);
+  const response = await fetch(path);
+  if (!response.ok) throw new Error("arquivo GeoJSON nao encontrado");
+  const geo = await response.json();
+  state.geoCache.set(uf, geo);
+  return geo;
+}
+
+function drawMunicipalityMap(el, geo, uf, rows) {
+  const features = (geo.features || []).filter((feature) => feature.geometry);
+  if (!features.length) {
+    el.innerHTML = `<div class="empty">Sem geometria municipal para ${escapeHtml(uf)}.</div>`;
+    return;
+  }
+  const stats = new Map((rows || []).map((row) => [String(row.key || ""), row]));
+  const values = features.map((feature) => stats.get(municipalityCodeFromFeature(feature))?.value || 0);
+  const max = Math.max(...values, 1);
+  const bounds = geometryBounds(features);
+  const width = 960;
+  const height = 560;
+  const pad = 18;
+  const spanX = Math.max(bounds.maxX - bounds.minX, 0.01);
+  const spanY = Math.max(bounds.maxY - bounds.minY, 0.01);
+  const scale = Math.min((width - pad * 2) / spanX, (height - pad * 2) / spanY);
+  const dx = (width - spanX * scale) / 2;
+  const dy = (height - spanY * scale) / 2;
+  const project = ([lon, lat]) => [dx + (lon - bounds.minX) * scale, dy + (bounds.maxY - lat) * scale];
+
+  const paths = features
+    .map((feature) => {
+      const code = municipalityCodeFromFeature(feature);
+      const stat = stats.get(code) || { value: 0, wage_mass: 0, average_wage: 0 };
+      const info = state.municipalityByCodeInfo?.get(code);
+      const name = info?.name || code;
+      const ratio = Math.sqrt((stat.value || 0) / max);
+      const fill = stat.value ? `rgba(34, 107, 95, ${0.16 + ratio * 0.78})` : "#edf1ee";
+      const selected = state.filters.municipality === code;
+      const title = `${name} (${uf}): ${fmtNum.format(stat.value || 0)} vinculos; massa ${brl(stat.wage_mass || 0)}; salario ${brl(stat.average_wage || 0)}`;
+      return `<path class="municipality-shape" d="${featurePath(feature, project)}" data-uf="${escapeHtml(uf)}" data-code="${escapeHtml(code)}" fill="${fill}" stroke="${selected ? "#17332f" : "#ffffff"}" stroke-width="${selected ? 1.8 : 0.55}" tabindex="0" role="button" aria-label="${escapeHtml(title)}"><title>${escapeHtml(title)}</title></path>`;
+    })
+    .join("");
+
+  const captionUf = state.filters.uf === "all" ? `UF exibida: ${uf}` : `UF filtrada: ${uf}`;
+  el.innerHTML = `<div class="map-caption">${escapeHtml(captionUf)} · clique em um municipio para filtrar a RAIS</div><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Mapa municipal RAIS de ${escapeHtml(uf)}">${paths}</svg>`;
+  el.querySelectorAll(".municipality-shape").forEach((shape) => {
+    shape.addEventListener("click", () => selectMunicipalityFromMap(shape.dataset.uf, shape.dataset.code));
+    shape.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        selectMunicipalityFromMap(shape.dataset.uf, shape.dataset.code);
+      }
+    });
+  });
+}
+
+function selectMunicipalityFromMap(uf, code) {
+  const nextCode = state.filters.municipality === code ? "all" : code;
+  state.filters.uf = uf;
+  state.filters.municipality = nextCode;
+  byId("ufFilter").value = uf;
+  byId("municipalityFilter").value = nextCode === "all" ? "" : municipalityInputLabel(nextCode);
+  updateMunicipalityOptions(byId("municipalityFilter").value);
+  render();
+}
+
+function municipalityInputLabel(code) {
+  const info = state.municipalityByCodeInfo?.get(code);
+  return info ? info.label : code;
+}
+
+function municipalityCodeFromFeature(feature) {
+  const props = feature.properties || {};
+  return String(props.municipality_code || props.codarea || "").padStart(7, "0").slice(0, 6);
+}
+
+function geometryBounds(features) {
+  const bounds = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+  features.forEach((feature) => {
+    visitCoordinates(feature.geometry.coordinates, (point) => {
+      bounds.minX = Math.min(bounds.minX, point[0]);
+      bounds.minY = Math.min(bounds.minY, point[1]);
+      bounds.maxX = Math.max(bounds.maxX, point[0]);
+      bounds.maxY = Math.max(bounds.maxY, point[1]);
+    });
+  });
+  return bounds;
+}
+
+function visitCoordinates(coords, visit) {
+  if (!Array.isArray(coords)) return;
+  if (typeof coords[0] === "number" && typeof coords[1] === "number") {
+    visit(coords);
+    return;
+  }
+  coords.forEach((child) => visitCoordinates(child, visit));
+}
+
+function featurePath(feature, project) {
+  const type = feature.geometry.type;
+  const coords = feature.geometry.coordinates;
+  const polygons = type === "Polygon" ? [coords] : type === "MultiPolygon" ? coords : [];
+  return polygons
+    .map((polygon) =>
+      polygon
+        .map((ring) =>
+          ring
+            .map((point, index) => {
+              const [x, y] = project(point);
+              return `${index ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`;
+            })
+            .join(" ") + " Z",
+        )
+        .join(" "),
+    )
+    .join(" ");
+}
+
 function barChart(id, rows, opts = {}) {
   const el = byId(id);
   const data = rows.slice(0, opts.limit || rows.length);
@@ -313,7 +683,8 @@ function barChart(id, rows, opts = {}) {
       .map((d, i) => {
         const y = i * 30 + 16;
         const w = (d.value / max) * 500;
-        return `<text x="0" y="${y + 14}" font-size="11">${escapeHtml(short(d.key, 24))}</text><rect x="160" y="${y}" width="${w}" height="18" fill="${color(i)}"></rect><text x="${Math.min(670, 168 + w)}" y="${y + 14}" font-size="11">${money(d.value)}</text>`;
+        const formatted = opts.valueFormatter ? opts.valueFormatter(d.value) : money(d.value);
+        return `<text x="0" y="${y + 14}" font-size="11">${escapeHtml(short(d.label || d.key, 24))}</text><rect x="160" y="${y}" width="${w}" height="18" fill="${color(i)}"></rect><text x="${Math.min(670, 168 + w)}" y="${y + 14}" font-size="11">${escapeHtml(formatted)}</text>`;
       })
       .join("")}</svg>`;
   } else {

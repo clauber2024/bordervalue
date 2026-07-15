@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import json
+import gzip
+import math
 from pathlib import Path
 from datetime import datetime, timezone
+from urllib.request import Request, urlopen
 
 import pandas as pd
 
@@ -10,9 +13,53 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "dashboard" / "data.json"
 TRADE_OUT = ROOT / "dashboard" / "trade_dashboard.parquet"
+EMPLOYMENT_OUT = ROOT / "dashboard" / "employment_dashboard.parquet"
 FINAL = ROOT / "outputs" / "final_border_value_2026"
 OFFICIAL = ROOT / "outputs" / "official_2026"
+OFFICIAL_RAIS = ROOT / "outputs" / "official_2026_rais"
 INPUTS = ROOT / "inputs" / "official"
+MUNICIPALITY_DIM = ROOT / "dados" / "cache" / "dim_municipio_ibge.csv"
+COUNTRY_DIM = ROOT / "dados" / "cache" / "dim_pais_comex.csv"
+MUNICIPALITY_GEO_DIR = ROOT / "dashboard" / "geo"
+IBGE_MUNICIPALITIES_URL = "https://servicodados.ibge.gov.br/api/v1/localidades/municipios"
+COMEX_COUNTRIES_URL = "https://balanca.economia.gov.br/balanca/bd/tabelas/PAIS.csv"
+IBGE_MUNICIPALITY_MESH_URL = (
+    "https://servicodados.ibge.gov.br/api/v3/malhas/estados/{uf_code}"
+    "?formato=application/vnd.geo+json&qualidade=minima&intrarregiao=municipio"
+)
+EMPLOYMENT_PLATFORM_CNAE_OUT = OFFICIAL_RAIS / "employment_platform_cnae.csv"
+EMPLOYMENT_SCOPE_SUMMARY_OUT = OFFICIAL_RAIS / "employment_scope_summary.csv"
+EMPLOYMENT_TERRITORY_CNAE_OUT = OFFICIAL_RAIS / "employment_territory_cnae.csv"
+
+UF_IBGE_CODES = {
+    "RO": "11",
+    "AC": "12",
+    "AM": "13",
+    "RR": "14",
+    "PA": "15",
+    "AP": "16",
+    "TO": "17",
+    "MA": "21",
+    "PI": "22",
+    "CE": "23",
+    "RN": "24",
+    "PB": "25",
+    "PE": "26",
+    "AL": "27",
+    "SE": "28",
+    "BA": "29",
+    "MG": "31",
+    "ES": "32",
+    "RJ": "33",
+    "SP": "35",
+    "PR": "41",
+    "SC": "42",
+    "RS": "43",
+    "MS": "50",
+    "MT": "51",
+    "GO": "52",
+    "DF": "53",
+}
 
 
 def num(value):
@@ -28,7 +75,119 @@ def text(value):
 
 
 def compact_records(df: pd.DataFrame) -> list[dict]:
-    return df.where(pd.notna(df), None).to_dict(orient="records")
+    records = df.astype(object).where(pd.notna(df), None).to_dict(orient="records")
+    return clean_json_value(records)
+
+
+def clean_json_value(value):
+    if isinstance(value, dict):
+        return {key: clean_json_value(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [clean_json_value(item) for item in value]
+    if hasattr(value, "item"):
+        value = value.item()
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if pd.isna(value):
+        return None
+    return value
+
+
+def load_municipality_dimension() -> pd.DataFrame:
+    if MUNICIPALITY_DIM.exists() and MUNICIPALITY_DIM.stat().st_size:
+        dim = pd.read_csv(MUNICIPALITY_DIM, dtype={"municipality_code": "string"})
+        dim["municipality_code"] = dim["municipality_code"].astype("string").str.zfill(7).str[:6]
+        return dim.drop_duplicates(["municipality_code", "uf"])
+
+    MUNICIPALITY_DIM.parent.mkdir(parents=True, exist_ok=True)
+    request = Request(
+        IBGE_MUNICIPALITIES_URL,
+        headers={"User-Agent": "BorderValue/1.0", "Accept-Encoding": "identity"},
+    )
+    with urlopen(request, timeout=120) as response:
+        raw = response.read()
+        if response.headers.get("Content-Encoding", "").lower() == "gzip" or raw.startswith(b"\x1f\x8b"):
+            raw = gzip.decompress(raw)
+        payload = json.loads(raw.decode("utf-8"))
+    rows = []
+    for item in payload:
+        micro = item.get("microrregiao") or {}
+        meso = micro.get("mesorregiao") or {}
+        immediate = item.get("regiao-imediata") or {}
+        intermediate = immediate.get("regiao-intermediaria") or {}
+        uf = meso.get("UF") or intermediate.get("UF") or {}
+        region = uf.get("regiao", {})
+        rows.append(
+            {
+                "municipality_code": str(item.get("id", "")).zfill(7)[:6],
+                "municipality_name": item.get("nome", ""),
+                "uf": uf.get("sigla", ""),
+                "uf_name": uf.get("nome", ""),
+                "region_code": region.get("id", ""),
+                "region_name": region.get("nome", ""),
+            }
+        )
+    dim = pd.DataFrame(rows).sort_values(["uf", "municipality_name"], kind="stable")
+    dim.to_csv(MUNICIPALITY_DIM, index=False, encoding="utf-8-sig")
+    return dim
+
+
+def load_country_dimension() -> pd.DataFrame:
+    if not COUNTRY_DIM.exists() or COUNTRY_DIM.stat().st_size == 0:
+        COUNTRY_DIM.parent.mkdir(parents=True, exist_ok=True)
+        request = Request(COMEX_COUNTRIES_URL, headers={"User-Agent": "BorderValue/1.0"})
+        with urlopen(request, timeout=120) as response:
+            raw = response.read()
+            if response.headers.get("Content-Encoding", "").lower() == "gzip" or raw.startswith(b"\x1f\x8b"):
+                raw = gzip.decompress(raw)
+        COUNTRY_DIM.write_bytes(raw)
+    countries = pd.read_csv(COUNTRY_DIM, sep=";", dtype="string", encoding="latin-1")
+    countries = countries.rename(
+        columns={
+            "CO_PAIS": "country_code",
+            "CO_PAIS_ISOA3": "country_iso3",
+            "NO_PAIS": "country_name",
+        }
+    )
+    countries["country_code"] = countries["country_code"].astype("string").str.zfill(3)
+    return countries[["country_code", "country_iso3", "country_name"]].drop_duplicates("country_code")
+
+
+def cache_municipality_meshes(ufs: list[str]) -> dict[str, str]:
+    MUNICIPALITY_GEO_DIR.mkdir(parents=True, exist_ok=True)
+    cached = {}
+    for uf in sorted(set(ufs)):
+        uf_code = UF_IBGE_CODES.get(uf)
+        if not uf_code:
+            continue
+        out = MUNICIPALITY_GEO_DIR / f"municipios_{uf}.geojson"
+        if not out.exists() or out.stat().st_size == 0:
+            request = Request(
+                IBGE_MUNICIPALITY_MESH_URL.format(uf_code=uf_code),
+                headers={"User-Agent": "BorderValue/1.0", "Accept-Encoding": "identity"},
+            )
+            try:
+                with urlopen(request, timeout=120) as response:
+                    raw = response.read()
+                    if response.headers.get("Content-Encoding", "").lower() == "gzip" or raw.startswith(b"\x1f\x8b"):
+                        raw = gzip.decompress(raw)
+                payload = json.loads(raw.decode("utf-8"))
+                for feature in payload.get("features", []):
+                    props = feature.setdefault("properties", {})
+                    code = str(props.get("codarea", "")).zfill(7)
+                    props["municipality_code"] = code[:6]
+                    props["ibge_code"] = code
+                    props["uf"] = uf
+                out.write_text(
+                    json.dumps(clean_json_value(payload), ensure_ascii=False, separators=(",", ":"), allow_nan=False),
+                    encoding="utf-8",
+                )
+            except Exception as exc:
+                print(f"warning: could not cache municipality mesh for {uf}: {exc}")
+                if not out.exists():
+                    continue
+        cached[uf] = f"geo/{out.name}"
+    return cached
 
 
 def source_status(path: Path, label: str, cadence: str, owner: str, kind: str, update_key: str) -> dict:
@@ -47,11 +206,12 @@ def source_status(path: Path, label: str, cadence: str, owner: str, kind: str, u
 
 
 def build_etl_metadata() -> dict:
-    manifest_path = OFFICIAL / "manifest.json"
+    official = OFFICIAL_RAIS if (OFFICIAL_RAIS / "manifest.json").exists() else OFFICIAL
+    manifest_path = official / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
     metadata = manifest.get("metadata", {})
     tables = manifest.get("tables", {})
-    quality_path = OFFICIAL / "quality_summary.csv"
+    quality_path = official / "quality_summary.csv"
     quality = pd.read_csv(quality_path) if quality_path.exists() else pd.DataFrame(columns=["metric", "value", "description"])
 
     controls = [
@@ -77,7 +237,7 @@ def build_etl_metadata() -> dict:
             "control": "Resumo de qualidade",
             "severity": "Alerta",
             "status": "OK" if not quality.empty else "Revisar",
-            "evidence": f"{len(quality)} metricas em outputs/official_2026/quality_summary.csv.",
+            "evidence": f"{len(quality)} metricas em {quality_path.relative_to(ROOT).as_posix()}.",
         },
         {
             "control": "NCM sem ponte",
@@ -110,8 +270,9 @@ def build_etl_metadata() -> dict:
             source_status(INPUTS / "IMP_2026.csv", "Comex Stat importacoes", "Mensal", "Tecnico de dados", "Comercio exterior", "comex_imp"),
             source_status(INPUTS / "ncm_prodlist_2025.xlsx", "Ponte NCM-PRODLIST CONCLA/IBGE", "Quando houver nova tabela", "Tecnico de dados", "Correspondencia", "ncm_prodlist"),
             source_status(INPUTS / "pia_2024_value_production.json", "PIA-Produto valor da producao", "Anual", "Tecnico de dados", "Producao domestica", "pia_produto"),
-            source_status(OFFICIAL / "quality_summary.csv", "Resumo automatico de qualidade", "A cada execucao", "Validador tecnico", "Controle", "quality"),
-            source_status(OFFICIAL / "manifest.json", "Manifest da execucao oficial", "A cada publicacao", "Responsavel de documentacao", "Metadados", "manifest"),
+            source_status(OFFICIAL_RAIS / "fact_employment_rais.csv", "RAIS vinculos formais", "Anual", "Tecnico de dados", "Emprego formal", "rais"),
+            source_status(official / "quality_summary.csv", "Resumo automatico de qualidade", "A cada execucao", "Validador tecnico", "Controle", "quality"),
+            source_status(official / "manifest.json", "Manifest da execucao oficial", "A cada publicacao", "Responsavel de documentacao", "Metadados", "manifest"),
         ],
         "controls": controls,
         "roles": [
@@ -217,11 +378,144 @@ def aggregate_trade(bridge: pd.DataFrame) -> pd.DataFrame:
     return trade
 
 
+def build_employment_platform_cnae(employment: pd.DataFrame, final_cnae: pd.DataFrame) -> pd.DataFrame:
+    if employment.empty:
+        return pd.DataFrame()
+
+    if "december_wage_mass" not in employment.columns:
+        employment["december_wage_mass"] = employment.get("wage_mass", pd.NA)
+    if "average_monthly_wage_mass" not in employment.columns:
+        employment["average_monthly_wage_mass"] = pd.NA
+
+    employment_cnae = (
+        employment.groupby("cnae_class", as_index=False)[
+            ["formal_jobs", "december_wage_mass", "average_monthly_wage_mass"]
+        ]
+        .sum(min_count=1)
+        .rename(
+            columns={
+                "formal_jobs": "rais_formal_jobs",
+                "december_wage_mass": "rais_december_wage_mass",
+                "average_monthly_wage_mass": "rais_average_monthly_wage_mass",
+            }
+        )
+    )
+    employment_cnae["rais_average_december_wage"] = (
+        employment_cnae["rais_december_wage_mass"] / employment_cnae["rais_formal_jobs"]
+    )
+    employment_cnae["rais_average_monthly_wage"] = (
+        employment_cnae["rais_average_monthly_wage_mass"] / employment_cnae["rais_formal_jobs"]
+    )
+    employment_cnae.loc[
+        ~employment_cnae["rais_formal_jobs"].gt(0),
+        ["rais_average_december_wage", "rais_average_monthly_wage"],
+    ] = pd.NA
+    employment_cnae["rais_wage_mass"] = employment_cnae["rais_december_wage_mass"]
+    employment_cnae["rais_average_wage"] = employment_cnae["rais_average_december_wage"]
+
+    keep_cols = [
+        column
+        for column in [
+            "cnae_class",
+            "cnae_name",
+            "priority_tier",
+            "transition_relevance",
+            "priority_score",
+            "trade_value_usd",
+            "import_value_usd",
+            "export_value_usd",
+            "trade_balance_usd",
+            "external_dependency_ratio",
+            "external_dependency_status",
+            "domestic_production_value_brl_thousand",
+            "rationale",
+        ]
+        if column in final_cnae.columns
+    ]
+    result = employment_cnae.merge(
+        final_cnae[keep_cols].drop_duplicates("cnae_class"),
+        on="cnae_class",
+        how="left",
+    )
+    has_platform_indicator = result["cnae_name"].notna() if "cnae_name" in result.columns else pd.Series(False, index=result.index)
+    has_priority = (
+        result["priority_tier"].astype("string").str.startswith("1 - priorizar", na=False)
+        if "priority_tier" in result.columns
+        else pd.Series(False, index=result.index)
+    )
+    result["platform_scope_status"] = "out_of_platform_scope"
+    result.loc[has_platform_indicator, "platform_scope_status"] = "platform_scope"
+    result.loc[has_priority, "platform_scope_status"] = "platform_priority"
+    for column in ["priority_score", "trade_value_usd", "external_dependency_ratio"]:
+        if column in result.columns:
+            result[column] = pd.to_numeric(result[column], errors="coerce")
+    jobs_rank = result["rais_formal_jobs"].rank(pct=True)
+    priority = result.get("priority_score", pd.Series(0, index=result.index)).fillna(0)
+    dependency = result.get("external_dependency_ratio", pd.Series(0, index=result.index)).fillna(0).clip(lower=0, upper=1)
+    result["employment_platform_prelim_score"] = (0.45 * jobs_rank) + (0.35 * priority) + (0.20 * dependency)
+    result["employment_platform_score"] = result["employment_platform_prelim_score"]
+    result["employment_platform_score_status"] = "preliminar_exploratorio"
+    result["employment_platform_score_formula"] = (
+        "0.45*percentil_vinculos_rais + 0.35*priority_score + 0.20*external_dependency_ratio"
+    )
+    result["platform_link_status"] = result["priority_tier"].fillna(result["platform_scope_status"])
+    return result.sort_values("employment_platform_prelim_score", ascending=False, kind="stable").reset_index(drop=True)
+
+
+def build_employment_scope_summary(employment_platform: pd.DataFrame) -> pd.DataFrame:
+    if employment_platform.empty:
+        return pd.DataFrame(columns=["platform_scope_status", "cnae_count", "formal_jobs", "december_wage_mass"])
+    summary = (
+        employment_platform.groupby("platform_scope_status", as_index=False)[
+            ["rais_formal_jobs", "rais_december_wage_mass"]
+        ]
+        .sum(min_count=1)
+        .rename(
+            columns={
+                "rais_formal_jobs": "formal_jobs",
+                "rais_december_wage_mass": "december_wage_mass",
+            }
+        )
+    )
+    counts = (
+        employment_platform.groupby("platform_scope_status", as_index=False)["cnae_class"]
+        .nunique()
+        .rename(columns={"cnae_class": "cnae_count"})
+    )
+    summary = summary.merge(counts, on="platform_scope_status", how="left")
+    total_jobs = summary["formal_jobs"].sum()
+    total_wage = summary["december_wage_mass"].sum()
+    summary["formal_jobs_share"] = summary["formal_jobs"] / total_jobs if total_jobs else 0
+    summary["december_wage_mass_share"] = summary["december_wage_mass"] / total_wage if total_wage else 0
+    order = {"platform_priority": 0, "platform_scope": 1, "out_of_platform_scope": 2}
+    summary["_order"] = summary["platform_scope_status"].map(order).fillna(99)
+    return summary.sort_values("_order").drop(columns="_order").reset_index(drop=True)
+
+
 def main() -> None:
     bridge = read_bridge()
     trade = aggregate_trade(bridge)
+    municipality_dim = load_municipality_dimension()
+    country_dim = load_country_dimension()
 
-    indicators_cnae = pd.read_csv(FINAL / "border_value_indicadores_finais_cnae.csv", dtype={"cnae_class": str})
+    rais_indicators_path = OFFICIAL_RAIS / "border_value_indicators_cnae.csv"
+    indicators_cnae = (
+        pd.read_csv(rais_indicators_path, dtype={"cnae_class": str})
+        if rais_indicators_path.exists()
+        else pd.read_csv(FINAL / "border_value_indicadores_finais_cnae.csv", dtype={"cnae_class": str})
+    )
+    final_cnae = pd.read_csv(FINAL / "border_value_indicadores_finais_cnae.csv", dtype={"cnae_class": str})
+    final_label_cols = [
+        column
+        for column in ["cnae_class", "cnae_name", "priority_tier", "transition_relevance"]
+        if column in final_cnae.columns
+    ]
+    if "cnae_name" not in indicators_cnae.columns and final_label_cols:
+        indicators_cnae = indicators_cnae.merge(
+            final_cnae[final_label_cols].drop_duplicates("cnae_class"),
+            on="cnae_class",
+            how="left",
+        )
     indicators_prod = pd.read_csv(
         FINAL / "border_value_indicadores_finais_cnae_prodlist.csv",
         dtype={"cnae_class": str, "prodlist_code": str},
@@ -238,6 +532,70 @@ def main() -> None:
         .fillna("")
     )
 
+    employment_path = OFFICIAL_RAIS / "fact_employment_rais.csv"
+    if employment_path.exists():
+        employment = pd.read_csv(
+            employment_path,
+            dtype={"uf": "string", "municipality_code": "string", "cnae_class": "string"},
+        )
+        for column in [
+            "formal_jobs",
+            "wage_mass",
+            "average_wage",
+            "december_wage_mass",
+            "average_december_wage",
+            "average_monthly_wage",
+            "average_monthly_wage_mass",
+        ]:
+            if column in employment.columns:
+                employment[column] = pd.to_numeric(employment[column], errors="coerce")
+        employment["municipality_code"] = employment["municipality_code"].astype("string").str.zfill(6)
+        employment = employment.merge(
+            municipality_dim,
+            on=["municipality_code", "uf"],
+            how="left",
+            validate="many_to_one",
+        )
+        unknown_municipality = employment["municipality_code"].eq("999999")
+        employment.loc[unknown_municipality, "municipality_name"] = employment.loc[
+            unknown_municipality, "municipality_name"
+        ].fillna("Município não informado")
+        employment.loc[unknown_municipality, "uf_name"] = employment.loc[unknown_municipality, "uf_name"].fillna(
+            "Não informado"
+        )
+        employment.loc[unknown_municipality, "region_name"] = employment.loc[
+            unknown_municipality, "region_name"
+        ].fillna("Não informado")
+        employment.to_parquet(EMPLOYMENT_OUT, index=False)
+    else:
+        employment = pd.DataFrame(
+            columns=[
+                "year",
+                "uf",
+                "municipality_code",
+                "cnae_class",
+                "formal_jobs",
+                "wage_mass",
+                "average_wage",
+                "december_wage_mass",
+                "average_december_wage",
+                "average_monthly_wage",
+                "average_monthly_wage_mass",
+                "municipality_name",
+                "uf_name",
+                "region_name",
+            ]
+        )
+        if EMPLOYMENT_OUT.exists():
+            EMPLOYMENT_OUT.unlink()
+
+    employment_platform = build_employment_platform_cnae(employment, final_cnae)
+    employment_scope_summary = build_employment_scope_summary(employment_platform)
+    OFFICIAL_RAIS.mkdir(parents=True, exist_ok=True)
+    employment_platform.to_csv(EMPLOYMENT_PLATFORM_CNAE_OUT, index=False, encoding="utf-8-sig")
+    employment_scope_summary.to_csv(EMPLOYMENT_SCOPE_SUMMARY_OUT, index=False, encoding="utf-8-sig")
+    employment.to_csv(EMPLOYMENT_TERRITORY_CNAE_OUT, index=False, encoding="utf-8-sig")
+
     summary = {
         "periods": sorted(trade["period"].unique().tolist()),
         "flows": sorted(trade["flow"].unique().tolist()),
@@ -246,6 +604,7 @@ def main() -> None:
             "trade": "inputs/official/EXP_2026.csv; inputs/official/IMP_2026.csv",
             "mapping": "outputs/official_2026/bridge_ncm_prodlist_cnae.csv",
             "indicators": "outputs/final_border_value_2026/border_value_indicadores_finais_*.csv",
+            "employment": "outputs/official_2026_rais/fact_employment_rais.csv",
         },
     }
 
@@ -256,6 +615,23 @@ def main() -> None:
         "prodlists": sorted(trade["prodlist_code"].unique().tolist()),
         "ncms": sorted(trade["ncm"].unique().tolist()),
         "countries": sorted(trade["country_code"].unique().tolist()),
+        "country_labels": compact_records(
+            country_dim.loc[country_dim["country_code"].isin(trade["country_code"].astype("string").unique())]
+            .sort_values("country_name", kind="stable")
+        ),
+        "employment_ufs": sorted([value for value in employment["uf"].dropna().unique().tolist() if value]),
+        "employment_municipalities": sorted(
+            [value for value in employment["municipality_code"].dropna().unique().tolist() if value]
+        ),
+        "employment_municipality_labels": compact_records(
+            employment[["municipality_code", "municipality_name", "uf"]]
+            .dropna(subset=["municipality_code"])
+            .drop_duplicates()
+            .sort_values(["uf", "municipality_name"], kind="stable")
+        ),
+        "municipality_meshes": cache_municipality_meshes(
+            [value for value in employment["uf"].dropna().unique().tolist() if value]
+        ),
     }
 
     payload = {
@@ -263,13 +639,21 @@ def main() -> None:
         "options": options,
         "indicators_cnae": compact_records(indicators_cnae),
         "indicators_prodlist": compact_records(indicators_prod),
+        "employment_platform_cnae": compact_records(employment_platform),
+        "employment_scope_summary": compact_records(employment_scope_summary),
         "cnae_labels": compact_records(cnae_labels),
         "prodlist_labels": compact_records(prod_labels),
         "etl": build_etl_metadata(),
     }
 
-    OUT.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-    print(f"wrote {OUT} and {TRADE_OUT} with {len(trade):,} aggregated trade rows")
+    OUT.write_text(
+        json.dumps(clean_json_value(payload), ensure_ascii=False, separators=(",", ":"), allow_nan=False),
+        encoding="utf-8",
+    )
+    print(
+        f"wrote {OUT}, {TRADE_OUT} and {EMPLOYMENT_OUT} with "
+        f"{len(trade):,} trade rows and {len(employment):,} employment rows"
+    )
 
 
 if __name__ == "__main__":

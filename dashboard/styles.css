@@ -63,7 +63,7 @@ main {
 .filters {
   align-items: end;
   display: grid;
-  grid-template-columns: repeat(8, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
   gap: 12px;
   margin-bottom: 14px;
 }
@@ -137,6 +137,10 @@ button:disabled {
   margin-bottom: 16px;
 }
 
+.kpis.compact {
+  grid-template-columns: repeat(6, 1fr);
+}
+
 .kpi,
 .chart-panel {
   background: var(--surface);
@@ -185,6 +189,47 @@ button:disabled {
 
 .chart.sankey {
   min-height: 560px;
+}
+
+.chart.uf-map,
+.chart.municipality-map {
+  min-height: 430px;
+}
+
+.uf-tile {
+  cursor: pointer;
+}
+
+.uf-tile rect {
+  transition: fill 120ms ease, stroke 120ms ease, stroke-width 120ms ease;
+}
+
+.uf-tile:hover rect,
+.uf-tile:focus rect {
+  stroke: var(--gold);
+  stroke-width: 3;
+}
+
+.municipality-map {
+  display: grid;
+  gap: 8px;
+}
+
+.map-caption {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.municipality-shape {
+  cursor: pointer;
+  transition: fill 120ms ease, stroke 120ms ease, stroke-width 120ms ease;
+}
+
+.municipality-shape:hover,
+.municipality-shape:focus {
+  stroke: var(--gold);
+  stroke-width: 2.2;
+  outline: none;
 }
 
 svg {
@@ -288,6 +333,7 @@ th {
 @media (max-width: 1100px) {
   .filters,
   .kpis,
+  .kpis.compact,
   .grid.two {
     grid-template-columns: 1fr 1fr;
   }
@@ -306,6 +352,7 @@ th {
 
   .filters,
   .kpis,
+  .kpis.compact,
   .grid.two {
     grid-template-columns: 1fr;
   }

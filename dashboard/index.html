@@ -51,6 +51,19 @@
           Situacao
           <select id="statusFilter"></select>
         </label>
+        <label>
+          UF RAIS
+          <select id="ufFilter"></select>
+        </label>
+        <label>
+          Municipio RAIS
+          <input id="municipalityFilter" list="municipalityOptions" placeholder="Buscar por município ou código" />
+          <datalist id="municipalityOptions"></datalist>
+        </label>
+        <label>
+          Escopo RAIS
+          <select id="scopeFilter"></select>
+        </label>
         <button id="clearFilters" type="button">Limpar</button>
       </section>
 
@@ -59,6 +72,7 @@
         <button class="tab" data-tab="sectors" type="button">CNAE</button>
         <button class="tab" data-tab="products" type="button">PRODLIST</button>
         <button class="tab" data-tab="ncm" type="button">NCM e pais</button>
+        <button class="tab" data-tab="employment" type="button">Emprego e plataforma</button>
         <button class="tab" data-tab="flows" type="button">Sankey</button>
         <button class="tab" data-tab="quality" type="button">Mapeamento</button>
         <button class="tab" data-tab="etl" type="button">ETL</button>
@@ -115,6 +129,37 @@
           <article class="chart-panel">
             <h2>Top paises</h2>
             <div id="countryChart" class="chart tall"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel" id="employment">
+        <section class="kpis compact" id="employmentKpis"></section>
+        <section class="kpis compact" id="employmentScopeKpis"></section>
+        <div class="grid two">
+          <article class="chart-panel wide">
+            <h2>Mapa municipal por vínculos formais</h2>
+            <div id="employmentMunicipalityMap" class="chart municipality-map"></div>
+          </article>
+          <article class="chart-panel">
+            <h2>CNAE: empregos em setores da plataforma</h2>
+            <div id="employmentCnaeChart" class="chart tall"></div>
+          </article>
+          <article class="chart-panel">
+            <h2>Top UF por vínculos formais</h2>
+            <div id="employmentUfChart" class="chart tall"></div>
+          </article>
+          <article class="chart-panel">
+            <h2>Top municípios por vínculos formais</h2>
+            <div id="employmentMunicipalityChart" class="chart tall"></div>
+          </article>
+          <article class="chart-panel">
+            <h2>Detalhe territorial RAIS</h2>
+            <div class="table-wrap"><table id="employmentTable"></table></div>
+          </article>
+          <article class="chart-panel wide">
+            <h2>CNAEs com emprego, comércio e prioridade setorial</h2>
+            <div class="table-wrap"><table id="employmentPlatformTable"></table></div>
           </article>
         </div>
       </section>
@@ -182,6 +227,12 @@
               <dd>PIA-Produto 2024 em mil R$ na fonte; indicadores comparaveis usam US$ pelo cambio medio BCB/SGS 2024 de 5,392016 R$/US$.</dd>
               <dt>Dependencia externa</dt>
               <dd>Importacoes / consumo aparente comparavel. Quando o denominador e nulo ou negativo, o indicador nao e calculado.</dd>
+              <dt>Emprego RAIS</dt>
+              <dd>Vinculos formais ativos em 31/12, massa de remuneracao nominal de dezembro e salario medio de dezembro sao agregados por CNAE, UF e municipio e vinculados aos setores priorizados da plataforma pela classe CNAE.</dd>
+              <dt>Escopo RAIS</dt>
+              <dd>`Prioritarios` indica CNAEs com prioridade final na plataforma; `No escopo` indica CNAEs industriais presentes nos indicadores, mas sem prioridade final; `Fora do escopo` indica setores RAIS fora do recorte industrial Border Value.</dd>
+              <dt>Score preliminar emprego-plataforma</dt>
+              <dd>Ordenador exploratorio: 45% percentil de vinculos RAIS, 35% prioridade setorial ja calculada e 20% dependencia externa. Nao substitui a prioridade oficial.</dd>
             </dl>
           </article>
           <article class="chart-panel">
@@ -192,6 +243,10 @@
               <li>Sigilo estatistico PIA (`X`) e indisponibilidade (`-`, `..` ou ausencia) nao sao imputados.</li>
               <li>NCM sem ponte e codigos genericos 9/90/99 exigem validacao oficial ou manual documentada.</li>
               <li>Cadeias minerais estrategicas sao recorte analitico transversal e nao alteram a ponte CONCLA/IBGE.</li>
+              <li>A RAIS nao cria prioridade setorial sozinha; ela qualifica impacto social e territorial dos mesmos CNAEs avaliados por comercio, producao, dependencia externa e relevancia para transicao.</li>
+              <li>Setores RAIS fora do escopo da plataforma permanecem visiveis para controle territorial, mas nao entram como evidencia setorial Border Value sem decisao metodologica explicita.</li>
+              <li>O score emprego-plataforma e preliminar e serve para triagem; decisoes oficiais continuam baseadas nos indicadores setoriais documentados e revisao metodologica.</li>
+              <li>A remuneracao media nominal anual da RAIS e preservada como variavel auxiliar, mas a massa salarial oficial da plataforma usa dezembro para manter coerencia com o estoque de vinculos ativos em 31/12.</li>
             </ul>
           </article>
         </div>
