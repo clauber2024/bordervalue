@@ -23,9 +23,15 @@ const csvSheets = [
   ["Ranking Variacao", "rankings_variacao_periodos_cnae.csv"],
   ["Serie Historica", "serie_historica_mensal_cnae_fluxo.csv", 1000],
   ["Cadeias Minerais", "priorizacao_cadeias_minerais_estrategicas.csv"],
+  ["Producao ANM", "fact_anm_mineral_production.csv"],
+  ["Fontes ANM", "fontes_anm_amb_status.csv"],
   ["Criticidade Min", "referencia_criticidade_minerais.csv"],
   ["Minerais Etapas", "indicadores_cadeias_minerais_etapa.csv"],
   ["Minerais NCM", "drivers_cadeias_minerais_ncm.csv", 500],
+  ["Comb Transicao", "indicadores_combustiveis_transicao_camada.csv"],
+  ["Comb NCM", "drivers_combustiveis_transicao_ncm.csv", 500],
+  ["Comb Fontes", "fontes_complementares_combustiveis_transicao.csv"],
+  ["H2 Amonia Estrut", "estrutura_analitica_hidrogenio_amonia.csv"],
 ];
 
 const workbook = Workbook.create();
@@ -51,7 +57,7 @@ for (const [sheetName, fileName, maxRows] of csvSheets) {
 const overview = workbook.worksheets.add("Metodologia");
 overview.getRange("A1:D1").values = [["Border Value 2026", "", "", ""]];
 overview.getRange("A1:D1").merge();
-overview.getRange("A3:D23").values = [
+overview.getRange("A3:D29").values = [
   ["Item", "Definicao", "Fonte", "Observacao"],
   ["Dependencia externa", "Importacoes / consumo aparente", "CNAE e Prodlist", "Consumo aparente = producao domestica comparavel + importacoes - exportacoes"],
   ["Penetracao das importacoes", "Mesmo denominador de consumo aparente", "CNAE e Prodlist", "Calculada apenas com producao domestica comparavel"],
@@ -62,6 +68,12 @@ overview.getRange("A3:D23").values = [
   ["Nao mapeado", "Bucket NAO_MAPEADO / NCM_SEM_PONTE", "NCM", "Mantido para reconciliar com o total oficial"],
   ["Subbuckets NAO_MAPEADO", "Separacao entre primario fora do escopo Prodlist e lacunas de ponte", "NCM", "Nao cria correspondencia manual sem fonte CONCLA/IBGE"],
   ["Cadeias minerais", "Modulo transversal de minerais estrategicos para transicao", "NCM e cadeia", "Seed curada para validacao especialista; nao altera a ponte CONCLA"],
+  ["ANM/AMB", "Producao mineral bruta e beneficiada por substancia", "Substancia mineral", "Camada complementar; nao substitui PIA-Produto"],
+  ["Combustiveis da transicao", "Modulo transversal para hidrogenio, amonia, SAF, metanol, etanol e combustiveis maritimos", "NCM e prefixos curados", "Classificacao preliminar; baixa emissao nao e inferivel apenas pela NCM"],
+  ["Etapas da cadeia", "Molecula, insumos, equipamentos, derivados, aplicacoes, rotas, projetos e fluxos", "Seed combustiveis", "Permite filtros proprios no dashboard"],
+  ["Fontes complementares", "Projetos, capacidade, certificacao, rota tecnologica e intensidade de emissoes", "Levantamento setorial", "Necessarias para distinguir verde, azul, renovavel ou baixa emissao"],
+  ["RAIS", "Vinculos formais, massa salarial e salario medio por CNAE, UF e municipio", "RAIS 2024", "Camada territorial e social; score emprego-plataforma e preliminar"],
+  ["Mapas", "Mapa mundial por parceiro comercial e mapa municipal RAIS", "Comex Stat, dimensoes pais/municipio e malhas IBGE", "Visualizacao exploratoria integrada aos filtros"],
   ["Criticidade mineral", "Referencia de pesos estrategicos por mineral-base", "IEA e contexto setorial", "Usada no strategic_score das cadeias minerais"],
   ["Recortes setoriais", "Rankings consolidados por valor, importacao, deficit, dependencia, prioridade e mudanca", "CNAE", "Abas Recortes Setoriais, Conc Relevante e Mudancas Relevantes"],
   ["Comparacao entre periodos", "2026 H1 contra 2024 H1, com serie mensal historica de apoio", "CNAE e fluxo", "Abas Comp Periodos, Ranking Variacao e Serie Historica"],
@@ -74,7 +86,7 @@ overview.getRange("A3:D23").values = [
   ["Ponte 1:N", "Uma NCM pode se vincular a multiplas CNAEs", "Ponte NCM-Prodlist-CNAE", "Distribuicao setorial depende da regra de alocacao documentada"],
   ["Comparabilidade", "Comparacoes entre anos exigem mesma base ou conciliacao", "Manifest e documentacao", "Registrar periodos, versoes e tratamentos de lacunas"],
 ];
-overview.getRange("A24:B41").values = [
+overview.getRange("A30:B54").values = [
   ["Arquivo", "Conteudo"],
   ["border_value_indicadores_finais_cnae.csv", "Indicadores finais por CNAE"],
   ["border_value_indicadores_finais_cnae_prodlist.csv", "Indicadores finais por CNAE e Prodlist"],
@@ -90,9 +102,25 @@ overview.getRange("A24:B41").values = [
   ["rankings_variacao_periodos_cnae.csv", "Rankings das maiores variacoes entre periodos"],
   ["serie_historica_mensal_cnae_fluxo.csv", "Serie mensal por CNAE e fluxo para contexto historico"],
   ["priorizacao_cadeias_minerais_estrategicas.csv", "Priorizacao de cadeias minerais estrategicas"],
+  ["fact_anm_mineral_production.csv", "Producao mineral ANM/AMB normalizada por substancia e mineral-base"],
+  ["fontes_anm_amb_status.csv", "Status de acesso/cache/leitura das fontes ANM/AMB"],
   ["referencia_criticidade_minerais.csv", "Pesos e justificativas de criticidade por mineral-base"],
   ["indicadores_cadeias_minerais_etapa.csv", "Indicadores por cadeia mineral e etapa"],
   ["drivers_cadeias_minerais_ncm.csv", "Principais NCMs por cadeia mineral"],
+  ["indicadores_combustiveis_transicao_camada.csv", "Indicadores de hidrogenio, amonia, SAF, metanol, etanol e combustiveis maritimos por etapa da cadeia"],
+  ["drivers_combustiveis_transicao_ncm.csv", "NCMs observadas por recorte de combustivel e etapa"],
+  ["fontes_complementares_combustiveis_transicao.csv", "Campos complementares necessarios para validar rota, certificacao e intensidade de emissoes"],
+  ["estrutura_analitica_hidrogenio_amonia.csv", "Camadas obrigatorias de leitura para hidrogenio e amonia"],
+  ["employment_platform_cnae.csv", "RAIS agregada por CNAE com vinculo ao escopo da plataforma e score preliminar"],
+];
+overview.getRange("F3:H9").values = [
+  ["Atividade", "Fase", "Tratamento"],
+  ["RAIS", "Consolidacao, documentacao e testes", "Camada oficial integrada; validar, documentar e testar."],
+  ["Cartografia municipal", "Consolidacao, documentacao e testes", "Revisar malhas, dimensoes e aderencia ao dashboard."],
+  ["Mapa mundial", "Consolidacao, documentacao e testes", "Validar a visualizacao de parceiros comerciais ja incorporada."],
+  ["Integracao", "Consolidacao, documentacao e testes", "Tratar como fechamento operacional dos modulos existentes."],
+  ["Automacao", "Consolidacao, documentacao e testes", "Endurecer reproducao e atualizacao, sem abrir frente inicial."],
+  ["Hidrogenio e amonia", "Consolidacao, documentacao e testes", "Documentar ressalvas, fontes complementares e testes do recorte."],
 ];
 
 for (const sheet of workbook.worksheets.items) {
@@ -123,7 +151,7 @@ overview.getRange("A3:D3").format = {
   fill: "#164E63",
   font: { bold: true, color: "#FFFFFF" },
 };
-overview.getRange("A24:B24").format = {
+overview.getRange("A30:B30").format = {
   fill: "#164E63",
   font: { bold: true, color: "#FFFFFF" },
 };

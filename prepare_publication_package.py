@@ -13,6 +13,9 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent
 PACKAGE_DIR = ROOT / "outputs" / "publicacao_border_value_2026"
+VERSION_CANDIDATE = "1.0.0-rc.1"
+VERSION_CANDIDATE_DATE = "2026-07-16"
+ALREADY_COMPRESSED_SUFFIXES = {".7z", ".gz", ".zip", ".xlsx", ".docx", ".pptx", ".parquet"}
 
 SOURCE_GROUPS = {
     "bases/official_2026": ROOT / "outputs" / "official_2026",
@@ -30,12 +33,14 @@ REPRODUCTION_FILES = [
     "build_rankings_recortes.py",
     "build_sensibilidade_rateio.py",
     "build_cadeias_minerais_estrategicas.py",
+    "build_combustiveis_transicao.py",
     "audit_variacao_ncm.py",
     "audit_nao_mapeado_prioritario.py",
     "build_auditoria.mjs",
     "verify_auditoria.mjs",
     "inspect_diagnostico.mjs",
     "config.official.2026.json",
+    "config.official.2026.rais.json",
     "config.historical.2024.json",
     "test_operational_pipeline.py",
     "test_pipeline_harmonizacao.py",
@@ -43,6 +48,8 @@ REPRODUCTION_FILES = [
     "package.json",
     "package-lock.json",
     "README.md",
+    "VERSION_CANDIDATE.md",
+    "HOMOLOGACAO_TECNICA.md",
     "DOCUMENTACAO_EXECUCAO.md",
 ]
 
@@ -70,6 +77,21 @@ TABLE_DESCRIPTIONS = {
     "rankings_prodlist": "Ranking por produto PRODLIST.",
     "mudancas_mensais_cnae": "Mudancas mensais relevantes por CNAE.",
     "concentracao_produtos_cnae": "Concentracao de produtos dentro de cada CNAE.",
+    "employment_platform_cnae": "RAIS agregada por CNAE com escopo da plataforma e score preliminar emprego-plataforma.",
+    "employment_scope_summary": "Resumo RAIS por escopo da plataforma.",
+    "employment_territory_cnae": "RAIS por CNAE, UF e municipio para leitura territorial.",
+    "fact_gdp": "PIB territorial por ano, UF e municipio.",
+    "gdp_territory": "PIB territorial enriquecido com nomes de municipio, UF e regiao.",
+    "indicadores_combustiveis_transicao_camada": "Indicadores de hidrogenio, amonia, SAF, metanol, etanol e combustiveis maritimos por etapa da cadeia.",
+    "drivers_combustiveis_transicao_ncm": "NCMs observadas por recorte de combustivel e etapa da cadeia.",
+    "fontes_complementares_combustiveis_transicao": "Campos complementares requeridos para validar rota, certificacao e intensidade de emissoes.",
+    "estrutura_analitica_hidrogenio_amonia": "Camadas obrigatorias para leitura de hidrogenio e amonia.",
+    "priorizacao_cadeias_minerais_estrategicas": "Priorizacao de cadeias minerais estrategicas com comercio, criticidade e materialidade ANM quando disponivel.",
+    "referencia_criticidade_minerais": "Pesos e justificativas de criticidade por mineral-base.",
+    "indicadores_cadeias_minerais_etapa": "Indicadores por cadeia mineral estrategica e etapa da cadeia.",
+    "drivers_cadeias_minerais_ncm": "Principais NCMs por cadeia mineral estrategica.",
+    "fact_anm_mineral_production": "Camada complementar ANM/AMB de producao mineral por substancia, normalizada para mineral-base.",
+    "fontes_anm_amb_status": "Status de acesso, cache e leitura das fontes abertas ANM/AMB.",
 }
 
 COLUMN_DESCRIPTIONS = {
@@ -103,6 +125,28 @@ COLUMN_DESCRIPTIONS = {
     "apparent_consumption_value_usd": "Consumo aparente estimado em US$: producao + importacoes - exportacoes.",
     "external_dependency_ratio": "Razao de dependencia externa: importacoes / consumo aparente.",
     "external_dependency_status": "Status do calculo da dependencia externa.",
+    "recorte_combustivel": "Recorte transversal de combustivel da transicao.",
+    "camada_analitica": "Etapa da cadeia analisada no recorte de combustiveis.",
+    "status_baixa_emissao": "Sinalizacao preliminar sobre baixa emissao; nao inferivel apenas por NCM.",
+    "ressalva_metodologica": "Aviso metodologico sobre limite da classificacao por NCM.",
+    "campo_requerido": "Campo de fonte complementar necessario para validar rota, certificacao ou emissao.",
+    "cadeia_estrategica": "Recorte de cadeia estrategica da transicao energetica.",
+    "mineral_base": "Mineral ou grupo mineral usado como chave analitica transversal.",
+    "prioridade_transicao": "Prioridade qualitativa do mineral ou cadeia para tecnologias de transicao.",
+    "etapa_cadeia": "Etapa analitica da cadeia: mineral primario, quimico/processado, metal/liga ou componente.",
+    "strategic_score": "Score que combina comercio observado, desequilibrio, prioridade, criticidade e materialidade ANM quando disponivel.",
+    "anm_materiality_rank": "Percentil de materialidade produtiva ANM/AMB; zero quando a fonte nao esta disponivel ou nao traz valor.",
+    "production_stage": "Estagio informado pela ANM/AMB: producao bruta ou beneficiada.",
+    "substance": "Substancia mineral como publicada ou normalizada a partir da ANM/AMB.",
+    "quantity": "Quantidade de producao mineral na unidade original da ANM/AMB.",
+    "unit": "Unidade de medida original da ANM/AMB.",
+    "production_value_brl": "Valor de producao mineral em reais, quando publicado pela ANM/AMB.",
+    "cache_path": "Caminho local de cache usado para a fonte aberta.",
+    "status": "Status de acesso ou leitura da fonte.",
+    "formal_jobs": "Vinculos formais ativos em 31/12 na RAIS.",
+    "gdp_value_brl": "Produto Interno Bruto territorial em reais.",
+    "gdp_status": "Situacao de publicacao do PIB territorial: publicado, sigiloso, ausente ou indisponivel.",
+    "platform_scope_status": "Classificacao do CNAE RAIS frente ao escopo da plataforma.",
     "metric": "Nome da metrica de controle.",
     "value": "Valor da metrica.",
     "description": "Descricao da metrica ou registro.",
@@ -303,6 +347,9 @@ def write_metadata(copied_files: list[Path], dictionary_rows: list[dict[str, obj
 
     package_manifest = {
         "package_name": "publicacao_border_value_2026",
+        "version_candidate": VERSION_CANDIDATE,
+        "version_candidate_date": VERSION_CANDIDATE_DATE,
+        "release_status": "candidata tecnica para homologacao; nao caracteriza publicacao institucional definitiva",
         "created_at_utc": now,
         "source_workspace": str(ROOT),
         "scope": {
@@ -331,11 +378,18 @@ def write_metadata(copied_files: list[Path], dictionary_rows: list[dict[str, obj
         "",
         "Este pacote consolida os arquivos de publicacao do projeto Border Value 2026.",
         "",
+        f"Versao candidata: `{VERSION_CANDIDATE}`, registrada em {VERSION_CANDIDATE_DATE}.",
+        "Status: ambiente tecnico de homologacao, ainda sem caracterizacao como publicacao institucional definitiva.",
+        "",
         "## Escopo",
         "",
         "- Comercio exterior: Comex Stat, janeiro a junho de 2026, fluxos EXP e IMP.",
         "- Ponte NCM-PRODLIST: correspondencia oficial CONCLA/IBGE para PRODLIST-Industria 2025.",
         "- Producao domestica: PIA-Produto 2024, valor da producao em mil R$.",
+        "- Emprego formal: RAIS 2024 por CNAE, UF e municipio, quando disponivel no pacote.",
+        "- Mapas: fluxos mundiais por pais parceiro e leitura territorial RAIS municipal no dashboard.",
+        "- Combustiveis da transicao: hidrogenio, amonia, SAF, metanol, etanol e combustiveis maritimos, com classificacao preliminar e fontes complementares requeridas.",
+        "- Governanca de atividades: RAIS, cartografia, mapa mundial, integracao, automacao, hidrogenio e amonia entram somente em consolidacao, documentacao e testes.",
         "- Conversao monetaria: fator documentado em `config.official.2026.json`.",
         "- Rateio: pesos por valor de producao por CNAE, com fallback igualitario quando necessario.",
         "",
@@ -347,6 +401,7 @@ def write_metadata(copied_files: list[Path], dictionary_rows: list[dict[str, obj
         "python -m unittest -v",
         "python operational_pipeline.py config.official.2026.json",
         "python build_final_border_value_outputs.py",
+        "python build_combustiveis_transicao.py",
         "node build_final_border_value_workbook.mjs",
         "python prepare_publication_package.py",
         "```",
@@ -361,14 +416,21 @@ def zip_folder(source: Path, destination: Path) -> None:
     with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(source.rglob("*")):
             if path.is_file():
-                archive.write(path, path.relative_to(source))
+                compression = (
+                    zipfile.ZIP_STORED
+                    if path.suffix.lower() in ALREADY_COMPRESSED_SUFFIXES
+                    else zipfile.ZIP_DEFLATED
+                )
+                archive.write(path, path.relative_to(source), compress_type=compression)
 
 
 def write_readme() -> None:
     lines = [
         "# Pacote de publicacao - Border Value 2026",
         "",
-        "Conteudo preparado para publicacao e reproducao dos resultados.",
+        f"Versao candidata `{VERSION_CANDIDATE}`, registrada em {VERSION_CANDIDATE_DATE}.",
+        "",
+        "Conteudo preparado para homologacao tecnica e reproducao dos resultados. Este pacote ainda nao caracteriza publicacao institucional definitiva.",
         "",
         "## Estrutura",
         "",
@@ -382,6 +444,7 @@ def write_readme() -> None:
         "",
         "Use `metadados/checksums_sha256.csv` para conferir integridade dos arquivos.",
         "O arquivo `metadados/package_manifest.json` registra escopo, periodo, metodo de rateio e data de geracao.",
+        "Consulte `reproducao/VERSION_CANDIDATE.md` e `reproducao/HOMOLOGACAO_TECNICA.md` para o resumo da candidata e o ambiente de homologacao.",
     ]
     (PACKAGE_DIR / "README_PUBLICACAO.md").write_text("\n".join(lines), encoding="utf-8")
 

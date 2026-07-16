@@ -64,24 +64,40 @@
           Escopo RAIS
           <select id="scopeFilter"></select>
         </label>
+        <label>
+          Combustivel
+          <select id="fuelFilter"></select>
+        </label>
+        <label>
+          Etapa da cadeia
+          <select id="layerFilter"></select>
+        </label>
         <button id="clearFilters" type="button">Limpar</button>
       </section>
 
-      <nav class="tabs" aria-label="Navegacao do dashboard">
-        <button class="tab active" data-tab="overview" type="button">Visao geral</button>
-        <button class="tab" data-tab="sectors" type="button">CNAE</button>
-        <button class="tab" data-tab="products" type="button">PRODLIST</button>
-        <button class="tab" data-tab="ncm" type="button">NCM e pais</button>
-        <button class="tab" data-tab="employment" type="button">Emprego e plataforma</button>
-        <button class="tab" data-tab="flows" type="button">Sankey</button>
-        <button class="tab" data-tab="quality" type="button">Mapeamento</button>
-        <button class="tab" data-tab="etl" type="button">ETL</button>
-        <button class="tab" data-tab="method" type="button">Conceitos e fontes</button>
+      <nav class="tabs" aria-label="Navegacao do dashboard" role="tablist">
+        <button class="tab active" data-tab="overview" type="button" role="tab" aria-selected="true" aria-controls="overview">Visao geral</button>
+        <button class="tab" data-tab="world" type="button" role="tab" aria-selected="false" aria-controls="world">Mapa mundial</button>
+        <button class="tab" data-tab="sectors" type="button" role="tab" aria-selected="false" aria-controls="sectors">CNAE</button>
+        <button class="tab" data-tab="products" type="button" role="tab" aria-selected="false" aria-controls="products">PRODLIST</button>
+        <button class="tab" data-tab="ncm" type="button" role="tab" aria-selected="false" aria-controls="ncm">NCM e pais</button>
+        <button class="tab" data-tab="employment" type="button" role="tab" aria-selected="false" aria-controls="employment">Emprego, renda e PIB</button>
+        <button class="tab" data-tab="transition-fuels" type="button" role="tab" aria-selected="false" aria-controls="transition-fuels">Combustiveis da transicao</button>
+        <button class="tab" data-tab="flows" type="button" role="tab" aria-selected="false" aria-controls="flows">Sankey</button>
+        <button class="tab" data-tab="quality" type="button" role="tab" aria-selected="false" aria-controls="quality">Mapeamento</button>
+        <button class="tab" data-tab="etl" type="button" role="tab" aria-selected="false" aria-controls="etl">ETL</button>
+        <button class="tab" data-tab="method" type="button" role="tab" aria-selected="false" aria-controls="method">Conceitos e fontes</button>
       </nav>
+
+      <section class="exports" aria-label="Exportacoes">
+        <a class="export-button" id="exportTrade" href="/api/export?dataset=trade">Exportar comércio</a>
+        <a class="export-button" id="exportEmployment" href="/api/export?dataset=employment">Exportar RAIS/PIB</a>
+        <a class="export-button" id="exportFuels" href="/api/export?dataset=fuels">Exportar combustíveis</a>
+      </section>
 
       <section class="kpis" id="kpis"></section>
 
-      <section class="panel active" id="overview">
+      <section class="panel active" id="overview" role="tabpanel">
         <div class="grid two">
           <article class="chart-panel">
             <h2>Serie mensal por fluxo</h2>
@@ -94,7 +110,14 @@
         </div>
       </section>
 
-      <section class="panel" id="sectors">
+      <section class="panel" id="world" role="tabpanel">
+        <article class="chart-panel wide">
+          <h2>Fluxos comerciais por pais parceiro</h2>
+          <div id="worldTradeMap" class="chart world-map"></div>
+        </article>
+      </section>
+
+      <section class="panel" id="sectors" role="tabpanel">
         <div class="grid two">
           <article class="chart-panel">
             <h2>Top CNAE por valor comercial</h2>
@@ -107,7 +130,7 @@
         </div>
       </section>
 
-      <section class="panel" id="products">
+      <section class="panel" id="products" role="tabpanel">
         <div class="grid two">
           <article class="chart-panel">
             <h2>Top PRODLIST por valor comercial</h2>
@@ -120,7 +143,7 @@
         </div>
       </section>
 
-      <section class="panel" id="ncm">
+      <section class="panel" id="ncm" role="tabpanel">
         <div class="grid two">
           <article class="chart-panel">
             <h2>Top NCM</h2>
@@ -133,7 +156,7 @@
         </div>
       </section>
 
-      <section class="panel" id="employment">
+      <section class="panel" id="employment" role="tabpanel">
         <section class="kpis compact" id="employmentKpis"></section>
         <section class="kpis compact" id="employmentScopeKpis"></section>
         <div class="grid two">
@@ -154,7 +177,7 @@
             <div id="employmentMunicipalityChart" class="chart tall"></div>
           </article>
           <article class="chart-panel">
-            <h2>Detalhe territorial RAIS</h2>
+            <h2>Detalhe territorial RAIS e PIB</h2>
             <div class="table-wrap"><table id="employmentTable"></table></div>
           </article>
           <article class="chart-panel wide">
@@ -164,7 +187,44 @@
         </div>
       </section>
 
-      <section class="panel" id="flows">
+      <section class="panel" id="transition-fuels" role="tabpanel">
+        <section class="kpis compact" id="fuelKpis"></section>
+        <article class="method-alert">
+          Classificacao preliminar: a NCM identifica produto, insumo ou equipamento, mas nao comprova rota verde, azul, renovavel ou de baixa emissao sem fontes complementares.
+        </article>
+        <div class="grid two">
+          <article class="chart-panel">
+            <h2>Valor comercial por combustivel</h2>
+            <div id="fuelChart" class="chart tall"></div>
+          </article>
+          <article class="chart-panel">
+            <h2>Valor comercial por etapa da cadeia</h2>
+            <div id="fuelLayerChart" class="chart tall"></div>
+          </article>
+          <article class="chart-panel">
+            <h2>Top NCMs do recorte</h2>
+            <div id="fuelNcmChart" class="chart tall"></div>
+          </article>
+          <article class="chart-panel">
+            <h2>Indicadores por combustivel e etapa</h2>
+            <div class="table-wrap"><table id="fuelIndicatorsTable"></table></div>
+          </article>
+          <article class="chart-panel wide">
+            <h2>NCMs e papel no recorte</h2>
+            <div class="table-wrap"><table id="fuelDriversTable"></table></div>
+          </article>
+          <article class="chart-panel">
+            <h2>Fontes complementares necessarias</h2>
+            <div class="table-wrap"><table id="fuelSourcesTable"></table></div>
+          </article>
+          <article class="chart-panel">
+            <h2>Estrutura hidrogenio e amonia</h2>
+            <div class="table-wrap"><table id="fuelFrameworkTable"></table></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel" id="flows" role="tabpanel">
         <div class="grid two">
           <article class="chart-panel">
             <h2>Sankey: fluxo, mapeamento e CNAE</h2>
@@ -177,7 +237,7 @@
         </div>
       </section>
 
-      <section class="panel" id="quality">
+      <section class="panel" id="quality" role="tabpanel">
         <div class="grid two">
           <article class="chart-panel">
             <h2>Situacao do mapeamento</h2>
@@ -190,7 +250,7 @@
         </div>
       </section>
 
-      <section class="panel" id="etl">
+      <section class="panel" id="etl" role="tabpanel">
         <div class="grid two">
           <article class="chart-panel">
             <h2>Status da atualizacao</h2>
@@ -200,6 +260,10 @@
           <article class="chart-panel">
             <h2>Calendario e responsaveis</h2>
             <div class="table-wrap"><table id="etlCalendarTable"></table></div>
+          </article>
+          <article class="chart-panel wide">
+            <h2>Governanca das atividades</h2>
+            <div class="table-wrap"><table id="etlGovernanceTable"></table></div>
           </article>
           <article class="chart-panel wide">
             <h2>Fontes monitoradas</h2>
@@ -212,7 +276,7 @@
         </div>
       </section>
 
-      <section class="panel" id="method">
+      <section class="panel" id="method" role="tabpanel">
         <div class="grid two">
           <article class="chart-panel">
             <h2>Padrao de conceitos e unidades</h2>
@@ -233,6 +297,10 @@
               <dd>`Prioritarios` indica CNAEs com prioridade final na plataforma; `No escopo` indica CNAEs industriais presentes nos indicadores, mas sem prioridade final; `Fora do escopo` indica setores RAIS fora do recorte industrial Border Value.</dd>
               <dt>Score preliminar emprego-plataforma</dt>
               <dd>Ordenador exploratorio: 45% percentil de vinculos RAIS, 35% prioridade setorial ja calculada e 20% dependencia externa. Nao substitui a prioridade oficial.</dd>
+              <dt>Combustiveis da transicao</dt>
+              <dd>Recorte transversal para hidrogenio, amonia, SAF, metanol, etanol e combustiveis maritimos de baixa emissao. A classificacao e preliminar e nao infere baixa emissao somente pela NCM.</dd>
+              <dt>Fase das atividades transversais</dt>
+              <dd>RAIS, cartografia, mapa mundial, integracao, automacao, hidrogenio e amonia entram somente em consolidacao, documentacao e testes.</dd>
             </dl>
           </article>
           <article class="chart-panel">
@@ -247,6 +315,7 @@
               <li>Setores RAIS fora do escopo da plataforma permanecem visiveis para controle territorial, mas nao entram como evidencia setorial Border Value sem decisao metodologica explicita.</li>
               <li>O score emprego-plataforma e preliminar e serve para triagem; decisoes oficiais continuam baseadas nos indicadores setoriais documentados e revisao metodologica.</li>
               <li>A remuneracao media nominal anual da RAIS e preservada como variavel auxiliar, mas a massa salarial oficial da plataforma usa dezembro para manter coerencia com o estoque de vinculos ativos em 31/12.</li>
+              <li>Hidrogenio, amonia, SAF, metanol, etanol e combustiveis maritimos usam NCMs e prefixos curados para organizar fluxos, insumos, equipamentos, derivados e usos finais; rotas verdes, renovaveis ou de baixa emissao exigem fontes complementares.</li>
             </ul>
           </article>
         </div>

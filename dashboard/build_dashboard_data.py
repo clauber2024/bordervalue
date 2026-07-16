@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "dashboard" / "data.json"
 TRADE_OUT = ROOT / "dashboard" / "trade_dashboard.parquet"
 EMPLOYMENT_OUT = ROOT / "dashboard" / "employment_dashboard.parquet"
+GDP_OUT = ROOT / "dashboard" / "gdp_dashboard.parquet"
 FINAL = ROOT / "outputs" / "final_border_value_2026"
 OFFICIAL = ROOT / "outputs" / "official_2026"
 OFFICIAL_RAIS = ROOT / "outputs" / "official_2026_rais"
@@ -30,6 +31,13 @@ IBGE_MUNICIPALITY_MESH_URL = (
 EMPLOYMENT_PLATFORM_CNAE_OUT = OFFICIAL_RAIS / "employment_platform_cnae.csv"
 EMPLOYMENT_SCOPE_SUMMARY_OUT = OFFICIAL_RAIS / "employment_scope_summary.csv"
 EMPLOYMENT_TERRITORY_CNAE_OUT = OFFICIAL_RAIS / "employment_territory_cnae.csv"
+GDP_TERRITORY_OUT = OFFICIAL_RAIS / "gdp_territory.csv"
+TRANSITION_FUEL_FILES = {
+    "indicators": FINAL / "indicadores_combustiveis_transicao_camada.csv",
+    "ncm_drivers": FINAL / "drivers_combustiveis_transicao_ncm.csv",
+    "complementary_sources": FINAL / "fontes_complementares_combustiveis_transicao.csv",
+    "framework": FINAL / "estrutura_analitica_hidrogenio_amonia.csv",
+}
 
 UF_IBGE_CODES = {
     "RO": "11",
@@ -79,6 +87,12 @@ def compact_records(df: pd.DataFrame) -> list[dict]:
     return clean_json_value(records)
 
 
+def read_optional_csv(path: Path, **kwargs) -> pd.DataFrame:
+    if not path.exists() or path.stat().st_size == 0:
+        return pd.DataFrame()
+    return pd.read_csv(path, **kwargs)
+
+
 def clean_json_value(value):
     if isinstance(value, dict):
         return {key: clean_json_value(item) for key, item in value.items()}
@@ -90,7 +104,19 @@ def clean_json_value(value):
         return None
     if pd.isna(value):
         return None
+    if isinstance(value, str):
+        return repair_text(value)
     return value
+
+
+def repair_text(value: str) -> str:
+    if not any(marker in value for marker in ("Ã", "Â", "â")):
+        return value
+    try:
+        fixed = value.encode("latin-1").decode("utf-8")
+    except UnicodeError:
+        return value
+    return fixed if fixed else value
 
 
 def load_municipality_dimension() -> pd.DataFrame:
@@ -265,12 +291,46 @@ def build_etl_metadata() -> dict:
             {"step": "Validacao e tratamento de alertas", "due": "5o-8o dia util", "owner": "Responsavel de validacao"},
             {"step": "Aprovacao e publicacao", "due": "ate 10o dia util", "owner": "Coordenacao"},
         ],
+        "activity_governance": [
+            {
+                "activity": "RAIS",
+                "phase": "Consolidacao, documentacao e testes",
+                "note": "Camada ja integrada ao fluxo oficial; tratar como verificacao, rastreabilidade e homologacao.",
+            },
+            {
+                "activity": "Cartografia municipal",
+                "phase": "Consolidacao, documentacao e testes",
+                "note": "Malhas e dimensoes territoriais devem ser revisadas como suporte ao dashboard, nao como desenvolvimento inicial.",
+            },
+            {
+                "activity": "Mapa mundial",
+                "phase": "Consolidacao, documentacao e testes",
+                "note": "Visualizacao de parceiros comerciais ja faz parte do produto oficial; foco em validacao e documentacao.",
+            },
+            {
+                "activity": "Integracao",
+                "phase": "Consolidacao, documentacao e testes",
+                "note": "Integra os modulos existentes; nao abrir como frente inicial separada.",
+            },
+            {
+                "activity": "Automacao",
+                "phase": "Consolidacao, documentacao e testes",
+                "note": "Rotinas de atualizacao e reproducao entram como endurecimento operacional.",
+            },
+            {
+                "activity": "Hidrogenio e amonia",
+                "phase": "Consolidacao, documentacao e testes",
+                "note": "Recorte transversal ja estruturado; manter foco em ressalvas metodologicas, fontes complementares e QA.",
+            },
+        ],
         "sources": [
             source_status(INPUTS / "EXP_2026.csv", "Comex Stat exportacoes", "Mensal", "Tecnico de dados", "Comercio exterior", "comex_exp"),
             source_status(INPUTS / "IMP_2026.csv", "Comex Stat importacoes", "Mensal", "Tecnico de dados", "Comercio exterior", "comex_imp"),
             source_status(INPUTS / "ncm_prodlist_2025.xlsx", "Ponte NCM-PRODLIST CONCLA/IBGE", "Quando houver nova tabela", "Tecnico de dados", "Correspondencia", "ncm_prodlist"),
             source_status(INPUTS / "pia_2024_value_production.json", "PIA-Produto valor da producao", "Anual", "Tecnico de dados", "Producao domestica", "pia_produto"),
             source_status(OFFICIAL_RAIS / "fact_employment_rais.csv", "RAIS vinculos formais", "Anual", "Tecnico de dados", "Emprego formal", "rais"),
+            source_status(OFFICIAL_RAIS / "fact_gdp.csv", "PIB territorial", "Anual", "Tecnico de dados", "PIB", "gdp"),
+            source_status(TRANSITION_FUEL_FILES["indicators"], "Hidrogenio, amonia e combustiveis da transicao", "A cada revisao metodologica", "Especialista setorial", "Recorte transversal", "transition_fuels"),
             source_status(official / "quality_summary.csv", "Resumo automatico de qualidade", "A cada execucao", "Validador tecnico", "Controle", "quality"),
             source_status(official / "manifest.json", "Manifest da execucao oficial", "A cada publicacao", "Responsavel de documentacao", "Metadados", "manifest"),
         ],
@@ -589,12 +649,50 @@ def main() -> None:
         if EMPLOYMENT_OUT.exists():
             EMPLOYMENT_OUT.unlink()
 
+    gdp_path = OFFICIAL_RAIS / "fact_gdp.csv"
+    if gdp_path.exists():
+        gdp = pd.read_csv(
+            gdp_path,
+            dtype={"uf": "string", "municipality_code": "string"},
+        )
+        if "gdp_value_brl" in gdp.columns:
+            gdp["gdp_value_brl"] = pd.to_numeric(gdp["gdp_value_brl"], errors="coerce")
+        gdp["municipality_code"] = gdp["municipality_code"].astype("string").str.zfill(6)
+        gdp = gdp.merge(
+            municipality_dim,
+            on=["municipality_code", "uf"],
+            how="left",
+            validate="many_to_one",
+        )
+        gdp.to_parquet(GDP_OUT, index=False)
+    else:
+        gdp = pd.DataFrame(
+            columns=[
+                "year",
+                "uf",
+                "municipality_code",
+                "gdp_value_brl",
+                "gdp_status",
+                "municipality_name",
+                "uf_name",
+                "region_name",
+            ]
+        )
+        if GDP_OUT.exists():
+            GDP_OUT.unlink()
+
     employment_platform = build_employment_platform_cnae(employment, final_cnae)
     employment_scope_summary = build_employment_scope_summary(employment_platform)
     OFFICIAL_RAIS.mkdir(parents=True, exist_ok=True)
     employment_platform.to_csv(EMPLOYMENT_PLATFORM_CNAE_OUT, index=False, encoding="utf-8-sig")
     employment_scope_summary.to_csv(EMPLOYMENT_SCOPE_SUMMARY_OUT, index=False, encoding="utf-8-sig")
     employment.to_csv(EMPLOYMENT_TERRITORY_CNAE_OUT, index=False, encoding="utf-8-sig")
+    gdp.to_csv(GDP_TERRITORY_OUT, index=False, encoding="utf-8-sig")
+
+    fuel_indicators = read_optional_csv(TRANSITION_FUEL_FILES["indicators"], dtype={"recorte_combustivel": "string", "camada_analitica": "string"})
+    fuel_ncm_drivers = read_optional_csv(TRANSITION_FUEL_FILES["ncm_drivers"], dtype={"recorte_combustivel": "string", "camada_analitica": "string", "ncm": "string"})
+    fuel_complementary = read_optional_csv(TRANSITION_FUEL_FILES["complementary_sources"], dtype="string")
+    fuel_framework = read_optional_csv(TRANSITION_FUEL_FILES["framework"], dtype="string")
 
     summary = {
         "periods": sorted(trade["period"].unique().tolist()),
@@ -605,6 +703,7 @@ def main() -> None:
             "mapping": "outputs/official_2026/bridge_ncm_prodlist_cnae.csv",
             "indicators": "outputs/final_border_value_2026/border_value_indicadores_finais_*.csv",
             "employment": "outputs/official_2026_rais/fact_employment_rais.csv",
+            "gdp": "outputs/official_2026_rais/fact_gdp.csv",
         },
     }
 
@@ -629,9 +728,15 @@ def main() -> None:
             .drop_duplicates()
             .sort_values(["uf", "municipality_name"], kind="stable")
         ),
+        "gdp_ufs": sorted([value for value in gdp["uf"].dropna().unique().tolist() if value]),
+        "gdp_municipalities": sorted(
+            [value for value in gdp["municipality_code"].dropna().unique().tolist() if value]
+        ),
         "municipality_meshes": cache_municipality_meshes(
             [value for value in employment["uf"].dropna().unique().tolist() if value]
         ),
+        "transition_fuels": sorted(fuel_indicators["recorte_combustivel"].dropna().unique().tolist()) if not fuel_indicators.empty else [],
+        "transition_fuel_layers": sorted(fuel_indicators["camada_analitica"].dropna().unique().tolist()) if not fuel_indicators.empty else [],
     }
 
     payload = {
@@ -641,6 +746,10 @@ def main() -> None:
         "indicators_prodlist": compact_records(indicators_prod),
         "employment_platform_cnae": compact_records(employment_platform),
         "employment_scope_summary": compact_records(employment_scope_summary),
+        "transition_fuel_indicators": compact_records(fuel_indicators),
+        "transition_fuel_ncm_drivers": compact_records(fuel_ncm_drivers),
+        "transition_fuel_complementary_sources": compact_records(fuel_complementary),
+        "transition_fuel_framework": compact_records(fuel_framework),
         "cnae_labels": compact_records(cnae_labels),
         "prodlist_labels": compact_records(prod_labels),
         "etl": build_etl_metadata(),
@@ -652,7 +761,7 @@ def main() -> None:
     )
     print(
         f"wrote {OUT}, {TRADE_OUT} and {EMPLOYMENT_OUT} with "
-        f"{len(trade):,} trade rows and {len(employment):,} employment rows"
+        f"{len(trade):,} trade rows, {len(employment):,} employment rows and {len(gdp):,} gdp rows"
     )
 
 

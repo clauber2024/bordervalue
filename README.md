@@ -10,14 +10,25 @@ PRODLIST-Indústria, classe CNAE e produção doméstica da PIA-Produto.
 - Produção: PIA-Produto 2024, tabela SIDRA 10476, variável “Valor da produção”.
 - Empregos: camada opcional RAIS por classe CNAE, ano, UF e município, com
   vínculos formais, massa salarial e salário médio.
+- PIB: camada territorial opcional por ano, UF e município, preparada para
+  leitura conjunta com emprego e renda no dashboard.
 - Rateio analítico: pesos por valor da produção PIA-Produto entre classes CNAE
   associadas à NCM, com fallback igualitário quando a base econômica não é
   completa e positiva.
 - Auditoria: NCMs terminadas em 9/90/99, NCMs sem ponte e CNAEs domésticas não alcançadas.
 
+## Produto oficial
+
+O dashboard oficial do projeto é a interface em `dashboard/`.
+
+Essa interface concentra os módulos já concluídos: indicadores Border Value,
+RAIS e cartografia municipal, mapa mundial de parceiros comerciais, hidrogênio,
+amônia e combustíveis da transição. A antiga interface experimental em `src/`
+foi removida para evitar dois produtos e dois contratos de dados concorrentes.
+
 ## Execução
 
-Use o Python do ambiente com pandas e execute:
+Use o Python do ambiente com pandas e `pyarrow`. A execução mínima da base oficial é:
 
 ```text
 python operational_pipeline.py config.official.2026.json
@@ -28,6 +39,60 @@ As saídas são gravadas em `outputs/official_2026`. Cada tabela é publicada em
 CSV e, quando o mecanismo Parquet estiver disponível, também em Parquet. O
 `manifest.json` registra fontes, versões, períodos, colunas e quantidade de linhas.
 
+Para a execução completa com RAIS, módulos analíticos finais, dashboard, workbook
+e pacote de publicação, use a sequência oficial:
+
+```text
+python -m unittest -v
+python operational_pipeline.py config.official.2026.json
+python operational_pipeline.py config.official.2026.rais.json
+python build_final_border_value_outputs.py
+python build_comparacao_periodos.py
+python build_rankings_recortes.py
+python build_sensibilidade_rateio.py
+python build_cadeias_minerais_estrategicas.py
+python build_combustiveis_transicao.py
+python dashboard/build_dashboard_data.py
+node build_final_border_value_workbook.mjs
+python prepare_publication_package.py
+python dashboard/server.py 8765
+```
+
+A carga RAIS completa baixa cerca de 3,6 GB compactados e pode demorar conforme
+rede, disco e biblioteca de extração `.7z`. O dashboard local fica disponível em
+`http://localhost:8765` enquanto `dashboard/server.py` estiver em execução.
+O Node.js permanece necessário apenas para os scripts executivos em `.mjs`, como
+`build_final_border_value_workbook.mjs`; a interface oficial não usa Next.js.
+
+## Módulos principais
+
+- `operational_pipeline.py`: monta dimensões, ponte NCM-Prodlist-CNAE, fatos de
+  comércio, produção, RAIS opcional, indicadores por CNAE e controles de
+  qualidade.
+- `build_final_border_value_outputs.py`: consolida a camada final de publicação,
+  rankings, indicadores por CNAE/Prodlist, triagem de NCM sem ponte e resumo
+  metodológico.
+- `build_comparacao_periodos.py`: compara 2024 H1 e 2026 H1 por CNAE e fluxo,
+  com série mensal e ranking de variações.
+- `build_rankings_recortes.py`: gera rankings e recortes setoriais para leitura
+  executiva das prioridades.
+- `build_sensibilidade_rateio.py`: testa cenários alternativos de rateio e de
+  tratamento de NCM sem ponte.
+- `build_cadeias_minerais_estrategicas.py`: cria recortes de cadeias minerais
+  estratégicas, drivers por NCM, criticidade e priorização por etapa. Quando
+  disponíveis, incorpora os dados abertos ANM/Anuário Mineral Brasileiro como
+  camada complementar de produção mineral por substância.
+- `build_combustiveis_transicao.py`: organiza hidrogênio, amônia, SAF, metanol,
+  etanol e combustíveis marítimos em camadas analíticas, drivers NCM e fontes
+  complementares necessárias.
+- `dashboard/build_dashboard_data.py` e `dashboard/server.py`: preparam os dados
+  do painel e servem a interface local com fluxos mundiais, território RAIS,
+  escopo Border Value e combustíveis da transição.
+- `build_final_border_value_workbook.mjs`: gera a planilha executiva final em
+  `outputs/final_border_value_2026`.
+- `prepare_publication_package.py`: monta o pacote publicável com bases,
+  metadados, dicionário de dados, reprodução e arquivos compactados.
+
 ## Ordem segura de carga
 
 1. `dim_ncm`
@@ -37,8 +102,9 @@ CSV e, quando o mecanismo Parquet estiver disponível, também em Parquet. O
 5. `fact_trade`
 6. `fact_production`
 7. `fact_employment_rais`, quando houver RAIS configurada
-8. `analytic_trade_cnae`
-9. `border_value_indicators_cnae`
+8. `fact_gdp`, quando houver PIB configurado
+9. `analytic_trade_cnae`
+10. `border_value_indicators_cnae`
 
 O fato de comércio nunca é ligado diretamente à ponte 1:N. A tabela analítica é
 uma camada posterior e reconciliada, evitando dupla contagem.
@@ -53,19 +119,23 @@ presente, o pipeline publica `fact_employment_rais.csv` com o grão:
 - `municipality_code`;
 - `cnae_class`;
 - `formal_jobs`;
-- `wage_mass`;
-- `average_wage`.
+- `wage_mass` / `december_wage_mass`;
+- `average_wage` / `average_december_wage`;
+- `average_monthly_wage`.
 
 O adaptador aceita cabeçalhos já normalizados ou nomes usuais da RAIS, como
-`Ano`, `CNAE 2.0 Classe`, `UF`, `Municipio`, `Vinculo Ativo 31/12`, `Massa
-Salarial` e `Salario Medio`. Se a massa salarial não vier pronta, ela é
-calculada como `vínculos formais * salário médio`; se o salário médio não vier
-pronto, ele é calculado como `massa salarial / vínculos formais`.
+`Ano`, `CNAE 2.0 Classe`, `UF`, `Municipio`, `Ind Vínculo Ativo 31/12 - Código`,
+`Vl Rem Dezembro Nom` e `Vl Rem Média Nom`. A convenção oficial da plataforma é:
+`formal_jobs` conta vínculos ativos em 31/12, `wage_mass` é alias de
+`december_wage_mass` e `average_wage` é alias de `average_december_wage`. A
+coluna `average_monthly_wage` preserva a remuneração média nominal da RAIS como
+variável auxiliar.
 
 Exemplo de bloco de configuração:
 
 ```json
 "rais_employment": {
+  "url": "https://.../rais_2024_cnae_municipio.csv",
   "path": "inputs/official/rais_2024_cnae_municipio.csv",
   "read_options": {
     "sep": ";",
@@ -78,10 +148,133 @@ Exemplo de bloco de configuração:
 }
 ```
 
+Se `path` não existir e houver `url` ou `download_url`, o pipeline baixa a fonte
+para esse caminho antes de processar. Arquivos já baixados são reaproveitados.
+O `path` pode apontar diretamente para `.zip`, `.gz` ou `.7z`. Para `.7z`, use
+`py7zr` no ambiente Python ou o executável `7z` no PATH. Quando houver mais de
+um arquivo dentro do pacote, informe `archive_member` em `read_options`:
+
+```json
+"rais_employment": {
+  "url": "https://.../RAIS_VINC_PUB_2024.7z",
+  "path": "inputs/official/RAIS_VINC_PUB_2024.7z",
+  "read_options": {
+    "archive_member": "RAIS_VINC_PUB_2024.txt",
+    "sep": ";",
+    "encoding": "latin1",
+    "dtype": {
+      "CNAE 2.0 Classe": "string",
+      "Município": "string"
+    }
+  }
+}
+```
+
 Quando a RAIS está configurada, `border_value_indicators_cnae.csv` também recebe
-`rais_formal_jobs`, `rais_wage_mass` e `rais_average_wage`, agregados por CNAE.
+`rais_formal_jobs`, `rais_december_wage_mass`, `rais_average_december_wage` e
+`rais_average_monthly_wage`, agregados por CNAE. As colunas legadas
+`rais_wage_mass` e `rais_average_wage` permanecem como aliases de dezembro.
 O `quality_summary.csv` registra linhas RAIS, vínculos, massa salarial e CNAEs
 RAIS que não encontraram chave na dimensão derivada da PIA.
+
+O arquivo `config.official.2026.rais.json` já traz a carga completa dos vínculos
+RAIS 2024 do FTP oficial do MTE (`ftp://ftp.mtps.gov.br/pdet/microdados/RAIS/2024/`).
+Ele usa os sete pacotes `RAIS_VINC_PUB_*.7z`, lê os `.COMT` internos em blocos e
+grava as saídas em `outputs/official_2026_rais`. A carga completa baixa cerca de
+3,6 GB compactados antes da extração; para smoke test foi validado o pacote
+pequeno `RAIS_VINC_PUB_NI.7z`.
+
+Para exibição territorial no dashboard, os códigos municipais da RAIS são
+enriquecidos pela dimensão oficial de municípios do IBGE, cacheada em
+`dados/cache/dim_municipio_ibge.csv`. A chave de integração usa os seis
+primeiros dígitos do código IBGE, compatíveis com o campo municipal da RAIS. O
+código especial `999999` é mantido e rotulado como `Município não informado`.
+Além do parquet usado pela interface, o build do dashboard publica CSVs
+analíticos em `outputs/official_2026_rais`: `employment_territory_cnae.csv`,
+`employment_platform_cnae.csv` e `employment_scope_summary.csv`.
+
+No dashboard, a RAIS é classificada por escopo:
+
+- `platform_priority`: CNAEs classificados como `1 - priorizar` nos indicadores finais.
+- `platform_scope`: CNAEs industriais presentes nos indicadores da plataforma, mas sem prioridade 1.
+- `out_of_platform_scope`: CNAEs RAIS fora do recorte industrial Border Value.
+
+Os setores fora do escopo permanecem disponíveis para controle territorial, mas
+não são usados como evidência setorial Border Value sem decisão metodológica
+explícita.
+
+O campo `employment_platform_prelim_score` é apenas um ordenador exploratório
+para triagem inicial: `0,45 * percentil de vínculos RAIS + 0,35 * priority_score
++ 0,20 * external_dependency_ratio`. Ele não substitui `priority_tier` nem vira
+prioridade oficial sem validação metodológica.
+
+## Camada PIB
+
+A entrada `inputs.gdp` é opcional no JSON de configuração. Quando presente, o
+pipeline publica `fact_gdp.csv` com o grão:
+
+- `year`;
+- `uf`;
+- `municipality_code`;
+- `gdp_value_brl`;
+- `gdp_status`.
+
+O adaptador aceita cabeçalhos já normalizados ou nomes usuais como `Ano`, `UF`,
+`Código do Município`, `Município`, `Produto Interno Bruto`, `Produto interno
+bruto a preços correntes`, `Valor` e `V`. A camada foi desenhada para PIB
+territorial, sobretudo municipal/UF, e não substitui a PIA-Produto setorial usada
+no rateio NCM-PRODLIST-CNAE.
+
+Exemplo de bloco de configuração:
+
+```json
+"gdp": {
+  "path": "inputs/official/pib_municipios_2024.csv",
+  "value_multiplier": 1000,
+  "read_options": {
+    "sep": ";",
+    "encoding": "utf-8-sig",
+    "dtype": {
+      "Código do Município": "string"
+    }
+  }
+}
+```
+
+Use `value_multiplier: 1000` quando a fonte publicar PIB em mil reais; omita ou
+use `1` quando o arquivo já estiver em reais.
+
+Quando disponível, o build do dashboard publica `gdp_territory.csv` em
+`outputs/official_2026_rais` e mostra `PIB territorial` na aba
+`Emprego, renda e PIB`, filtrável por UF e município.
+
+## Camada ANM/AMB
+
+O módulo de cadeias minerais estratégicas pode enriquecer a priorização com os
+dados abertos da Agência Nacional de Mineração do Anuário Mineral Brasileiro
+(AMB). A camada é complementar: ela não substitui a PIA-Produto, não altera a
+ponte NCM-Prodlist-CNAE e não corrige NCM sem ponte.
+
+Fontes configuradas no módulo:
+
+- `https://app.anm.gov.br/dadosabertos/AMB/Producao_Bruta.csv`
+- `https://app.anm.gov.br/dadosabertos/AMB/Producao_Beneficiada.csv`
+
+Status atual: **pendente**. Os arquivos da pasta pública da ANM não estavam
+disponíveis para download na validação operacional mais recente. O adaptador foi
+mantido no código, mas a camada não deve ser considerada incorporada à base até
+que a fonte volte a responder ou a ANM publique um caminho alternativo oficial.
+
+Quando o download direto voltar a estar disponível, ou quando os arquivos forem
+colocados em `inputs/official/anm_amb_producao_bruta.csv` e
+`inputs/official/anm_amb_producao_beneficiada.csv`, o build publica:
+
+- `fact_anm_mineral_production.csv`: produção ANM/AMB normalizada por ano,
+  substância, UF/município quando houver, estágio bruto/beneficiado e
+  `mineral_base`;
+- `fontes_anm_amb_status.csv`: status de acesso, cache e leitura das fontes;
+- campos `anm_*` em `priorizacao_cadeias_minerais_estrategicas.csv`, incluindo
+  `anm_materiality_rank`, usado como componente opcional do `strategic_score`.
 
 ## Indicadores Border Value
 
@@ -132,34 +325,50 @@ códigos genéricos não são resolvidos automaticamente nem com IA generativa.
 
 ## Pendências
 
+RAIS, cartografia municipal, mapa mundial, integração, automação, hidrogênio e
+amônia não são tratados como atividades de desenvolvimento inicial. Esses temas
+entram somente em consolidação, documentação e testes dos módulos já incorporados
+ao produto oficial.
+
 - Analisar os resultados com especialistas setoriais, começando pelas CNAEs de
   maior valor comercial ou relevância para a transição energética. A pauta
   inicial está em `outputs/official_2026/priorizacao_especialistas_cnae.md` e a
   base completa em `outputs/official_2026/priorizacao_especialistas_cnae.csv`.
-- Criar a primeira camada de mapas da plataforma com visualização mundial dos
-  fluxos de importação e exportação por país parceiro (`CO_PAIS`), incluindo
-  interação de origem-destino/de-para e alternativa de sobrevoo animado dos
-  fluxos no mapa. O primeiro recorte deve incluir explicitamente etanol,
-  produção de etanol, SAF, combustível marítimo, metanol e derivados, combinando
-  dados oficiais com o levantamento manual já realizado.
-- Estruturar a camada cartográfica Brasil para RAIS e demais bases territoriais,
-  com mapas por UF e município integrados por CNAE. Detalhar posteriormente as
-  referências de desenho e navegação inspiradas em plataformas como SEEG,
-  MapBiomas e mapas de zonas.
+- Validar, com fontes setoriais complementares, quais fluxos de hidrogênio,
+  amônia, SAF, metanol, etanol e combustíveis marítimos podem ser classificados
+  como renováveis, verdes, azuis ou de baixa emissão. A NCM organiza o produto,
+  mas não certifica rota tecnológica nem intensidade de emissões.
+- Retomar a camada ANM/AMB quando `Producao_Bruta.csv` e
+  `Producao_Beneficiada.csv` estiverem novamente disponíveis em fonte oficial,
+  validando layout, granularidade, unidades e compatibilidade com os
+  `mineral_base` das cadeias minerais estratégicas.
 
 ## Atualização anual
 
-1. Baixar os arquivos anuais detalhados por NCM do Comex Stat.
-2. Baixar a correspondência NCM x PRODLIST compatível com a nomenclatura vigente.
-3. Extrair a PIA-Produto pelo SIDRA e registrar o ano/versão da PRODLIST.
-4. Atualizar caminhos, períodos e URLs no JSON de configuração.
-5. Executar testes, pipeline e conferir as reconciliações no relatório de qualidade.
+1. Baixar ou atualizar os arquivos detalhados por NCM do Comex Stat para os anos
+   e fluxos desejados.
+2. Baixar a correspondência NCM x PRODLIST compatível com a nomenclatura vigente
+   e registrar a versão usada.
+3. Extrair a PIA-Produto pelo SIDRA, confirmar tabela, variável, unidade e versão
+   PRODLIST declarada.
+4. Atualizar caminhos, períodos, URLs, fator cambial e notas metodológicas no
+   JSON de configuração.
+5. Quando houver RAIS, atualizar o ano, os pacotes regionais, as opções de leitura
+   e a documentação do período de emprego formal.
+6. Executar os testes, a base oficial e a base RAIS, conferindo `manifest.json` e
+   `quality_summary.csv`.
+7. Regerar as camadas finais, recortes setoriais, combustíveis da transição,
+   dashboard, workbook e pacote de publicação.
+8. Registrar hashes, ambiente, data de execução, diferenças de cobertura e
+   auditorias manuais relevantes.
 
 ## Fontes oficiais
 
 - Comex Stat: https://www.gov.br/mdic/pt-br/assuntos/comercio-exterior/estatisticas/base-de-dados-bruta
 - Correspondências CONCLA: https://concla.ibge.gov.br/classificacoes/correspondencias/produtos.html
 - PIA-Produto: https://sidra.ibge.gov.br/pesquisa/pia-produto/tabelas
+- ANM/Anuário Mineral Brasileiro: https://www.gov.br/anm/pt-br/assuntos/economia-mineral/publicacoes/anuario-mineral/anuario-mineral-brasileiro
+- Dados abertos ANM/AMB: https://app.anm.gov.br/dadosabertos/AMB/
 
 ## Limitações metodológicas
 
@@ -187,3 +396,19 @@ códigos genéricos não são resolvidos automaticamente nem com IA generativa.
   não mapeadas para preservar a reconciliação com os totais do Comex Stat. Quando
   uma NCM possui múltiplas CNAEs possíveis, o resultado depende da regra de
   rateio documentada e deve ser interpretado como alocação analítica.
+- **ANM/AMB:** a produção mineral da ANM é usada como evidência complementar de
+  materialidade por substância mineral. Ela não é comparável diretamente à
+  PIA-Produto sem harmonização adicional, pois tem grão, conceito e unidade
+  próprios.
+- **Hidrogênio e amônia:** a NCM identifica moléculas, derivados, insumos,
+  equipamentos e usos correlatos, mas não informa se o hidrogênio é renovável,
+  eletrolítico, azul, cinza ou outra rota. Também não informa se a amônia usa
+  hidrogênio de baixa emissão, captura de carbono ou eletricidade renovável.
+  Qualquer classificação ambiental exige bases complementares de projetos,
+  plantas, capacidade, tecnologia, certificação, origem do hidrogênio e
+  intensidade de emissões.
+- **Combustíveis da transição:** SAF, metanol, etanol e combustíveis marítimos
+  são recortes transversais preliminares. Alguns códigos misturam produto fóssil
+  e renovável ou usos industriais e energéticos; por isso os módulos indicam
+  drivers comerciais e campos complementares requeridos, sem inferir atributo de
+  baixa emissão apenas pela NCM.

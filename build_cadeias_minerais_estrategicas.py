@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from html import unescape
 from pathlib import Path
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 import pandas as pd
 
@@ -11,7 +14,68 @@ import pandas as pd
 BASE_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = BASE_DIR / "outputs" / "final_border_value_2026"
 SOURCE_DIR = BASE_DIR / "outputs" / "official_2026"
+INPUT_DIR = BASE_DIR / "inputs" / "official"
 NCM_JSON = BASE_DIR / "dados" / "cache" / "ncm_vigente.json"
+
+
+ANM_AMB_SOURCES = {
+    "bruta": {
+        "url": "https://app.anm.gov.br/dadosabertos/AMB/Producao_Bruta.csv",
+        "path": INPUT_DIR / "anm_amb_producao_bruta.csv",
+        "description": "ANM AMB Producao_Bruta.csv",
+    },
+    "beneficiada": {
+        "url": "https://app.anm.gov.br/dadosabertos/AMB/Producao_Beneficiada.csv",
+        "path": INPUT_DIR / "anm_amb_producao_beneficiada.csv",
+        "description": "ANM AMB Producao_Beneficiada.csv",
+    },
+}
+
+
+ANM_SUBSTANCE_PATTERNS = {
+    "ferro": [r"\bferro\b", r"minerio de ferro"],
+    "cobre": [r"\bcobre\b"],
+    "litio": [r"\blitio\b", r"espodumenio"],
+    "niquel": [r"\bniquel\b"],
+    "cobalto": [r"\bcobalto\b"],
+    "grafite": [r"\bgrafit"],
+    "terras_raras": [r"terra[s]? rara[s]?", r"monazita", r"bastnasita"],
+    "niobio": [r"\bniobio\b", r"pirocloro", r"columbita"],
+    "silicio_quartzo": [r"\bquartzo\b", r"silicio", r"areia industrial"],
+    "manganes": [r"\bmanganes\b"],
+    "bauxita_aluminio": [r"\bbauxita\b", r"aluminio"],
+    "fosfato_potassio": [r"\bfosfat", r"\bpotassio\b", r"potass"],
+    "vanadio": [r"\bvanadio\b"],
+    "tantalio_estanho": [r"\btantal", r"\bestanho\b", r"cassiterita"],
+}
+
+
+ANM_COLUMN_ALIASES = {
+    "year": ["ano", "ano base", "ano_base", "ano de referencia"],
+    "uf": ["uf", "unidade federativa", "unidade da federacao", "estado"],
+    "municipality": ["municipio", "municipio produtor", "nome municipio", "localidade"],
+    "substance": ["substancia", "substancia mineral", "substancia_mineral", "mineral", "produto"],
+    "quantity": [
+        "quantidade",
+        "quantidade produzida",
+        "quantidade_produzida",
+        "producao",
+        "producao bruta",
+        "producao beneficiada",
+        "producao_bruta",
+        "producao_beneficiada",
+    ],
+    "unit": ["unidade", "unidade medida", "unidade_medida", "medida"],
+    "production_value_brl": [
+        "valor",
+        "valor r$",
+        "valor_rs",
+        "valor producao",
+        "valor da producao",
+        "valor comercializado",
+        "valor da producao comercializada",
+    ],
+}
 
 
 CRITICALITY_REFERENCE = [
@@ -298,6 +362,203 @@ def normalize_ncm(series: pd.Series) -> pd.Series:
     return series.astype("string").str.replace(r"\.0$", "", regex=True).str.zfill(8)
 
 
+def normalize_text(value: object) -> str:
+    text = unicodedata.normalize("NFKD", str(value).casefold())
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def normalize_column_name(value: object) -> str:
+    return re.sub(r"[^a-z0-9]+", "", normalize_text(value))
+
+
+def first_present_column(columns: pd.Index, aliases: list[str]) -> str | None:
+    lookup = {normalize_column_name(column): str(column) for column in columns}
+    for alias in aliases:
+        match = lookup.get(normalize_column_name(alias))
+        if match is not None:
+            return match
+    return None
+
+
+def parse_number(series: pd.Series) -> pd.Series:
+    text = series.astype("string").str.strip()
+    text = text.str.replace(r"\s+", "", regex=True)
+    text = text.str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
+    text = text.str.replace(r"[^0-9.\-]", "", regex=True)
+    return pd.to_numeric(text, errors="coerce")
+
+
+def download_if_needed(url: str, destination: Path) -> tuple[Path | None, str]:
+    if destination.exists() and destination.stat().st_size:
+        return destination, "cached"
+    try:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        request = Request(url, headers={"User-Agent": "BorderValue/1.0"})
+        with urlopen(request, timeout=120) as response:
+            destination.write_bytes(response.read())
+        return destination, "downloaded"
+    except (HTTPError, URLError, TimeoutError, OSError) as exc:
+        return None, f"unavailable: {exc}"
+
+
+def classify_anm_substance(substance: object) -> str | pd.NA:
+    normalized = normalize_text(substance)
+    for mineral_base, patterns in ANM_SUBSTANCE_PATTERNS.items():
+        if any(re.search(pattern, normalized) for pattern in patterns):
+            return mineral_base
+    return pd.NA
+
+
+def adapt_anm_amb_table(frame: pd.DataFrame, production_stage: str) -> pd.DataFrame:
+    columns: dict[str, str] = {}
+    for canonical, aliases in ANM_COLUMN_ALIASES.items():
+        match = first_present_column(frame.columns, aliases)
+        if match is not None:
+            columns[canonical] = match
+
+    required = {"year", "substance"}
+    if not required.issubset(columns):
+        missing = ", ".join(sorted(required - set(columns)))
+        raise ValueError(f"Layout ANM/AMB sem colunas obrigatorias: {missing}.")
+
+    result = pd.DataFrame(index=frame.index)
+    result["production_stage"] = production_stage
+    result["year"] = pd.to_numeric(frame[columns["year"]], errors="coerce").astype("Int64")
+    result["substance"] = frame[columns["substance"]].astype("string").str.strip()
+    result["mineral_base"] = result["substance"].map(classify_anm_substance).astype("string")
+    result["uf"] = (
+        frame[columns["uf"]].astype("string").str.strip().str.upper()
+        if "uf" in columns
+        else pd.Series(pd.NA, index=frame.index, dtype="string")
+    )
+    result["municipality"] = (
+        frame[columns["municipality"]].astype("string").str.strip()
+        if "municipality" in columns
+        else pd.Series(pd.NA, index=frame.index, dtype="string")
+    )
+    result["quantity"] = (
+        parse_number(frame[columns["quantity"]])
+        if "quantity" in columns
+        else pd.Series(pd.NA, index=frame.index, dtype="Float64")
+    )
+    result["unit"] = (
+        frame[columns["unit"]].astype("string").str.strip()
+        if "unit" in columns
+        else pd.Series(pd.NA, index=frame.index, dtype="string")
+    )
+    result["production_value_brl"] = (
+        parse_number(frame[columns["production_value_brl"]])
+        if "production_value_brl" in columns
+        else pd.Series(pd.NA, index=frame.index, dtype="Float64")
+    )
+    result = result.loc[result["year"].notna() & result["substance"].notna()].copy()
+    result["source"] = "ANM_AMB"
+    return result.reset_index(drop=True)
+
+
+def load_anm_amb_production() -> tuple[pd.DataFrame, list[dict[str, str]]]:
+    frames = []
+    status = []
+    for production_stage, source in ANM_AMB_SOURCES.items():
+        path, state = download_if_needed(str(source["url"]), Path(source["path"]))
+        status.append(
+            {
+                "production_stage": production_stage,
+                "source": str(source["url"]),
+                "cache_path": str(source["path"].relative_to(BASE_DIR)),
+                "status": state,
+            }
+        )
+        if path is None:
+            continue
+        try:
+            raw = pd.read_csv(path, sep=None, engine="python", encoding="utf-8-sig")
+            frames.append(adapt_anm_amb_table(raw, production_stage))
+            status[-1]["rows"] = str(len(raw))
+        except Exception as exc:  # noqa: BLE001 - preserve build and report source issue.
+            status[-1]["status"] = f"invalid_layout: {exc}"
+
+    if not frames:
+        return pd.DataFrame(
+            columns=[
+                "production_stage",
+                "year",
+                "substance",
+                "mineral_base",
+                "uf",
+                "municipality",
+                "quantity",
+                "unit",
+                "production_value_brl",
+                "source",
+            ]
+        ), status
+    return pd.concat(frames, ignore_index=True), status
+
+
+def summarize_anm_by_chain(anm: pd.DataFrame) -> pd.DataFrame:
+    if anm.empty:
+        return pd.DataFrame(columns=["mineral_base"])
+    mapped = anm.loc[anm["mineral_base"].notna()].copy()
+    if mapped.empty:
+        return pd.DataFrame(columns=["mineral_base"])
+    mapped["quantity"] = pd.to_numeric(mapped["quantity"], errors="coerce")
+    mapped["production_value_brl"] = pd.to_numeric(mapped["production_value_brl"], errors="coerce")
+    latest_year = mapped.groupby("mineral_base")["year"].transform("max")
+    mapped = mapped.loc[mapped["year"].eq(latest_year)].copy()
+
+    summary = (
+        mapped.groupby(["mineral_base", "production_stage"], as_index=False, dropna=False)
+        .agg(
+            anm_year=("year", "max"),
+            anm_quantity=("quantity", "sum"),
+            anm_production_value_brl=("production_value_brl", "sum"),
+            anm_substances=("substance", lambda values: "; ".join(sorted(set(values.dropna().astype(str)))[:8])),
+            anm_ufs=("uf", lambda values: "; ".join(sorted(set(values.dropna().astype(str)))[:12])),
+        )
+    )
+    pivot = summary.pivot_table(
+        index="mineral_base",
+        columns="production_stage",
+        values=["anm_year", "anm_quantity", "anm_production_value_brl", "anm_substances", "anm_ufs"],
+        aggfunc="first",
+        dropna=False,
+    ).reset_index()
+    pivot.columns = [
+        f"{metric}_{stage}" if stage else str(metric)
+        for metric, stage in pivot.columns.to_flat_index()
+    ]
+    pivot = pivot.rename(
+        columns={
+            "anm_year_bruta": "anm_latest_year",
+            "anm_quantity_bruta": "anm_gross_quantity",
+            "anm_quantity_beneficiada": "anm_beneficiated_quantity",
+            "anm_production_value_brl_bruta": "anm_gross_production_value_brl",
+            "anm_production_value_brl_beneficiada": "anm_beneficiated_production_value_brl",
+            "anm_substances_bruta": "anm_substances",
+            "anm_ufs_bruta": "anm_ufs",
+        }
+    )
+    if "anm_latest_year" not in pivot and "anm_year_beneficiada" in pivot:
+        pivot["anm_latest_year"] = pivot["anm_year_beneficiada"]
+    for column in [
+        "anm_gross_quantity",
+        "anm_beneficiated_quantity",
+        "anm_gross_production_value_brl",
+        "anm_beneficiated_production_value_brl",
+    ]:
+        if column not in pivot:
+            pivot[column] = pd.NA
+    pivot["anm_beneficiation_ratio"] = (
+        pd.to_numeric(pivot["anm_beneficiated_quantity"], errors="coerce")
+        / pd.to_numeric(pivot["anm_gross_quantity"], errors="coerce").where(
+            pd.to_numeric(pivot["anm_gross_quantity"], errors="coerce").gt(0)
+        )
+    )
+    return pivot
+
+
 def read_ncm_descriptions() -> pd.DataFrame:
     data = json.loads(NCM_JSON.read_text(encoding="utf-8"))
     descriptions = {}
@@ -352,12 +613,14 @@ def build_seed(trade_ncms: pd.Series) -> pd.DataFrame:
     return pd.DataFrame(rows).drop_duplicates(["ncm", "cadeia_estrategica"])
 
 
-def build_outputs() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def build_outputs() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     trade = pd.read_csv(SOURCE_DIR / "fact_trade.csv", dtype={"ncm": "string"})
     trade["ncm"] = normalize_ncm(trade["ncm"])
     descriptions = read_ncm_descriptions()
     seed = build_seed(trade["ncm"]).merge(descriptions, on="ncm", how="left")
     criticality = pd.DataFrame(CRITICALITY_REFERENCE)
+    anm_production, anm_status = load_anm_amb_production()
+    anm_summary = summarize_anm_by_chain(anm_production)
 
     detail = trade.merge(seed, on="ncm", how="inner")
     detail["value_usd"] = pd.to_numeric(detail["value_usd"], errors="coerce").fillna(0.0)
@@ -448,11 +711,22 @@ def build_outputs() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFr
     chain["priority_score"] = (0.45 * trade_rank + 0.25 * imbalance_rank + 0.30 * priority_weight).round(4)
     chain = chain.merge(criticality, on="mineral_base", how="left")
     chain["criticality_weight"] = chain["criticality_weight"].fillna(0.5)
+    chain = chain.merge(anm_summary, on="mineral_base", how="left")
+    anm_materiality = pd.to_numeric(
+        chain.get("anm_gross_production_value_brl", pd.Series(0, index=chain.index)),
+        errors="coerce",
+    ).fillna(0)
+    if anm_materiality.gt(0).any():
+        anm_materiality = anm_materiality.rank(pct=True)
+    else:
+        anm_materiality = pd.Series(0.0, index=chain.index)
+    chain["anm_materiality_rank"] = anm_materiality.round(4)
     chain["strategic_score"] = (
-        0.30 * trade_rank
-        + 0.20 * imbalance_rank
-        + 0.20 * priority_weight
-        + 0.30 * chain["criticality_weight"]
+        0.25 * trade_rank
+        + 0.18 * imbalance_rank
+        + 0.18 * priority_weight
+        + 0.27 * chain["criticality_weight"]
+        + 0.12 * chain["anm_materiality_rank"]
     ).round(4)
     chain = chain.merge(
         seed[["cadeia_estrategica", "tecnologias_transicao", "direcao_adensamento", "racional"]].drop_duplicates("cadeia_estrategica"),
@@ -461,30 +735,36 @@ def build_outputs() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFr
     )
     chain = chain.sort_values("strategic_score", ascending=False, kind="stable")
     chain.insert(0, "rank", range(1, len(chain) + 1))
-    return seed, indicators, ncm_detail, chain, criticality
+    return seed, indicators, ncm_detail, chain, criticality, anm_production, pd.DataFrame(anm_status)
 
 
 def money(value: float) -> str:
     return f"US$ {value / 1_000_000_000:,.2f} bi"
 
 
-def write_report(chain: pd.DataFrame, ncm_detail: pd.DataFrame) -> None:
+def write_report(chain: pd.DataFrame, ncm_detail: pd.DataFrame, anm_status: pd.DataFrame) -> None:
+    anm_available = (
+        "sim"
+        if not anm_status.empty and anm_status["status"].astype("string").str.contains("cached|downloaded").any()
+        else "nao"
+    )
     lines = [
         "# Cadeias minerais estrategicas para transicao",
         "",
-        "Camada analitica transversal ao mapeamento Prodlist/CNAE. A seed usa regras por NCM/prefixo e deve ser validada por especialistas; ela nao altera a ponte oficial CONCLA/IBGE.",
+        "Camada analitica transversal ao mapeamento Prodlist/CNAE. A seed usa regras por NCM/prefixo e deve ser validada por especialistas; ela nao altera a ponte oficial CONCLA/IBGE. Quando disponivel, a camada ANM/AMB adiciona evidencia de producao mineral brasileira por substancia.",
         "",
         "## Priorizacao",
         "",
-        "| Rank | Cadeia | Score estratégico | Valor comercial | Saldo | Primario | Processado/jusante | Direcao de adensamento |",
-        "| ---: | --- | ---: | ---: | ---: | ---: | ---: | --- |",
+        "| Rank | Cadeia | Score estrategico | Valor comercial | Saldo | Primario | Processado/jusante | Materialidade ANM | Direcao de adensamento |",
+        "| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
     ]
     for _, row in chain.head(12).iterrows():
         lines.append(
             f"| {int(row['rank'])} | {row['cadeia_estrategica']} | {row['strategic_score']:.3f} | "
             f"{money(row['trade_value_usd'])} | "
             f"{money(row['trade_balance_usd'])} | {row['primary_share_trade']:.1%} | "
-            f"{row['processed_downstream_share_trade']:.1%} | {row['direcao_adensamento']} |"
+            f"{row['processed_downstream_share_trade']:.1%} | {row.get('anm_materiality_rank', 0):.2f} | "
+            f"{row['direcao_adensamento']} |"
         )
     lines.extend(["", "## Principais NCMs por cadeia", ""])
     for chain_name in chain["cadeia_estrategica"].head(10):
@@ -502,12 +782,14 @@ def write_report(chain: pd.DataFrame, ncm_detail: pd.DataFrame) -> None:
             "",
             "- `priority_score` combina valor comercial observado, desequilibrio comercial e prioridade de transicao.",
             "- `strategic_score` adiciona peso de criticidade global para nao invisibilizar terras raras, grafite e cobalto quando o comercio observado ainda e baixo.",
+            "- A camada ANM/AMB entra como materialidade produtiva brasileira por substancia mineral, sem substituir a PIA-Produto nem alterar o rateio NCM-Prodlist-CNAE.",
+            f"- Disponibilidade ANM/AMB nesta execucao: {anm_available}. Ver `fontes_anm_amb_status.csv` para detalhes.",
             "",
             "## Uso recomendado",
             "",
             "- Usar como modulo de oportunidade produtiva e complexidade economica, nao como correcao de NAO_MAPEADO.",
             "- Validar NCMs e etapas com geologia, industria e CONCLA/IBGE antes de usar em decisao publica.",
-            "- Combinar valor comercial, dependencia de importacoes, saldo e posicao na cadeia para priorizar politica industrial.",
+            "- Combinar valor comercial, dependencia de importacoes, saldo, posicao na cadeia e producao ANM para priorizar politica industrial.",
         ]
     )
     (OUTPUT_DIR / "relatorio_cadeias_minerais_estrategicas.md").write_text("\n".join(lines), encoding="utf-8")
@@ -515,14 +797,16 @@ def write_report(chain: pd.DataFrame, ncm_detail: pd.DataFrame) -> None:
 
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    seed, indicators, ncm_detail, chain, criticality = build_outputs()
+    seed, indicators, ncm_detail, chain, criticality, anm_production, anm_status = build_outputs()
     csv_options = {"index": False, "encoding": "utf-8-sig"}
     criticality.to_csv(OUTPUT_DIR / "referencia_criticidade_minerais.csv", **csv_options)
     seed.to_csv(OUTPUT_DIR / "ncm_cadeia_estrategica_minerais_seed.csv", **csv_options)
     indicators.to_csv(OUTPUT_DIR / "indicadores_cadeias_minerais_etapa.csv", **csv_options)
     ncm_detail.to_csv(OUTPUT_DIR / "drivers_cadeias_minerais_ncm.csv", **csv_options)
     chain.to_csv(OUTPUT_DIR / "priorizacao_cadeias_minerais_estrategicas.csv", **csv_options)
-    write_report(chain, ncm_detail)
+    anm_production.to_csv(OUTPUT_DIR / "fact_anm_mineral_production.csv", **csv_options)
+    anm_status.to_csv(OUTPUT_DIR / "fontes_anm_amb_status.csv", **csv_options)
+    write_report(chain, ncm_detail, anm_status)
     manifest_path = OUTPUT_DIR / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {"files": {}}
     manifest.setdefault("files", {}).update(
@@ -532,6 +816,8 @@ def main() -> None:
             "indicadores_cadeias_minerais_etapa.csv": len(indicators),
             "drivers_cadeias_minerais_ncm.csv": len(ncm_detail),
             "priorizacao_cadeias_minerais_estrategicas.csv": len(chain),
+            "fact_anm_mineral_production.csv": len(anm_production),
+            "fontes_anm_amb_status.csv": len(anm_status),
             "relatorio_cadeias_minerais_estrategicas.md": None,
         }
     )

@@ -11,7 +11,9 @@ O pipeline integra, nesta ordem:
 1. comércio exterior do Comex Stat, na granularidade NCM de oito dígitos;
 2. correspondência oficial NCM × Prodlist-Indústria da CONCLA/IBGE;
 3. produção doméstica da PIA-Produto, consultada no SIDRA/IBGE;
-4. dimensões NCM, Prodlist e CNAE, ponte de correspondência e tabelas fato.
+4. emprego formal RAIS, quando configurado;
+5. dimensões NCM, Prodlist e CNAE, ponte de correspondência, tabelas fato,
+   indicadores Border Value e módulos analíticos de publicação.
 
 A CNAE é derivada dos quatro primeiros dígitos do código Prodlist. O pipeline
 não infere correspondências ausentes. Códigos NCM terminados em 9, 90 ou 99 são
@@ -25,9 +27,10 @@ base econômica do grupo está ausente, incompleta ou não positiva.
 
 | Fonte | Conteúdo | Endereço/consulta | Recorte usado |
 |---|---|---|---|
-| Comex Stat/MDIC | Exportações e importações anuais por NCM-8 | `https://balanca.economia.gov.br/balanca/bd/comexstat-bd/ncm/{EXP|IMP}_{ano}.csv` | 2024; fluxos EXP e IMP |
-| CONCLA/IBGE | Correspondência NCM × Prodlist-Indústria | `https://concla.ibge.gov.br/images/concla/documentacao/PRODLIST%20Ind%202022%20x%20NCM%202022.xlsx` | versão 2022 |
+| Comex Stat/MDIC | Exportações e importações por NCM-8 | `https://balanca.economia.gov.br/balanca/bd/comexstat-bd/ncm/{EXP|IMP}_{ano}.csv` | janeiro a junho de 2026; fluxos EXP e IMP |
+| CONCLA/IBGE | Correspondência NCM × Prodlist-Indústria | `https://concla.ibge.gov.br/images/concla/downloads/5CorrespondenciaNCMxPRODLIST-Industria2025.xlsx` | versão 2025 para ponte NCM; PIA-Produto em PRODLIST 2022 |
 | PIA-Produto/SIDRA/IBGE | Valor da produção por produto Prodlist, em mil R$ | API SIDRA v3, agregado 10476, variável 215, classificação 1264, Brasil | 2024 |
+| RAIS/MTE | Vínculos formais, massa salarial e remuneração por CNAE, UF e município | `ftp://ftp.mtps.gov.br/pdet/microdados/RAIS/2024/` | RAIS 2024, quando executada a configuração `config.official.2026.rais.json` |
 
 Para a PIA-Produto, o código monta a consulta:
 
@@ -41,41 +44,65 @@ para 2024. O código atualmente aceita apenas o intervalo 2014–2024 para a PIA
 ## 3. Versões das classificações
 
 - **NCM:** classificação anual do arquivo detalhado do Comex Stat correspondente
-  ao ano solicitado; na execução registrada, NCM 2024.
-- **Prodlist-Indústria:** versão 2022. Essa versão é usada para 2024 porque é a
-  versão declarada na tabela SIDRA 10476.
-- **CNAE:** classe de quatro dígitos derivada do prefixo do código Prodlist 2022;
-  a presença da classe é validada contra o universo observado na PIA-Produto.
-- **Correspondência alternativa:** somente deve ser usada de forma explícita com
-  `--mapping-source`; o arquivo e sua versão devem ser registrados no histórico
-  da execução.
+  ao ano solicitado; na execução registrada, NCM 2026.
+- **Prodlist-Indústria:** a ponte NCM usa a correspondência PRODLIST-Indústria
+  2025. A PIA-Produto 2024 permanece na base PRODLIST declarada pelo SIDRA.
+- **CNAE:** classe de quatro dígitos derivada do prefixo do código Prodlist; a
+  presença da classe é validada contra o universo observado na PIA-Produto.
+- **Correspondência alternativa:** somente deve ser usada de forma explícita em
+  configuração versionada; o arquivo, a versão e a justificativa devem ser
+  registrados no histórico da execução.
 
-O código também contém a URL oficial da correspondência Prodlist 2025. Ela não
-deve substituir automaticamente a versão 2022 em uma série de 2024, pois isso
-alteraria a base classificatória e poderia quebrar a comparabilidade.
+Não substitua versões classificatórias de forma automática em séries históricas.
+Mudanças de NCM, PRODLIST ou ponte CONCLA alteram cobertura, vínculos 1:N e
+comparabilidade entre anos.
 
 ## 4. Parâmetros da execução registrada
 
-Comando lógico:
+Comando lógico da base operacional:
 
 ```powershell
-python fontes_reais.py --years 2024 --flows EXP IMP --prodlist-version 2022 --cache-dir dados/cache --output-dir dados/processados
+python -m unittest -v
+python operational_pipeline.py config.official.2026.json
 ```
 
-Os valores de `--flows`, `--prodlist-version`, `--cache-dir` e `--output-dir`
-acima coincidem com os padrões do programa. `--years` é obrigatório.
+Comando lógico da execução completa com RAIS, recortes finais, dashboard,
+workbook e pacote publicável:
+
+```powershell
+python -m unittest -v
+python operational_pipeline.py config.official.2026.json
+python operational_pipeline.py config.official.2026.rais.json
+python build_final_border_value_outputs.py
+python build_comparacao_periodos.py
+python build_rankings_recortes.py
+python build_sensibilidade_rateio.py
+python build_cadeias_minerais_estrategicas.py
+python build_combustiveis_transicao.py
+python dashboard/build_dashboard_data.py
+node build_final_border_value_workbook.mjs
+python prepare_publication_package.py
+python dashboard/server.py 8765
+```
+
+O último comando mantém o dashboard local ativo em `http://localhost:8765`.
+A carga RAIS completa usa sete pacotes `.7z` oficiais, baixa cerca de 3,6 GB
+compactados e requer `py7zr` no ambiente Python ou `7z` disponível no PATH.
 
 | Parâmetro | Valor registrado | Observação |
 |---|---|---|
-| `--years` | `2024` | Um ou mais anos, separados por espaço |
-| `--flows` | `EXP IMP` | Valores aceitos: EXP e IMP |
-| `--prodlist-version` | `2022` | Há URL embutida para 2022 e 2025 |
-| `--mapping-source` | não informado | Usa a URL oficial configurada |
-| `--cache-dir` | `dados/cache` | Arquivos existentes e não vazios são reutilizados |
-| `--output-dir` | `dados/processados` | Diretório sobrescrito arquivo a arquivo |
-| leitura Comex | blocos de 500.000 linhas | Parâmetro interno `chunksize` |
-| grão do comércio | ano, mês, fluxo, NCM-8 | HS6 é explicitamente proibido |
+| `config.official.2026.json` | base sem RAIS | Grava em `outputs/official_2026` |
+| `config.official.2026.rais.json` | base com RAIS 2024 | Grava em `outputs/official_2026_rais` |
+| `trade_period` | `2026-01 a 2026-06` | Comex Stat EXP e IMP |
+| `production_period` | `2024` | PIA-Produto, valor da produção em mil R$ |
+| `employment_period` | `RAIS 2024` | Presente na configuração RAIS |
+| `prodlist_version` | `2025 (ponte NCM); PIA-Produto em PRODLIST 2022` | Registrar qualquer alteração |
+| `production_value_to_trade_value_factor` | `185,4593903282186` | Conversão de mil R$ para US$ pelo câmbio médio BCB/SGS 1 de 2024 |
+| `allocation_method` | `production_value_weighted_cnae_with_equal_fallback` | Peso PIA por CNAE com fallback igualitário |
+| leitura RAIS | blocos de 250.000 linhas | Parâmetro da configuração RAIS completa |
+| grão do comércio | ano, mês, fluxo, NCM-8 e país parceiro | HS6 não é usado como grão analítico |
 | grão da produção | ano, Prodlist, status, CNAE | Valor em mil R$ |
+| grão da RAIS | ano, UF, município e CNAE | Vínculos formais e remuneração |
 
 Valores da PIA-Produto marcados como `X`, `-`, `..` ou `...` são tratados como
 ausentes, sem imputação automática. O código preserva a causa em
@@ -116,8 +143,8 @@ O diretório de saída contém:
 - `bridge_ncm_prodlist_cnae.csv`;
 - `fact_trade.csv` e `fact_production.csv`;
 - `manifest.json`, com contagens, valor total de comércio e NCM sem Prodlist;
-- `relatorio_qualidade.json`, gerado pelo código atual, com cobertura, não
-  mapeados, duplicidades e reconciliação dos totais de controle.
+- `quality_summary.csv`, com cobertura, não mapeados, RAIS quando aplicável e
+  reconciliação dos totais de controle.
 
 Na ponte, `allocation_basis_status` indica se a base PIA usada para ponderar o
 rateio estava publicada, sigilosa, indisponível ou ausente. Nos indicadores por
@@ -132,9 +159,17 @@ fato de comércio e 3.489 linhas no fato de produção. O valor FOB total regist
 é US$ 599.915.767.884 e há 553 NCM sem Prodlist.
 
 Antes de aceitar uma atualização, confirme que as diferenças dos totais de
-controle no `relatorio_qualidade.json` são zero e analise mudanças relevantes de
+controle no `quality_summary.csv` são zero e analise mudanças relevantes de
 cobertura, duplicidades e códigos não mapeados. O relatório não substitui a
 auditoria qualitativa dos códigos genéricos.
+
+Os módulos finais publicam em `outputs/final_border_value_2026` indicadores por
+CNAE e Prodlist, rankings, comparação 2024 H1 versus 2026 H1, cenários de
+sensibilidade de rateio, cadeias minerais estratégicas, recortes de combustíveis
+da transição, workbook executivo e relatórios técnicos. O dashboard consome esses
+arquivos junto com `outputs/official_2026_rais` para exibir fluxos mundiais,
+território RAIS, escopo Border Value e hidrogênio/amônia/combustíveis da
+transição.
 
 ## 8. Limitações, sigilo e defasagens das fontes
 
@@ -166,8 +201,21 @@ setorial especializada.
   relatório registra período de comércio, ano da PIA, versão NCM, versão
   Prodlist, regra CNAE, fonte da correspondência e tratamento dos códigos não
   mapeados.
+- **Hidrogênio e amônia:** NCMs de molécula, derivado, insumo, equipamento ou
+  aplicação final não identificam rota de produção, eletricidade usada, captura
+  de carbono, origem do hidrogênio ou intensidade de emissões. Classificações
+  como verde, renovável, azul ou baixa emissão exigem bases complementares de
+  projetos, plantas, capacidade, certificação e emissões.
+- **Combustíveis da transição:** SAF, metanol, etanol e combustíveis marítimos
+  são recortes preliminares. Códigos comerciais podem misturar produto fóssil e
+  renovável, uso energético e uso industrial; os módulos registram drivers e
+  campos complementares, mas não inferem atributo ambiental somente pela NCM.
 
 ## 9. Procedimento de atualização
+
+RAIS, cartografia municipal, mapa mundial, integração, automação, hidrogênio e
+amônia devem ser classificados apenas como consolidação, documentação e testes.
+Eles não devem aparecer na pauta de desenvolvimento inicial de novas atividades.
 
 1. Defina o ano-base e confirme no SIDRA qual tabela e qual versão Prodlist são
    declaradas para esse ano.
@@ -177,21 +225,29 @@ setorial especializada.
    `PRODLIST_URLS` ou forneça `--mapping-source` explicitamente.
 4. Preserve os arquivos e hashes da execução anterior. Limpe somente os arquivos
    de cache das fontes que precisam ser atualizadas.
-5. Execute `python -m unittest -v`; todos os testes devem passar.
-6. Execute a carga com todos os parâmetros declarados, mesmo quando coincidirem
-   com os padrões, para que o comando seja autoexplicativo.
-7. Calcule e registre os hashes SHA-256 das novas fontes em cache.
-8. Compare `manifest.json` e `relatorio_qualidade.json` com a execução anterior.
-9. Revise manualmente NCM genéricas, lacunas NCM–Prodlist e Prodlist sem CNAE.
-10. Registre data/hora, ambiente, comando, fontes, hashes, justificativas e
+5. Atualize RAIS quando ela entrar no recorte, incluindo ano, URLs dos pacotes,
+   opções de leitura e período documentado.
+6. Execute `python -m unittest -v`; todos os testes devem passar.
+7. Execute a carga operacional e, quando aplicável, a carga RAIS com todos os
+   parâmetros declarados em configuração versionada.
+8. Reprocesse módulos finais, dashboard, workbook e pacote de publicação.
+9. Calcule e registre os hashes SHA-256 das novas fontes em cache.
+10. Compare `manifest.json`, `quality_summary.csv` e artefatos finais com a
+    execução anterior.
+11. Revise manualmente NCM genéricas, lacunas NCM–Prodlist, Prodlist sem CNAE e
+    classificações preliminares de combustíveis da transição.
+12. Registre data/hora, ambiente, comando, fontes, hashes, justificativas e
     responsável pela aprovação.
 
-Exemplo para 2024:
+Exemplo da execução oficial 2026:
 
 ```powershell
 python -m unittest -v
-python fontes_reais.py --years 2024 --flows EXP IMP --prodlist-version 2022 --cache-dir dados/cache --output-dir dados/processados
-Get-FileHash dados/cache/comex/EXP_2024.csv,dados/cache/comex/IMP_2024.csv,dados/cache/ncm_prodlist_2022.xlsx -Algorithm SHA256
+python operational_pipeline.py config.official.2026.json
+python operational_pipeline.py config.official.2026.rais.json
+python build_final_border_value_outputs.py
+python build_combustiveis_transicao.py
+Get-FileHash inputs/official/EXP_2026.csv,inputs/official/IMP_2026.csv,inputs/official/ncm_prodlist_2025.xlsx -Algorithm SHA256
 ```
 
 ## 10. Modelo de registro de nova execução

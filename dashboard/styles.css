@@ -54,6 +54,7 @@ h2 {
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
 }
 
 main {
@@ -73,6 +74,7 @@ label {
   display: grid;
   font-size: 12px;
   gap: 6px;
+  min-width: 0;
 }
 
 select,
@@ -83,7 +85,13 @@ button {
   color: var(--ink);
   font: inherit;
   height: 38px;
+  min-width: 0;
   padding: 0 10px;
+}
+
+select,
+input {
+  width: 100%;
 }
 
 button {
@@ -107,11 +115,13 @@ button:disabled {
   display: grid;
   grid-template-columns: 36px 1fr 36px;
   gap: 4px;
+  min-width: 0;
 }
 
 .tabs {
   border-bottom: 1px solid var(--line);
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   margin: 8px 0 16px;
 }
@@ -130,6 +140,33 @@ button:disabled {
   font-weight: 700;
 }
 
+.exports {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  margin: -6px 0 16px;
+}
+
+.export-button {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  display: inline-flex;
+  font-size: 13px;
+  height: 34px;
+  padding: 0 10px;
+  text-decoration: none;
+}
+
+.export-button:hover,
+.export-button:focus {
+  border-color: var(--green);
+  outline: none;
+}
+
 .kpis {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -138,7 +175,7 @@ button:disabled {
 }
 
 .kpis.compact {
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(4, 1fr);
 }
 
 .kpi,
@@ -146,6 +183,7 @@ button:disabled {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
+  min-width: 0;
   padding: 16px;
 }
 
@@ -181,6 +219,8 @@ button:disabled {
 
 .chart {
   min-height: 280px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .chart.tall {
@@ -189,6 +229,10 @@ button:disabled {
 
 .chart.sankey {
   min-height: 560px;
+}
+
+.chart.world-map {
+  min-height: 620px;
 }
 
 .chart.uf-map,
@@ -218,6 +262,70 @@ button:disabled {
 .map-caption {
   color: var(--muted);
   font-size: 12px;
+}
+
+.map-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.map-summary span {
+  background: #eef2ee;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+.world-ocean {
+  fill: #eef4f6;
+  stroke: var(--line);
+}
+
+.world-grid {
+  stroke: rgba(47, 63, 73, 0.14);
+  stroke-width: 1;
+}
+
+.world-country {
+  transition: fill 120ms ease, stroke 120ms ease, stroke-width 120ms ease;
+}
+
+.world-country.has-trade {
+  cursor: pointer;
+}
+
+.world-country.has-trade:hover,
+.world-country.has-trade:focus {
+  stroke: var(--gold);
+  stroke-width: 1.8;
+  outline: none;
+}
+
+.trade-flow {
+  fill: none;
+  pointer-events: none;
+  stroke: var(--blue);
+  stroke-linecap: round;
+  stroke-opacity: 0.34;
+}
+
+.brazil-marker {
+  fill: var(--gold);
+  stroke: #17332f;
+  stroke-width: 1.4;
+}
+
+.map-label {
+  fill: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: #ffffff;
+  stroke-width: 3px;
 }
 
 .municipality-shape {
@@ -330,6 +438,17 @@ th {
   text-align: center;
 }
 
+.method-alert {
+  background: #fff8e7;
+  border: 1px solid #e5c46b;
+  border-radius: 8px;
+  color: #5f4510;
+  font-size: 13px;
+  line-height: 1.45;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+}
+
 @media (max-width: 1100px) {
   .filters,
   .kpis,
@@ -359,5 +478,14 @@ th {
 
   .tabs {
     overflow-x: auto;
+  }
+
+  .exports {
+    justify-content: stretch;
+  }
+
+  .export-button {
+    flex: 1 1 160px;
+    justify-content: center;
   }
 }

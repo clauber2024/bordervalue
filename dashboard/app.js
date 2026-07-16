@@ -3,6 +3,7 @@ const state = {
   view: null,
   geoCache: new Map(),
   mapRequestId: 0,
+  worldMapRequestId: 0,
   filters: {
     period: "all",
     flow: "all",
@@ -14,6 +15,8 @@ const state = {
     uf: "all",
     municipality: "all",
     scope: "all",
+    fuel: "all",
+    layer: "all",
   },
 };
 
@@ -21,6 +24,30 @@ const fmtMoney = new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFr
 const fmtPct = new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 1 });
 const fmtNum = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
 const fmtDateTime = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
+const WORLD_POINTS = {
+  AGO: [17.87, -11.2], ARE: [54.3, 23.4], ARG: [-64.0, -34.0], AUS: [134.0, -25.0],
+  AUT: [14.6, 47.6], BGD: [90.4, 23.7], BEL: [4.7, 50.6], BGR: [25.5, 42.7],
+  BOL: [-64.7, -16.7], CAN: [-106.3, 56.1], CHE: [8.2, 46.8], CHL: [-71.5, -35.7],
+  CHN: [104.2, 35.9], CIV: [-5.5, 7.5], COL: [-74.3, 4.6], CRI: [-84.2, 9.9],
+  CZE: [15.5, 49.8], DEU: [10.4, 51.2], DNK: [10.0, 56.0], DOM: [-70.2, 18.8],
+  DZA: [1.7, 28.0], ECU: [-78.2, -1.8],
+  EGY: [30.8, 26.8], ESP: [-3.7, 40.4], FIN: [26.0, 64.0], FRA: [2.2, 46.2],
+  GBR: [-2.6, 54.0], GHA: [-1.0, 7.9], GRC: [21.8, 39.1], GTM: [-90.2, 15.8],
+  GUY: [-58.9, 5.0], HKG: [114.2, 22.3], HUN: [19.5, 47.2], IDN: [113.9, -0.8],
+  IND: [78.9, 22.0], IRL: [-8.2, 53.4], IRN: [53.7, 32.4], IRQ: [43.7, 33.2],
+  ISR: [34.9, 31.0], ITA: [12.6, 42.8], JOR: [36.2, 31.2], JPN: [138.3, 36.2],
+  KOR: [127.8, 36.5], LBN: [35.9, 33.9], LBR: [-9.4, 6.4], MAR: [-6.0, 31.8],
+  MEX: [-102.6, 23.6], MYS: [102.0, 4.2], NGA: [8.7, 9.1], NLD: [5.3, 52.1],
+  NOR: [8.5, 60.5], OMN: [57.0, 21.0], PAK: [69.3, 30.4], PAN: [-80.8, 8.5],
+  PER: [-75.0, -9.2], PHL: [122.9, 12.9], POL: [19.1, 52.1], PRI: [-66.6, 18.2],
+  PRT: [-8.0, 39.5], PRY: [-58.4, -23.4], QAT: [51.2, 25.4], ROU: [24.9, 45.9],
+  RUS: [96.0, 61.5], SAU: [45.1, 23.9], SGP: [103.8, 1.35], SVK: [19.7, 48.7],
+  SVN: [14.9, 46.1], SWE: [18.6, 60.1], TGO: [0.8, 8.6], THA: [100.9, 15.9],
+  TKM: [59.6, 39.1], TTO: [-61.2, 10.5], TUR: [35.2, 39.0], TWN: [121.0, 23.7],
+  UKR: [31.2, 49.0], URY: [-55.8, -32.5], USA: [-98.6, 39.8],
+  VEN: [-66.6, 6.4], VNM: [108.3, 14.1], ZAF: [24.0, -29.0],
+};
+const BRAZIL_POINT = [-53.2, -10.3];
 
 function byId(id) {
   return document.getElementById(id);
@@ -71,8 +98,16 @@ function setupFilters() {
     ["platform_scope", "No escopo da plataforma"],
     ["out_of_platform_scope", "Fora do escopo da plataforma"],
   ]);
+  fillSelect(byId("fuelFilter"), [
+    ["all", "Todos"],
+    ...(options.transition_fuels || []).map((fuel) => [fuel, fuelLabel(fuel)]),
+  ]);
+  fillSelect(byId("layerFilter"), [
+    ["all", "Todas"],
+    ...(options.transition_fuel_layers || []).map((layer) => [layer, layerLabel(layer)]),
+  ]);
 
-  ["period", "flow", "cnae", "prodlist", "status", "scope"].forEach((key) => {
+  ["period", "flow", "cnae", "prodlist", "status", "scope", "fuel", "layer"].forEach((key) => {
     byId(`${key}Filter`).addEventListener("change", (event) => {
       state.filters[key] = event.target.value;
       render();
@@ -103,6 +138,7 @@ function setupFilters() {
   byId("clearFilters").addEventListener("click", clearFilters);
   byId("prevPeriod").addEventListener("click", () => stepPeriod(-1));
   byId("nextPeriod").addEventListener("click", () => stepPeriod(1));
+  updateExportLinks();
 
   byId("sourceInfo").textContent = `Fonte: ${summary.generated_from.indicators} | US$ FOB, kg liquido, PIA 2024`;
 }
@@ -150,9 +186,13 @@ function resolveMunicipalityFilter(value) {
 function setupTabs() {
   document.querySelectorAll(".tab").forEach((button) => {
     button.addEventListener("click", () => {
-      document.querySelectorAll(".tab").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".tab").forEach((b) => {
+        b.classList.remove("active");
+        b.setAttribute("aria-selected", "false");
+      });
       document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
       button.classList.add("active");
+      button.setAttribute("aria-selected", "true");
       byId(button.dataset.tab).classList.add("active");
     });
   });
@@ -170,8 +210,10 @@ function clearFilters() {
     uf: "all",
     municipality: "all",
     scope: "all",
+    fuel: "all",
+    layer: "all",
   };
-  ["period", "flow", "cnae", "prodlist", "status", "uf", "scope"].forEach((key) => (byId(`${key}Filter`).value = "all"));
+  ["period", "flow", "cnae", "prodlist", "status", "uf", "scope", "fuel", "layer"].forEach((key) => (byId(`${key}Filter`).value = "all"));
   byId("municipalityFilter").value = "";
   byId("ncmFilter").value = "";
   byId("countryFilter").value = "";
@@ -188,31 +230,20 @@ function stepPeriod(delta) {
   render();
 }
 
-function filteredTrade() {
-  const f = state.filters;
-  return state.data.trade.filter((d) => {
-    return (
-      (f.period === "all" || d.period === f.period) &&
-      (f.flow === "all" || d.flow === f.flow) &&
-      (f.cnae === "all" || d.cnae_class === f.cnae) &&
-      (f.prodlist === "all" || d.prodlist_code === f.prodlist) &&
-      (!f.ncm || d.ncm.includes(f.ncm)) &&
-      (!f.country || d.country_code.includes(f.country)) &&
-      (f.status === "all" || d.mapping_status === f.status)
-    );
-  });
-}
-
 async function render() {
   const params = new URLSearchParams(state.filters);
-  const [response, employmentResponse] = await Promise.all([
+  updateExportLinks(params);
+  const [response, employmentResponse, fuelResponse] = await Promise.all([
     fetch(`/api/query?${params.toString()}`),
     fetch(`/api/employment?${params.toString()}`),
+    fetch(`/api/fuels?${params.toString()}`),
   ]);
   if (!response.ok) throw new Error("API local indisponivel. Inicie com python dashboard/server.py.");
   if (!employmentResponse.ok) throw new Error("API local de empregos indisponivel.");
+  if (!fuelResponse.ok) throw new Error("API local de combustiveis indisponivel.");
   state.view = await response.json();
   state.employment = await employmentResponse.json();
+  state.fuels = await fuelResponse.json();
   const { groups } = state.view;
   renderKpis(state.view.kpis);
   barChart("monthlyChart", groups.monthly, { horizontal: false });
@@ -221,12 +252,26 @@ async function render() {
   barChart("prodChart", groups.prodlist, { horizontal: true, limit: 15 });
   barChart("ncmChart", groups.ncm, { horizontal: true, limit: 20 });
   barChart("countryChart", groups.country, { horizontal: true, limit: 20 });
+  renderWorldTradeMap("worldTradeMap", groups.world_map || []);
   sankeyChart("sankeyCnaeChart", groups.sankey_cnae);
   sankeyChart("sankeyProdChart", groups.sankey_prodlist);
   renderEmployment(state.employment);
+  renderTransitionFuels(state.fuels);
   renderTables(state.view);
   renderEtl();
   setupEtlButtons();
+}
+
+function updateExportLinks(params = new URLSearchParams(state.filters)) {
+  const query = params.toString();
+  [
+    ["exportTrade", "trade"],
+    ["exportEmployment", "employment"],
+    ["exportFuels", "fuels"],
+  ].forEach(([id, dataset]) => {
+    const link = byId(id);
+    if (link) link.href = `/api/export?dataset=${dataset}&${query}`;
+  });
 }
 
 function renderEmployment(view) {
@@ -235,6 +280,7 @@ function renderEmployment(view) {
     ["Vinculos formais", fmtNum.format(k.formal_jobs || 0)],
     ["Massa salarial dez.", brl(k.wage_mass || 0)],
     ["Salario medio dez.", brl(k.average_wage || 0)],
+    ["PIB territorial", k.gdp_value_brl == null ? "-" : brl(k.gdp_value_brl)],
     ["CNAEs RAIS", fmtNum.format(k.cnaes || 0)],
     ["UFs", fmtNum.format(k.ufs || 0)],
     ["Municipios", fmtNum.format(k.municipalities || 0)],
@@ -267,6 +313,101 @@ function renderEmploymentScope(rows) {
   byId("employmentScopeKpis").innerHTML = cards
     .map(([label, value]) => `<article class="kpi"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></article>`)
     .join("");
+}
+
+function fuelLabel(value) {
+  return (
+    {
+      hidrogenio: "Hidrogenio",
+      amonia: "Amonia",
+      metanol_derivados: "Metanol e derivados",
+      etanol: "Etanol",
+      saf: "SAF",
+      combustiveis_maritimos_baixa_emissao: "Combustiveis maritimos",
+    }[value] || String(value || "-").replaceAll("_", " ")
+  );
+}
+
+function layerLabel(value) {
+  return (
+    {
+      molecula_principal: "Molecula principal",
+      insumos_materias_primas: "Insumos e materias-primas",
+      equipamentos_cadeia: "Equipamentos da cadeia",
+      derivados: "Derivados",
+      aplicacoes_finais: "Aplicacoes finais",
+      projetos_capacidade_produtiva: "Projetos e capacidade produtiva",
+      fluxos_comerciais: "Fluxos comerciais",
+      rotas_tecnologicas: "Rotas tecnologicas",
+    }[value] || String(value || "-").replaceAll("_", " ")
+  );
+}
+
+function renderTransitionFuels(view) {
+  const k = view.kpis || {};
+  const cards = [
+    ["Valor comercial", money(k.total || 0)],
+    ["Exportacoes", money(k.exports || 0)],
+    ["Importacoes", money(k.imports || 0)],
+    ["Saldo", money(k.balance || 0)],
+    ["Recortes", fmtNum.format(k.fuels || 0)],
+    ["Etapas", fmtNum.format(k.layers || 0)],
+    ["NCMs", fmtNum.format(k.ncms || 0)],
+    ["Classificacao", "Preliminar"],
+  ];
+  byId("fuelKpis").innerHTML = cards.map(([label, value]) => `<article class="kpi"><span>${label}</span><strong>${value}</strong></article>`).join("");
+  barChart("fuelChart", (view.groups?.fuel || []).map((r) => ({ ...r, label: fuelLabel(r.key) })), { horizontal: true, limit: 20 });
+  barChart("fuelLayerChart", (view.groups?.layer || []).map((r) => ({ ...r, label: layerLabel(r.key) })), { horizontal: true, limit: 20 });
+  barChart("fuelNcmChart", view.groups?.ncm || [], { horizontal: true, limit: 20 });
+  renderFuelIndicatorsTable("fuelIndicatorsTable", view.indicators || []);
+  renderFuelDriversTable("fuelDriversTable", view.drivers || []);
+  renderSimpleTable("fuelSourcesTable", ["Recorte", "Camada", "Campo requerido", "Uso"], view.complementary_sources || [], (r) => [
+    fuelLabel(r.recorte_combustivel),
+    layerLabel(r.camada_analitica),
+    r.campo_requerido,
+    r.uso,
+  ]);
+  renderSimpleTable("fuelFrameworkTable", ["Recorte", "Camada", "Como medir", "Observacao"], view.framework || [], (r) => [
+    fuelLabel(r.recorte_combustivel),
+    layerLabel(r.camada_analitica),
+    r.como_medir,
+    r.observacao,
+  ]);
+}
+
+function renderFuelIndicatorsTable(id, rows) {
+  renderSimpleTable(
+    id,
+    ["Combustivel", "Etapa", "Valor comercial", "Importacoes", "Exportacoes", "Saldo", "NCMs", "Status"],
+    rows,
+    (r) => [
+      fuelLabel(r.recorte_combustivel),
+      layerLabel(r.camada_analitica),
+      money(r.trade_value_usd || 0),
+      money(r.import_value_usd || 0),
+      money(r.export_value_usd || 0),
+      money(r.trade_balance_usd || 0),
+      fmtNum.format(r.unique_ncm_count || 0),
+      String(r.status_baixa_emissao || "preliminar"),
+    ],
+  );
+}
+
+function renderFuelDriversTable(id, rows) {
+  renderSimpleTable(
+    id,
+    ["Combustivel", "Etapa", "NCM", "Fluxo", "Valor", "Peso kg", "Papel no recorte"],
+    rows,
+    (r) => [
+      fuelLabel(r.recorte_combustivel),
+      layerLabel(r.camada_analitica),
+      r.ncm,
+      r.flow,
+      money(r.value_usd || 0),
+      fmtMoney.format(r.net_weight_kg || 0),
+      r.papel_no_recorte || r.descricao_ncm_hierarquica || "-",
+    ],
+  );
 }
 
 function renderKpis(kpis) {
@@ -316,6 +457,11 @@ function renderEtl() {
     .join("");
 
   renderSimpleTable("etlCalendarTable", ["Etapa", "Prazo", "Responsavel"], etl.calendar, (r) => [r.step, r.due, r.owner]);
+  renderSimpleTable("etlGovernanceTable", ["Atividade", "Fase", "Nota"], etl.activity_governance || [], (r) => [
+    r.activity,
+    r.phase,
+    r.note,
+  ]);
   renderSimpleTable("etlSourcesTable", ["Fonte", "Tipo", "Periodicidade", "Responsavel", "Status", "Atualizado", "Arquivo", "Acao"], etl.sources, (r) => [
     r.label,
     r.kind,
@@ -454,86 +600,15 @@ function renderEmploymentPlatformTable(id, rows) {
     .join("")}</tbody>`;
 }
 
-const ufTiles = [
-  ["RR", 2, 0],
-  ["AP", 5, 0],
-  ["AM", 1, 1],
-  ["PA", 4, 1],
-  ["MA", 6, 1],
-  ["CE", 8, 1],
-  ["RN", 9, 1],
-  ["AC", 0, 2],
-  ["RO", 1, 2],
-  ["MT", 3, 2],
-  ["TO", 5, 2],
-  ["PI", 7, 2],
-  ["PB", 9, 2],
-  ["PE", 8, 3],
-  ["AL", 9, 3],
-  ["MS", 3, 4],
-  ["GO", 5, 4],
-  ["DF", 6, 4],
-  ["BA", 7, 4],
-  ["SE", 9, 4],
-  ["MG", 6, 5],
-  ["ES", 8, 5],
-  ["SP", 5, 6],
-  ["RJ", 7, 6],
-  ["PR", 4, 7],
-  ["SC", 5, 8],
-  ["RS", 4, 9],
-];
-
-function renderUfMap(id, rows) {
-  const el = byId(id);
-  const byUf = new Map(rows.map((row) => [row.key, row]));
-  const max = Math.max(...rows.map((row) => row.value || 0), 1);
-  const cell = 54;
-  const gap = 8;
-  const width = 10 * (cell + gap) + 28;
-  const height = 10 * (cell + gap) + 28;
-  const tiles = ufTiles
-    .map(([uf, col, row]) => {
-      const item = byUf.get(uf) || { value: 0, wage_mass: 0, average_wage: 0 };
-      const value = item.value || 0;
-      const ratio = Math.sqrt(value / max);
-      const fill = value ? `rgba(34, 107, 95, ${0.18 + ratio * 0.78})` : "#edf1ee";
-      const stroke = state.filters.uf === uf ? "#17332f" : "#ffffff";
-      const strokeWidth = state.filters.uf === uf ? 3 : 1;
-      const x = 14 + col * (cell + gap);
-      const y = 14 + row * (cell + gap);
-      const title = `${uf}: ${fmtNum.format(value)} vínculos; massa ${brl(item.wage_mass || 0)}; salário ${brl(item.average_wage || 0)}`;
-      return `<g class="uf-tile" data-uf="${uf}" role="button" tabindex="0" aria-label="${escapeHtml(title)}"><title>${escapeHtml(title)}</title><rect x="${x}" y="${y}" width="${cell}" height="${cell}" rx="7" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}"></rect><text x="${x + cell / 2}" y="${y + 25}" text-anchor="middle" font-size="14" font-weight="700">${uf}</text><text x="${x + cell / 2}" y="${y + 42}" text-anchor="middle" font-size="10">${escapeHtml(fmtMoney.format(value || 0))}</text></g>`;
-    })
-    .join("");
-  el.innerHTML = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Mapa de UFs por vínculos formais RAIS">${tiles}</svg>`;
-  el.querySelectorAll(".uf-tile").forEach((tile) => {
-    tile.addEventListener("click", () => selectUfFromMap(tile.dataset.uf));
-    tile.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        selectUfFromMap(tile.dataset.uf);
-      }
-    });
-  });
-}
-
-function selectUfFromMap(uf) {
-  state.filters.uf = state.filters.uf === uf ? "all" : uf;
-  state.filters.municipality = "all";
-  byId("ufFilter").value = state.filters.uf;
-  byId("municipalityFilter").value = "";
-  updateMunicipalityOptions();
-  render();
-}
-
 async function renderMunicipalityMap(id, view) {
   const el = byId(id);
   const meshes = state.data.options.municipality_meshes || {};
   const ufRows = view.groups.uf || [];
   const selectedUf = state.filters.uf !== "all" ? state.filters.uf : ufRows[0]?.key;
   if (!selectedUf || !meshes[selectedUf]) {
-    el.innerHTML = `<div class="empty">Selecione uma UF com malha municipal cacheada.</div>`;
+    const cached = Object.keys(meshes).sort();
+    const cachedText = cached.length ? `UFs com malha local: ${cached.join(", ")}.` : "Nenhuma malha municipal local foi encontrada.";
+    el.innerHTML = `<div class="empty">Mapa municipal indisponivel para este recorte. Selecione uma UF com malha local cacheada. ${escapeHtml(cachedText)}</div>`;
     return;
   }
 
@@ -545,7 +620,7 @@ async function renderMunicipalityMap(id, view) {
     drawMunicipalityMap(el, geo, selectedUf, view.groups.municipality_map || []);
   } catch (error) {
     if (requestId === state.mapRequestId) {
-      el.innerHTML = `<div class="empty">Malha municipal de ${escapeHtml(selectedUf)} indisponivel: ${escapeHtml(error.message)}</div>`;
+      el.innerHTML = `<div class="empty">Malha municipal de ${escapeHtml(selectedUf)} indisponivel. Os rankings e tabelas territoriais continuam ativos. Detalhe tecnico: ${escapeHtml(error.message)}</div>`;
     }
   }
 }
@@ -783,6 +858,119 @@ function sankeyChart(id, graph) {
     .join("");
 
   el.innerHTML = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Grafico Sankey de valor comercial em US$ FOB"><title>Sankey de valor comercial</title><desc>As ligacoes mostram valor comercial agregado em US$ FOB entre fluxo, situacao do mapeamento e classificacao final.</desc>${linkPaths}${nodeEls}</svg>`;
+}
+
+async function renderWorldTradeMap(id, rows) {
+  const el = byId(id);
+  const requestId = ++state.worldMapRequestId;
+  if (!rows.length) {
+    el.innerHTML = `<div class="empty">Sem dados para os filtros atuais.</div>`;
+    return;
+  }
+  try {
+    if (requestId !== state.worldMapRequestId) return;
+    drawWorldTradeMap(el, rows);
+  } catch (error) {
+    if (requestId === state.worldMapRequestId) {
+      el.innerHTML = `<div class="empty">Mapa mundial indisponivel. A leitura tabular permanece ativa nos rankings de paises. Detalhe tecnico: ${escapeHtml(error.message)}</div>`;
+    }
+  }
+}
+
+function drawWorldTradeMap(el, rows) {
+  const width = 1100;
+  const height = 560;
+  const plot = { x: 40, y: 36, width: width - 80, height: height - 86 };
+  const project = ([lon, lat]) => [
+    plot.x + ((lon + 180) / 360) * plot.width,
+    plot.y + ((90 - lat) / 180) * plot.height,
+  ];
+  const max = Math.max(...rows.map((row) => row.total || 0), 1);
+  const maxLine = Math.max(...rows.map((row) => Math.max(row.exports || 0, row.imports || 0)), 1);
+  const brazilPoint = project(BRAZIL_POINT);
+  const rowsWithPoint = rows
+    .map((row) => ({ ...row, point: WORLD_POINTS[row.country_iso3] ? project(WORLD_POINTS[row.country_iso3]) : null }))
+    .filter((row) => row.country_iso3 !== "BRA");
+  const topRows = rowsWithPoint.filter((row) => row.point).slice(0, 80);
+  const missingRows = rowsWithPoint.filter((row) => !row.point && row.total);
+  const topSet = new Set(topRows.map((row) => row.country_iso3));
+  const activeCountry = resolveCountryFilter(state.filters.country);
+  const activeIso = rows.find((row) => row.country_code === activeCountry || row.country_name === activeCountry)?.country_iso3;
+
+  const longitudeLines = [-120, -60, 0, 60, 120]
+    .map((lon) => {
+      const [x] = project([lon, 0]);
+      return `<line class="world-grid" x1="${x.toFixed(1)}" y1="${plot.y}" x2="${x.toFixed(1)}" y2="${plot.y + plot.height}"></line>`;
+    })
+    .join("");
+  const latitudeLines = [-60, -30, 0, 30, 60]
+    .map((lat) => {
+      const [, y] = project([0, lat]);
+      return `<line class="world-grid" x1="${plot.x}" y1="${y.toFixed(1)}" x2="${plot.x + plot.width}" y2="${y.toFixed(1)}"></line>`;
+    })
+    .join("");
+
+  const flowLines = topRows
+    .map((row) => {
+      const target = row.point;
+      const flowValue = state.filters.flow === "EXP" ? row.exports : state.filters.flow === "IMP" ? row.imports : row.total;
+      if (!flowValue) return "";
+      const widthLine = 0.8 + Math.sqrt(flowValue / maxLine) * 5.2;
+      const isImport = state.filters.flow === "IMP" || (state.filters.flow === "all" && (row.imports || 0) > (row.exports || 0));
+      const start = isImport ? target : brazilPoint;
+      const end = isImport ? brazilPoint : target;
+      const midX = (start[0] + end[0]) / 2;
+      const midY = (start[1] + end[1]) / 2 - Math.max(18, Math.abs(start[0] - end[0]) * 0.08);
+      const d = `M${start[0].toFixed(1)},${start[1].toFixed(1)} Q${midX.toFixed(1)},${midY.toFixed(1)} ${end[0].toFixed(1)},${end[1].toFixed(1)}`;
+      const label = `${row.country_name}: ${isImport ? "origem" : "destino"} ${money(flowValue)}`;
+      return `<path class="trade-flow" d="${d}" stroke-width="${widthLine.toFixed(2)}" data-country="${escapeHtml(row.country_code)}" data-label="${escapeHtml(row.country_name)}" aria-label="${escapeHtml(label)}"><title>${escapeHtml(label)}</title></path>`;
+    })
+    .join("");
+  const pointEls = topRows
+    .map((row) => {
+      const [x, y] = row.point;
+      const radius = 4 + Math.sqrt((row.total || 0) / max) * 18;
+      const selected = activeIso === row.country_iso3;
+      const label = `${row.country_name}: total ${money(row.total)}, exportacoes ${money(row.exports)}, importacoes ${money(row.imports)}, saldo ${money(row.balance)}`;
+      return `<circle class="world-country has-trade" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${radius.toFixed(1)}" data-country="${escapeHtml(row.country_code)}" data-label="${escapeHtml(row.country_name)}" fill="rgba(34, 107, 95, 0.72)" stroke="${selected ? "#17332f" : "#ffffff"}" stroke-width="${selected ? 2.6 : 1.2}" role="button" tabindex="0" aria-label="${escapeHtml(label)}"><title>${escapeHtml(label)}</title></circle>`;
+    })
+    .join("");
+
+  const total = rows.reduce((acc, row) => acc + (row.total || 0), 0);
+  const exports = rows.reduce((acc, row) => acc + (row.exports || 0), 0);
+  const imports = rows.reduce((acc, row) => acc + (row.imports || 0), 0);
+  const top = rows[0];
+  const detail = top
+    ? `${top.country_name}: ${money(top.total)} (${fmtPct.format((top.total || 0) / (total || 1))})`
+    : "Sem parceiro selecionado";
+  const missingNote = missingRows.length
+    ? ` ${missingRows.length} parceiro(s) sem coordenada local ficaram fora do mapa, mas permanecem nos totais e rankings.`
+    : "";
+  el.innerHTML = `<div class="map-summary"><span>Total ${money(total)}</span><span>Exportacoes ${money(exports)}</span><span>Importacoes ${money(imports)}</span><span>Maior parceiro ${escapeHtml(detail)}</span></div><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Mapa mundial dos fluxos comerciais por pais parceiro"><title>Mapa mundial dos fluxos comerciais</title><desc>Mapa offline em SVG com pontos por pais parceiro e linhas de fluxo com o Brasil.</desc><rect class="world-ocean" x="${plot.x}" y="${plot.y}" width="${plot.width}" height="${plot.height}" rx="6"></rect><g>${longitudeLines}${latitudeLines}</g><g>${flowLines}</g><g>${pointEls}</g><circle cx="${brazilPoint[0].toFixed(1)}" cy="${brazilPoint[1].toFixed(1)}" r="5.5" class="brazil-marker"><title>Brasil</title></circle><text x="${brazilPoint[0] + 8}" y="${brazilPoint[1] + 4}" class="map-label">Brasil</text></svg><div class="map-caption">Mapa offline, sem CDN externo. Clique em um parceiro para filtrar. As linhas mostram os ${topSet.size} maiores parceiros com coordenada local.${escapeHtml(missingNote)}</div>`;
+
+  el.querySelectorAll(".world-country.has-trade").forEach((shape) => {
+    shape.addEventListener("click", () => selectCountryFromMap(shape.dataset.country, shape.dataset.label));
+    shape.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        selectCountryFromMap(shape.dataset.country, shape.dataset.label);
+      }
+    });
+  });
+}
+
+function resolveCountryFilter(value) {
+  const text = (value || "").trim();
+  if (!text) return "";
+  return text.split(" - ", 1)[0].trim();
+}
+
+function selectCountryFromMap(code, label) {
+  const current = resolveCountryFilter(state.filters.country);
+  const next = current === code ? "" : optionLabel(code, label);
+  state.filters.country = next;
+  byId("countryFilter").value = next;
+  render();
 }
 
 function color(i) {

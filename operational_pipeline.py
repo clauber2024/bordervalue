@@ -10,10 +10,16 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import shutil
+import subprocess
+import tempfile
+import zipfile
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
+from urllib.parse import unquote, urlparse
+from urllib.request import Request, urlopen
 
 import pandas as pd
 
@@ -35,6 +41,7 @@ OFFICIAL_SOURCES = {
     "ncm_prodlist": "https://concla.ibge.gov.br/classificacoes/correspondencias/produtos.html",
     "pia_produto": "https://sidra.ibge.gov.br/pesquisa/pia-produto/tabelas",
     "rais": "https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/estatisticas-trabalho/rais",
+    "gdp": "https://www.ibge.gov.br/estatisticas/economicas/contas-nacionais.html",
 }
 
 
@@ -49,14 +56,147 @@ class RunMetadata:
     sources: Mapping[str, str]
 
 
+SUPPORTED_TABLE_SUFFIXES = {".csv", ".txt", ".comt", ".xlsx", ".xls", ".parquet", ".json"}
+ARCHIVE_SUFFIXES = {".zip", ".7z"}
+UF_CODE_TO_SIGLA = {
+    "11": "RO",
+    "12": "AC",
+    "13": "AM",
+    "14": "RR",
+    "15": "PA",
+    "16": "AP",
+    "17": "TO",
+    "21": "MA",
+    "22": "PI",
+    "23": "CE",
+    "24": "RN",
+    "25": "PB",
+    "26": "PE",
+    "27": "AL",
+    "28": "SE",
+    "29": "BA",
+    "31": "MG",
+    "32": "ES",
+    "33": "RJ",
+    "35": "SP",
+    "41": "PR",
+    "42": "SC",
+    "43": "RS",
+    "50": "MS",
+    "51": "MT",
+    "52": "GO",
+    "53": "DF",
+}
+
+
+def _select_archive_member(members: Iterable[str], requested: str | None = None) -> str:
+    files = sorted(name.replace("\\", "/") for name in members if not name.endswith("/"))
+    if requested:
+        requested_normalized = requested.replace("\\", "/")
+        matches = [
+            name
+            for name in files
+            if name == requested_normalized or name.endswith(f"/{requested_normalized}")
+        ]
+        if not matches:
+            raise PipelineValidationError(
+                f"Arquivo compactado não contém o membro solicitado: {requested!r}."
+            )
+        return matches[0]
+
+    candidates = [
+        name for name in files if Path(name).suffix.lower() in SUPPORTED_TABLE_SUFFIXES
+    ]
+    if not candidates:
+        raise PipelineValidationError(
+            "Arquivo compactado não contém CSV, TXT, XLSX, XLS, Parquet ou JSON."
+        )
+    return candidates[0]
+
+
+def _safe_extracted_path(destination: Path, member: str) -> Path:
+    target = (destination / member).resolve()
+    destination_resolved = destination.resolve()
+    if destination_resolved != target and destination_resolved not in target.parents:
+        raise PipelineValidationError(f"Caminho inseguro dentro do arquivo compactado: {member!r}.")
+    return target
+
+
+def _extract_archive(path: Path, options: Mapping[str, Any]) -> Path:
+    member = options.get("archive_member")
+    destination = path.with_suffix(path.suffix + ".extracted")
+    destination.mkdir(parents=True, exist_ok=True)
+
+    if path.suffix.lower() == ".zip":
+        with zipfile.ZipFile(path) as archive:
+            selected = _select_archive_member(archive.namelist(), member)
+            target = _safe_extracted_path(destination, selected)
+            if not target.exists() or not target.stat().st_size:
+                archive.extract(selected, destination)
+            return target
+
+    if path.suffix.lower() == ".7z":
+        try:
+            import py7zr  # type: ignore
+        except ModuleNotFoundError:
+            py7zr = None
+
+        if py7zr is not None:
+            with py7zr.SevenZipFile(path, mode="r") as archive:
+                selected = _select_archive_member(archive.getnames(), member)
+                target = _safe_extracted_path(destination, selected)
+                if not target.exists() or not target.stat().st_size:
+                    archive.extract(path=destination, targets=[selected])
+                return target
+
+        executable = shutil.which("7z") or shutil.which("7za") or shutil.which("7zr")
+        if executable:
+            listing = subprocess.run(
+                [executable, "l", "-ba", str(path)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            members = [line.split()[-1] for line in listing.stdout.splitlines() if line.split()]
+            selected = _select_archive_member(members, member)
+            target = _safe_extracted_path(destination, selected)
+            if not target.exists() or not target.stat().st_size:
+                subprocess.run(
+                    [executable, "x", str(path), f"-o{destination}", selected, "-y"],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+            return target
+
+        raise PipelineValidationError(
+            "Para ler .7z, instale py7zr (`python -m pip install py7zr`) ou disponibilize 7z no PATH."
+        )
+
+    raise PipelineValidationError(f"Formato compactado não suportado: {path.suffix}.")
+
+
+def _materialize_table_path(path: Path, options: Mapping[str, Any]) -> Path:
+    if path.suffix.lower() in ARCHIVE_SUFFIXES:
+        return _extract_archive(path, options)
+    return path
+
+
 def _read_table(path: Path, options: Mapping[str, Any] | None = None) -> pd.DataFrame:
     options = dict(options or {})
     if not path.exists():
         raise FileNotFoundError(f"Arquivo de entrada não encontrado: {path}")
+    path = _materialize_table_path(path, options)
+    options = {key: value for key, value in options.items() if key != "archive_member"}
     suffix = path.suffix.lower()
-    if suffix in {".csv", ".txt"}:
+    if suffix in {".csv", ".txt", ".comt"}:
         options.setdefault("sep", ";")
         options.setdefault("encoding", "utf-8-sig")
+        return pd.read_csv(path, **options)
+    if suffix == ".gz":
+        options.setdefault("sep", ";")
+        options.setdefault("encoding", "utf-8-sig")
+        options.setdefault("compression", "gzip")
         return pd.read_csv(path, **options)
     if suffix in {".xlsx", ".xls"}:
         return pd.read_excel(path, **options)
@@ -72,6 +212,40 @@ def _read_table(path: Path, options: Mapping[str, Any] | None = None) -> pd.Data
     raise PipelineValidationError(
         f"Formato não suportado para {path.name!r}; use CSV, XLSX, XLS ou Parquet."
     )
+
+
+def _download(url: str, destination: Path) -> Path:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists() and destination.stat().st_size:
+        return destination
+
+    LOGGER.info("Baixando %s", url)
+    request = Request(url, headers={"User-Agent": "BorderValue/1.0"})
+    with urlopen(request, timeout=300) as response, tempfile.NamedTemporaryFile(
+        dir=destination.parent, delete=False
+    ) as temporary:
+        shutil.copyfileobj(response, temporary)
+        temporary_path = Path(temporary.name)
+    temporary_path.replace(destination)
+    return destination
+
+
+def _input_path(spec: Mapping[str, Any], base_dir: Path, *, default_name: str) -> Path:
+    if "path" in spec:
+        path = (base_dir / spec["path"]).resolve()
+        if path.exists() or ("url" not in spec and "download_url" not in spec):
+            return path
+
+    url = spec.get("url") or spec.get("download_url")
+    if not url:
+        raise PipelineValidationError("Entrada sem 'path' ou 'url'.")
+
+    if "path" in spec:
+        destination = (base_dir / spec["path"]).resolve()
+    else:
+        url_name = Path(unquote(urlparse(str(url)).path)).name or default_name
+        destination = (base_dir / "inputs" / "official" / url_name).resolve()
+    return _download(str(url), destination)
 
 
 def _first_present(columns: Iterable[str], aliases: Iterable[str]) -> str | None:
@@ -223,23 +397,47 @@ def adapt_rais_employment(frame: pd.DataFrame) -> pd.DataFrame:
             "year": ("Ano", "ANO", "ano", "competencia", "Competência"),
             "cnae_class": (
                 "CNAE 2.0 Classe",
+                "CNAE 2.0 Classe - Código",
+                "CNAE 2.0 Classe - Codigo",
                 "CNAE Classe",
                 "Classe CNAE",
                 "CNAE",
                 "cnae",
                 "cnae_20_classe",
             ),
-            "formal_jobs": (
-                "Vínculo Ativo 31/12",
-                "Vinculo Ativo 31/12",
-                "Qtd Vínculos Ativos",
-                "qtd_vinculos_ativos",
-                "vinculos_formais",
-                "formal_jobs",
-            ),
         },
         table_name="RAIS",
     )
+    formal_jobs_col = _first_present(
+        frame.columns,
+        (
+            "formal_jobs",
+            "Vínculo Ativo 31/12",
+            "Vinculo Ativo 31/12",
+            "Qtd Vínculos Ativos",
+            "qtd_vinculos_ativos",
+            "vinculos_formais",
+        ),
+    )
+    if formal_jobs_col is not None:
+        result["formal_jobs"] = frame[formal_jobs_col]
+    active_col = _first_present(
+        frame.columns,
+        (
+            "Ind Vínculo Ativo 31/12 - Código",
+            "Ind Vinculo Ativo 31/12 - Codigo",
+            "Ind Vínculo Ativo 31/12",
+            "Vínculo Ativo 31/12",
+            "Vinculo Ativo 31/12",
+        ),
+    )
+    if "formal_jobs" not in result.columns and active_col is not None:
+        active = _to_number(frame[active_col]).fillna(0)
+        result["formal_jobs"] = active.eq(1).astype("int64")
+    if "formal_jobs" not in result.columns:
+        raise PipelineValidationError(
+            "RAIS precisa conter vínculos formais ou indicador de vínculo ativo em 31/12."
+        )
     if "uf" not in result.columns:
         uf_col = _first_present(result.columns, ("UF", "uf", "SG_UF"))
         result["uf"] = result[uf_col] if uf_col else pd.NA
@@ -251,17 +449,23 @@ def adapt_rais_employment(frame: pd.DataFrame) -> pd.DataFrame:
                 "Municipio",
                 "Código Município",
                 "Codigo Municipio",
+                "Município - Código",
+                "Municipio - Codigo",
+                "Município Trab - Código",
+                "Municipio Trab - Codigo",
                 "cod_municipio",
                 "municipality_code",
             ),
         )
         result["municipality_code"] = result[municipality_col] if municipality_col else pd.NA
 
-    wage_mass_col = _first_present(
+    december_wage_col = _first_present(
         result.columns,
         (
             "massa_salarial",
             "Massa Salarial",
+            "december_wage_mass",
+            "Vl Rem Dezembro Nom",
             "Vl Remun Dezembro Nom",
             "Remuneração Dezembro Nom",
             "Remuneracao Dezembro Nom",
@@ -274,6 +478,8 @@ def adapt_rais_employment(frame: pd.DataFrame) -> pd.DataFrame:
             "salario_medio",
             "Salário Médio",
             "Salario Medio",
+            "Vl Rem Média Nom",
+            "Vl Rem Media Nom",
             "Vl Remun Média Nom",
             "Vl Remun Media Nom",
             "Remuneração Média Nom",
@@ -281,54 +487,172 @@ def adapt_rais_employment(frame: pd.DataFrame) -> pd.DataFrame:
             "average_wage",
         ),
     )
-    if wage_mass_col is None and avg_wage_col is None:
+    if december_wage_col is None and avg_wage_col is None:
         raise PipelineValidationError(
             "RAIS precisa conter massa salarial ou salário/remuneração média."
         )
-    if wage_mass_col is not None:
-        result = result.rename(columns={wage_mass_col: "wage_mass"})
+    if december_wage_col is not None:
+        result = result.rename(columns={december_wage_col: "december_wage_mass"})
     else:
-        result["wage_mass"] = pd.NA
+        result["december_wage_mass"] = pd.NA
     if avg_wage_col is not None:
-        result = result.rename(columns={avg_wage_col: "average_wage"})
+        result = result.rename(columns={avg_wage_col: "average_monthly_wage"})
     else:
-        result["average_wage"] = pd.NA
+        result["average_monthly_wage"] = pd.NA
 
     result["year"] = pd.to_numeric(result["year"], errors="raise").astype("int64")
-    result["cnae_class"] = normalize_cnae_class(result["cnae_class"], field_name="CNAE RAIS")
+    cnae_digits = (
+        result["cnae_class"].astype("string").str.replace(r"[^0-9]", "", regex=True)
+    )
+    result["cnae_class"] = normalize_cnae_class(cnae_digits.str[:4], field_name="CNAE RAIS")
     result["uf"] = result["uf"].astype("string").str.strip().str.upper()
     result["municipality_code"] = (
         result["municipality_code"]
         .astype("string")
         .str.replace(r"[^0-9]", "", regex=True)
-        .str.zfill(7)
         .where(result["municipality_code"].notna(), pd.NA)
     )
+    derived_uf = result["municipality_code"].str[:2].map(UF_CODE_TO_SIGLA)
+    result["uf"] = result["uf"].where(result["uf"].notna() & result["uf"].ne(""), derived_uf)
     result["formal_jobs"] = _to_number(result["formal_jobs"])
-    result["wage_mass"] = _to_number(result["wage_mass"])
-    result["average_wage"] = _to_number(result["average_wage"])
-    missing_mass = result["wage_mass"].isna() & result["average_wage"].notna()
-    result.loc[missing_mass, "wage_mass"] = (
-        result.loc[missing_mass, "average_wage"] * result.loc[missing_mass, "formal_jobs"]
+    result["december_wage_mass"] = _to_number(result["december_wage_mass"])
+    result["average_monthly_wage"] = _to_number(result["average_monthly_wage"])
+    missing_december_mass = result["december_wage_mass"].isna() & result["average_monthly_wage"].notna()
+    result.loc[missing_december_mass, "december_wage_mass"] = (
+        result.loc[missing_december_mass, "average_monthly_wage"] * result.loc[missing_december_mass, "formal_jobs"]
     )
-    missing_average = result["average_wage"].isna() & result["formal_jobs"].gt(0)
-    result.loc[missing_average, "average_wage"] = (
-        result.loc[missing_average, "wage_mass"] / result.loc[missing_average, "formal_jobs"]
+    result["average_december_wage"] = result["december_wage_mass"] / result["formal_jobs"]
+    result.loc[~result["formal_jobs"].gt(0), "average_december_wage"] = pd.NA
+    result["average_monthly_wage_mass"] = (
+        result["average_monthly_wage"] * result["formal_jobs"]
     )
+    result["wage_mass"] = result["december_wage_mass"]
+    result["average_wage"] = result["average_december_wage"]
     return result[
-        ["year", "uf", "municipality_code", "cnae_class", "formal_jobs", "wage_mass", "average_wage"]
+        [
+            "year",
+            "uf",
+            "municipality_code",
+            "cnae_class",
+            "formal_jobs",
+            "wage_mass",
+            "average_wage",
+            "december_wage_mass",
+            "average_december_wage",
+            "average_monthly_wage",
+            "average_monthly_wage_mass",
+        ]
     ].reset_index(drop=True)
+
+
+def adapt_gdp(frame: pd.DataFrame) -> pd.DataFrame:
+    """Adapta uma extração de PIB territorial para ano, UF, município e valor."""
+
+    result = _rename_aliases(
+        frame,
+        {
+            "year": ("Ano", "ANO", "ano", "D1N", "D2N"),
+            "gdp_value_brl": (
+                "PIB",
+                "Produto Interno Bruto",
+                "Produto interno bruto a precos correntes",
+                "Produto interno bruto a preços correntes",
+                "Valor",
+                "V",
+                "gdp_value_brl",
+            ),
+        },
+        table_name="PIB",
+    )
+    if "uf" not in result.columns:
+        uf_col = _first_present(
+            result.columns,
+            ("UF", "uf", "Sigla da Unidade da Federação", "Unidade da Federação - Sigla"),
+        )
+        result["uf"] = result[uf_col] if uf_col else pd.NA
+    if "municipality_code" not in result.columns:
+        municipality_col = _first_present(
+            result.columns,
+            (
+                "Município",
+                "Municipio",
+                "Código do Município",
+                "Codigo do Municipio",
+                "Código Município",
+                "Codigo Municipio",
+                "municipality_code",
+            ),
+        )
+        result["municipality_code"] = result[municipality_col] if municipality_col else pd.NA
+    if "gdp_status" not in result.columns:
+        result["gdp_status"] = "published"
+
+    raw_value = result["gdp_value_brl"].astype("string").str.strip()
+    unavailable = raw_value.isin(["X", "-", "..", "..."])
+    result.loc[unavailable, "gdp_status"] = raw_value.map(
+        {"X": "confidential", "-": "not_available", "..": "not_available", "...": "not_available"}
+    )
+    result.loc[unavailable, "gdp_value_brl"] = pd.NA
+    result["year"] = pd.to_numeric(result["year"], errors="raise").astype("int64")
+    result["uf"] = result["uf"].astype("string").str.strip().str.upper()
+    result["municipality_code"] = (
+        result["municipality_code"]
+        .astype("string")
+        .str.replace(r"[^0-9]", "", regex=True)
+        .where(result["municipality_code"].notna(), pd.NA)
+    )
+    result["municipality_code"] = result["municipality_code"].str.zfill(7).str[:6]
+    derived_uf = result["municipality_code"].str[:2].map(UF_CODE_TO_SIGLA)
+    result["uf"] = result["uf"].where(result["uf"].notna() & result["uf"].ne(""), derived_uf)
+    result["gdp_value_brl"] = _to_number(result["gdp_value_brl"])
+    return result[["year", "uf", "municipality_code", "gdp_value_brl", "gdp_status"]].reset_index(drop=True)
+
+
+def build_fact_gdp(gdp: pd.DataFrame) -> pd.DataFrame:
+    group_key = ["year", "uf", "municipality_code"]
+    aggregated = (
+        gdp.groupby(group_key, as_index=False, dropna=False)["gdp_value_brl"]
+        .sum(min_count=1)
+        .reset_index(drop=True)
+    )
+    if "gdp_status" in gdp.columns:
+        status_priority = {"confidential": 3, "not_available": 2, "missing": 1, "published": 0}
+
+        def summarize_status(values: pd.Series) -> str:
+            statuses = values.astype("string").fillna("missing")
+            return max(statuses, key=lambda item: status_priority.get(str(item), 1))
+
+        statuses = (
+            gdp.groupby(group_key, as_index=False, dropna=False)["gdp_status"]
+            .agg(summarize_status)
+        )
+        aggregated = aggregated.merge(statuses, on=group_key, how="left", validate="one_to_one")
+    else:
+        aggregated["gdp_status"] = aggregated["gdp_value_brl"].notna().map({True: "published", False: "missing"})
+    return aggregated.sort_values(group_key, kind="stable").reset_index(drop=True)
 
 
 def build_fact_employment_rais(rais: pd.DataFrame, dim_cnae: pd.DataFrame) -> pd.DataFrame:
     group_key = ["year", "uf", "municipality_code", "cnae_class"]
+    measure_cols = [
+        column
+        for column in ["formal_jobs", "december_wage_mass", "average_monthly_wage_mass"]
+        if column in rais.columns
+    ]
     aggregated = (
-        rais.groupby(group_key, as_index=False, dropna=False)[["formal_jobs", "wage_mass"]]
+        rais.groupby(group_key, as_index=False, dropna=False)[measure_cols]
         .sum(min_count=1)
         .reset_index(drop=True)
     )
-    aggregated["average_wage"] = aggregated["wage_mass"] / aggregated["formal_jobs"]
-    aggregated.loc[~aggregated["formal_jobs"].gt(0), "average_wage"] = pd.NA
+    if "december_wage_mass" not in aggregated.columns:
+        aggregated["december_wage_mass"] = pd.NA
+    if "average_monthly_wage_mass" not in aggregated.columns:
+        aggregated["average_monthly_wage_mass"] = pd.NA
+    aggregated["average_december_wage"] = aggregated["december_wage_mass"] / aggregated["formal_jobs"]
+    aggregated["average_monthly_wage"] = aggregated["average_monthly_wage_mass"] / aggregated["formal_jobs"]
+    aggregated.loc[~aggregated["formal_jobs"].gt(0), ["average_december_wage", "average_monthly_wage"]] = pd.NA
+    aggregated["wage_mass"] = aggregated["december_wage_mass"]
+    aggregated["average_wage"] = aggregated["average_december_wage"]
     result = aggregated.merge(
         dim_cnae[["cnae_key", "cnae_class"]],
         on="cnae_class",
@@ -337,31 +661,175 @@ def build_fact_employment_rais(rais: pd.DataFrame, dim_cnae: pd.DataFrame) -> pd
     )
     result["cnae_key"] = result["cnae_key"].astype("Int64")
     return result[
-        ["year", "uf", "municipality_code", "cnae_key", "cnae_class", "formal_jobs", "wage_mass", "average_wage"]
+        [
+            "year",
+            "uf",
+            "municipality_code",
+            "cnae_key",
+            "cnae_class",
+            "formal_jobs",
+            "wage_mass",
+            "average_wage",
+            "december_wage_mass",
+            "average_december_wage",
+            "average_monthly_wage",
+            "average_monthly_wage_mass",
+        ]
     ].sort_values(["year", "uf", "municipality_code", "cnae_class"], kind="stable")
 
 
 def summarize_rais_by_cnae(fact_employment_rais: pd.DataFrame) -> pd.DataFrame:
     summary = (
         fact_employment_rais.groupby(["cnae_class"], as_index=False, dropna=False)[
-            ["formal_jobs", "wage_mass"]
+            ["formal_jobs", "december_wage_mass", "average_monthly_wage_mass"]
         ]
         .sum(min_count=1)
         .rename(
             columns={
                 "formal_jobs": "rais_formal_jobs",
-                "wage_mass": "rais_wage_mass",
+                "december_wage_mass": "rais_december_wage_mass",
+                "average_monthly_wage_mass": "rais_average_monthly_wage_mass",
             }
         )
     )
-    summary["rais_average_wage"] = summary["rais_wage_mass"] / summary["rais_formal_jobs"]
-    summary.loc[~summary["rais_formal_jobs"].gt(0), "rais_average_wage"] = pd.NA
+    summary["rais_average_december_wage"] = (
+        summary["rais_december_wage_mass"] / summary["rais_formal_jobs"]
+    )
+    summary["rais_average_monthly_wage"] = (
+        summary["rais_average_monthly_wage_mass"] / summary["rais_formal_jobs"]
+    )
+    summary.loc[
+        ~summary["rais_formal_jobs"].gt(0),
+        ["rais_average_december_wage", "rais_average_monthly_wage"],
+    ] = pd.NA
+    summary["rais_wage_mass"] = summary["rais_december_wage_mass"]
+    summary["rais_average_wage"] = summary["rais_average_december_wage"]
     return summary
+
+
+def _aggregate_rais_parts(parts: Iterable[pd.DataFrame]) -> pd.DataFrame:
+    frames = [part for part in parts if not part.empty]
+    if not frames:
+        return pd.DataFrame(
+            columns=[
+                "year",
+                "uf",
+                "municipality_code",
+                "cnae_class",
+                "formal_jobs",
+                "wage_mass",
+                "average_wage",
+                "december_wage_mass",
+                "average_december_wage",
+                "average_monthly_wage",
+                "average_monthly_wage_mass",
+            ]
+        )
+    combined = pd.concat(frames, ignore_index=True)
+    group_key = ["year", "uf", "municipality_code", "cnae_class"]
+    measure_cols = [
+        column
+        for column in ["formal_jobs", "december_wage_mass", "average_monthly_wage_mass"]
+        if column in combined.columns
+    ]
+    result = (
+        combined.groupby(group_key, as_index=False, dropna=False)[measure_cols]
+        .sum(min_count=1)
+        .reset_index(drop=True)
+    )
+    if "december_wage_mass" not in result.columns:
+        result["december_wage_mass"] = pd.NA
+    if "average_monthly_wage_mass" not in result.columns:
+        result["average_monthly_wage_mass"] = pd.NA
+    result["average_december_wage"] = result["december_wage_mass"] / result["formal_jobs"]
+    result["average_monthly_wage"] = result["average_monthly_wage_mass"] / result["formal_jobs"]
+    result.loc[~result["formal_jobs"].gt(0), ["average_december_wage", "average_monthly_wage"]] = pd.NA
+    result["wage_mass"] = result["december_wage_mass"]
+    result["average_wage"] = result["average_december_wage"]
+    return result
+
+
+def _read_rais_file(path: Path, options: Mapping[str, Any], *, year: int | None = None) -> pd.DataFrame:
+    archive_root = path.with_suffix(path.suffix + ".extracted") if path.suffix.lower() in ARCHIVE_SUFFIXES else None
+    try:
+        path = _materialize_table_path(path, options)
+        read_options = {key: value for key, value in dict(options).items() if key != "archive_member"}
+        suffix = path.suffix.lower()
+        if suffix in {".csv", ".txt", ".comt", ".gz"}:
+            read_options.setdefault("sep", ";")
+            read_options.setdefault("encoding", "utf-8-sig")
+            if suffix == ".gz":
+                read_options.setdefault("compression", "gzip")
+            chunksize = int(read_options.pop("chunksize", 250_000))
+            parts = []
+            for chunk in pd.read_csv(path, chunksize=chunksize, **read_options):
+                if "year" not in chunk.columns and year is not None:
+                    chunk["year"] = year
+                parts.append(adapt_rais_employment(chunk))
+            return _aggregate_rais_parts(parts)
+
+        raw = _read_table(path, read_options)
+        if "year" not in raw.columns and year is not None:
+            raw["year"] = year
+        return _aggregate_rais_parts([adapt_rais_employment(raw)])
+    finally:
+        if archive_root is not None and archive_root.exists():
+            shutil.rmtree(archive_root, ignore_errors=True)
+
+
+def load_rais_employment_input(
+    spec: Mapping[str, Any], base_dir: Path, *, default_name: str = "rais_employment.csv"
+) -> pd.DataFrame:
+    read_options = spec.get("read_options", {})
+    if "files" in spec:
+        parts = []
+        for part_spec in spec["files"]:
+            merged_options = {**read_options, **part_spec.get("read_options", {})}
+            path = _input_path(
+                part_spec,
+                base_dir,
+                default_name=f"rais_{part_spec.get('year', 'employment')}.csv",
+            )
+            parts.append(
+                _read_rais_file(path, merged_options, year=part_spec.get("year"))
+            )
+        return _aggregate_rais_parts(parts)
+
+    path = _input_path(spec, base_dir, default_name=default_name)
+    return _read_rais_file(path, read_options, year=spec.get("year"))
+
+
+def load_gdp_input(spec: Mapping[str, Any], base_dir: Path) -> pd.DataFrame:
+    read_options = spec.get("read_options", {})
+    value_multiplier = float(spec.get("value_multiplier", 1.0))
+
+    def apply_multiplier(frame: pd.DataFrame, part_spec: Mapping[str, Any] | None = None) -> pd.DataFrame:
+        multiplier = float((part_spec or {}).get("value_multiplier", value_multiplier))
+        result = frame.copy()
+        result["gdp_value_brl"] = result["gdp_value_brl"] * multiplier
+        return result
+
+    if "files" in spec:
+        parts = []
+        for part_spec in spec["files"]:
+            merged_options = {**read_options, **part_spec.get("read_options", {})}
+            path = _input_path(part_spec, base_dir, default_name=f"gdp_{part_spec.get('year', 'territory')}.csv")
+            raw = _read_table(path, merged_options)
+            if "year" not in raw.columns and part_spec.get("year") is not None:
+                raw["year"] = part_spec["year"]
+            parts.append(apply_multiplier(adapt_gdp(raw), part_spec))
+        return pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
+
+    path = _input_path(spec, base_dir, default_name="gdp.csv")
+    raw = _read_table(path, read_options)
+    if "year" not in raw.columns and spec.get("year") is not None:
+        raw["year"] = spec["year"]
+    return apply_multiplier(adapt_gdp(raw))
 
 
 def load_inputs(
     config: Mapping[str, Any], base_dir: Path
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame | None]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame | None, pd.DataFrame | None]:
     inputs = config.get("inputs", {})
     required = ("trade", "ncm_prodlist", "domestic_production")
     missing = [name for name in required if name not in inputs]
@@ -370,14 +838,14 @@ def load_inputs(
 
     def load(name: str) -> tuple[pd.DataFrame, Mapping[str, Any]]:
         spec = inputs[name]
-        path = (base_dir / spec["path"]).resolve()
+        path = _input_path(spec, base_dir, default_name=f"{name}.csv")
         return _read_table(path, spec.get("read_options")), spec
 
     trade_spec = inputs["trade"]
     if "files" in trade_spec:
         trade_parts = []
         for part_spec in trade_spec["files"]:
-            path = (base_dir / part_spec["path"]).resolve()
+            path = _input_path(part_spec, base_dir, default_name=f"{part_spec.get('flow', 'trade')}.csv")
             raw = _read_table(path, part_spec.get("read_options", trade_spec.get("read_options")))
             trade_parts.append(adapt_comex_stat(raw, flow=part_spec.get("flow")))
         trade = pd.concat(trade_parts, ignore_index=True)
@@ -390,23 +858,11 @@ def load_inputs(
     production = adapt_domestic_production(production_raw)
     rais = None
     if "rais_employment" in inputs:
-        rais_spec = inputs["rais_employment"]
-        if "files" in rais_spec:
-            rais_parts = []
-            for part_spec in rais_spec["files"]:
-                path = (base_dir / part_spec["path"]).resolve()
-                raw = _read_table(path, part_spec.get("read_options", rais_spec.get("read_options")))
-                if "year" not in raw.columns and part_spec.get("year") is not None:
-                    raw["year"] = part_spec["year"]
-                rais_parts.append(adapt_rais_employment(raw))
-            rais = pd.concat(rais_parts, ignore_index=True)
-        else:
-            path = (base_dir / rais_spec["path"]).resolve()
-            raw = _read_table(path, rais_spec.get("read_options"))
-            if "year" not in raw.columns and rais_spec.get("year") is not None:
-                raw["year"] = rais_spec["year"]
-            rais = adapt_rais_employment(raw)
-    return trade, mapping, production, rais
+        rais = load_rais_employment_input(inputs["rais_employment"], base_dir)
+    gdp = None
+    if "gdp" in inputs:
+        gdp = load_gdp_input(inputs["gdp"], base_dir)
+    return trade, mapping, production, rais, gdp
 
 
 def _safe_write_parquet(frame: pd.DataFrame, path: Path) -> bool:
@@ -605,6 +1061,10 @@ def build_border_value_indicators(
         result["rais_formal_jobs"] = pd.NA
         result["rais_wage_mass"] = pd.NA
         result["rais_average_wage"] = pd.NA
+        result["rais_december_wage_mass"] = pd.NA
+        result["rais_average_december_wage"] = pd.NA
+        result["rais_average_monthly_wage"] = pd.NA
+        result["rais_average_monthly_wage_mass"] = pd.NA
 
     ordered_columns = [
         "cnae_key",
@@ -624,6 +1084,10 @@ def build_border_value_indicators(
         "rais_formal_jobs",
         "rais_wage_mass",
         "rais_average_wage",
+        "rais_december_wage_mass",
+        "rais_average_december_wage",
+        "rais_average_monthly_wage",
+        "rais_average_monthly_wage_mass",
     ]
     return result[ordered_columns].sort_values("cnae_class", kind="stable").reset_index(drop=True)
 
@@ -668,7 +1132,7 @@ def build_quality_tables(model: Any, allocated: pd.DataFrame) -> Mapping[str, pd
 def execute_pipeline(config_path: str | Path) -> Path:
     config_path = Path(config_path).resolve()
     config = json.loads(config_path.read_text(encoding="utf-8"))
-    trade, mapping, production, rais = load_inputs(config, config_path.parent)
+    trade, mapping, production, rais, gdp = load_inputs(config, config_path.parent)
 
     settings = config.get("settings", {})
     trade_grain = settings.get("trade_grain_cols", ["year", "month", "flow"])
@@ -689,6 +1153,7 @@ def execute_pipeline(config_path: str | Path) -> Path:
     fact_employment_rais = (
         build_fact_employment_rais(rais, model.dim_cnae) if rais is not None else None
     )
+    fact_gdp = build_fact_gdp(gdp) if gdp is not None else None
     conversion_factor = settings.get("production_value_to_trade_value_factor")
     indicators = build_border_value_indicators(
         allocated,
@@ -724,7 +1189,12 @@ def execute_pipeline(config_path: str | Path) -> Path:
                 (
                     "rais_wage_mass",
                     fact_employment_rais["wage_mass"].sum(min_count=1),
-                    "massa salarial RAIS após agregação",
+                    "massa salarial RAIS de dezembro após agregação",
+                ),
+                (
+                    "rais_average_monthly_wage_mass",
+                    fact_employment_rais["average_monthly_wage_mass"].sum(min_count=1),
+                    "massa de remuneração média nominal RAIS após agregação",
                 ),
                 (
                     "rais_unmatched_cnae",
@@ -736,6 +1206,18 @@ def execute_pipeline(config_path: str | Path) -> Path:
         )
         all_tables["quality_summary"] = pd.concat(
             [quality_summary, rais_metrics], ignore_index=True
+        )
+    if fact_gdp is not None:
+        all_tables["fact_gdp"] = fact_gdp
+        gdp_metrics = pd.DataFrame(
+            [
+                ("gdp_rows", len(fact_gdp), "linhas no fato territorial de PIB"),
+                ("gdp_value_brl", fact_gdp["gdp_value_brl"].sum(min_count=1), "PIB territorial agregado em reais"),
+            ],
+            columns=["metric", "value", "description"],
+        )
+        all_tables["quality_summary"] = pd.concat(
+            [all_tables["quality_summary"], gdp_metrics], ignore_index=True
         )
     manifest_tables: dict[str, dict[str, Any]] = {}
     for name, frame in all_tables.items():
