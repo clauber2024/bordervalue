@@ -75,6 +75,11 @@
         <button id="clearFilters" type="button">Limpar</button>
       </section>
 
+      <section class="context-bar" aria-label="Contexto Permanente">
+        <strong>Contexto Permanente</strong>
+        <span id="contextSummary">Filtros: todos os recortes ativos.</span>
+      </section>
+
       <nav class="tabs" aria-label="Navegacao do dashboard" role="tablist">
         <button class="tab active" data-tab="overview" type="button" role="tab" aria-selected="true" aria-controls="overview">Visao geral</button>
         <button class="tab" data-tab="world" type="button" role="tab" aria-selected="false" aria-controls="world">Mapa mundial</button>
@@ -82,7 +87,8 @@
         <button class="tab" data-tab="products" type="button" role="tab" aria-selected="false" aria-controls="products">PRODLIST</button>
         <button class="tab" data-tab="ncm" type="button" role="tab" aria-selected="false" aria-controls="ncm">NCM e pais</button>
         <button class="tab" data-tab="employment" type="button" role="tab" aria-selected="false" aria-controls="employment">Emprego, renda e PIB</button>
-        <button class="tab" data-tab="transition-fuels" type="button" role="tab" aria-selected="false" aria-controls="transition-fuels">Combustiveis da transicao</button>
+        <button class="tab" data-tab="tsb-low-carbon" type="button" role="tab" aria-selected="false" aria-controls="tsb-low-carbon">TSB e baixo carbono</button>
+        <button class="tab" data-tab="transition-fuels" type="button" role="tab" aria-selected="false" aria-controls="transition-fuels">Produtos relacionados a transicao</button>
         <button class="tab" data-tab="flows" type="button" role="tab" aria-selected="false" aria-controls="flows">Sankey</button>
         <button class="tab" data-tab="quality" type="button" role="tab" aria-selected="false" aria-controls="quality">Mapeamento</button>
         <button class="tab" data-tab="etl" type="button" role="tab" aria-selected="false" aria-controls="etl">ETL</button>
@@ -92,6 +98,7 @@
       <section class="exports" aria-label="Exportacoes">
         <a class="export-button" id="exportTrade" href="/api/export?dataset=trade">Exportar comércio</a>
         <a class="export-button" id="exportEmployment" href="/api/export?dataset=employment">Exportar RAIS/PIB</a>
+        <a class="export-button" id="exportTsb" href="/api/export?dataset=tsb">Exportar TSB</a>
         <a class="export-button" id="exportFuels" href="/api/export?dataset=fuels">Exportar combustíveis</a>
       </section>
 
@@ -165,7 +172,7 @@
             <div id="employmentMunicipalityMap" class="chart municipality-map"></div>
           </article>
           <article class="chart-panel">
-            <h2>CNAE: empregos em setores da plataforma</h2>
+            <h2>CNAE: emprego formal em setores da plataforma</h2>
             <div id="employmentCnaeChart" class="chart tall"></div>
           </article>
           <article class="chart-panel">
@@ -187,10 +194,64 @@
         </div>
       </section>
 
+
+      <section class="panel" id="tsb-low-carbon" role="tabpanel">
+        <section class="kpis compact" id="tsbKpis"></section>
+        <article class="chart-panel wide impact-simulator" aria-labelledby="impactSimulatorTitle">
+          <div class="simulator-header">
+            <div>
+              <p class="eyebrow">Etapa 5</p>
+              <h2 id="impactSimulatorTitle">Simulacao de impacto por multiplicadores MIP</h2>
+            </div>
+            <span class="simulator-source">Multiplicadores do relatorio TSB</span>
+          </div>
+          <div class="simulator-controls">
+            <label>
+              Demanda/investimento (R$ milhoes)
+              <input id="impactAmount" type="number" min="0" step="10" value="100" inputmode="decimal" />
+            </label>
+            <label>
+              Setor SCN67
+              <select id="impactSector"></select>
+            </label>
+          </div>
+          <section class="kpis compact impact-results" id="impactResults"></section>
+          <p class="simulator-note" id="impactMethodNote"></p>
+        </article>
+        <article class="method-alert">
+          A leitura operacional combina RAIS, ponte CNAE/SCN67 do relatorio TSB, prioridade Border Value, dependencia externa, valor comercial e multiplicadores setoriais. O score de aderencia TSB-BV e complementar e nao substitui a prioridade oficial. A participacao de 27,078% refere-se a massa salarial industrial associada a CNAEs compativeis/elegiveis pela TSB no relatorio.
+        </article>
+        <div class="grid two">
+          <article class="chart-panel">
+            <h2>Ranking CNAE por emprego formal em setores TSB</h2>
+            <div id="tsbCnaeChart" class="chart tall"></div>
+          </article>
+          <article class="chart-panel">
+            <h2>Ranking SCN67 por exposicao TSB</h2>
+            <div id="tsbScnChart" class="chart tall"></div>
+          </article>
+          <article class="chart-panel">
+            <h2>Ranking UF por emprego formal em setores TSB</h2>
+            <div id="tsbUfChart" class="chart tall"></div>
+          </article>
+          <article class="chart-panel">
+            <h2>Ranking municipal por emprego formal em setores TSB</h2>
+            <div id="tsbMunicipalityChart" class="chart tall"></div>
+          </article>
+          <article class="chart-panel wide">
+            <h2>Comparacao operacional dos setores TSB</h2>
+            <div class="table-wrap"><table id="tsbComparisonTable"></table></div>
+          </article>
+          <article class="chart-panel wide">
+            <h2>Detalhe territorial TSB</h2>
+            <div class="table-wrap"><table id="tsbOperationalTerritoryTable"></table></div>
+          </article>
+        </div>
+      </section>
       <section class="panel" id="transition-fuels" role="tabpanel">
         <section class="kpis compact" id="fuelKpis"></section>
         <article class="method-alert">
-          Classificacao preliminar: a NCM identifica produto, insumo ou equipamento, mas nao comprova rota verde, azul, renovavel ou de baixa emissao sem fontes complementares.
+          Recorte exploratorio: a NCM identifica produto, insumo ou equipamento relacionado a transicao, mas nao comprova rota verde, azul, renovavel ou de baixa emissao sem fontes complementares.
         </article>
         <div class="grid two">
           <article class="chart-panel">
@@ -277,6 +338,48 @@
       </section>
 
       <section class="panel" id="method" role="tabpanel">
+        <article class="method-alert">
+          Ressalva metodologica: esta versao cruza comercio Comex Stat de janeiro a junho de 2026 com producao domestica PIA-Produto 2024 e emprego formal RAIS 2024. A diferenca temporal decorre do calendario oficial de publicacao das fontes. Portanto, indicadores de consumo aparente, dependencia externa, orientacao exportadora e leitura territorial devem ser interpretados como aproximacoes analiticas para triagem e priorizacao, nao como fotografia contemporanea perfeita de 2026; conclusoes setoriais finas exigem validacao especialista e, quando disponivel, atualizacao das bases de producao e emprego.
+        </article>
+        <article class="method-alert">
+          Etapa 2: a ponte preserva CNAE5 do relatorio TSB e conecta a classe CNAE de quatro digitos da plataforma a PRODLIST, NCM e RAIS territorial.
+        </article>
+        <div class="grid two tsb-reference">
+          <article class="chart-panel">
+            <h2>RAIS por exposicao TSB</h2>
+            <div class="table-wrap"><table id="tsbRaisSummaryTable"></table></div>
+          </article>
+          <article class="chart-panel wide">
+            <h2>Ponte TSB-CNAE classe</h2>
+            <div class="table-wrap"><table id="tsbCnaeBridgeTable"></table></div>
+          </article>
+          <article class="chart-panel wide">
+            <h2>Ponte TSB-NCM</h2>
+            <div class="table-wrap"><table id="tsbNcmBridgeTable"></table></div>
+          </article>
+          <article class="chart-panel wide">
+            <h2>Territorios RAIS em setores TSB</h2>
+            <div class="table-wrap"><table id="tsbTerritoryTable"></table></div>
+          </article>
+        </div>
+        <div class="grid two tsb-reference">
+          <article class="chart-panel wide">
+            <h2>dim_tsb_cnae5</h2>
+            <div class="table-wrap"><table id="tsbCnae5Table"></table></div>
+          </article>
+          <article class="chart-panel">
+            <h2>dim_scn67_tsb</h2>
+            <div class="table-wrap"><table id="tsbScn67Table"></table></div>
+          </article>
+          <article class="chart-panel">
+            <h2>multiplicadores_scn67</h2>
+            <div class="table-wrap"><table id="tsbMultipliersTable"></table></div>
+          </article>
+          <article class="chart-panel wide">
+            <h2>fontes_tsb_robustez</h2>
+            <div class="table-wrap"><table id="tsbSourcesTable"></table></div>
+          </article>
+        </div>
         <div class="grid two">
           <article class="chart-panel">
             <h2>Padrao de conceitos e unidades</h2>
@@ -291,14 +394,16 @@
               <dd>PIA-Produto 2024 em mil R$ na fonte; indicadores comparaveis usam US$ pelo cambio medio BCB/SGS 2024 de 5,392016 R$/US$.</dd>
               <dt>Dependencia externa</dt>
               <dd>Importacoes / consumo aparente comparavel. Quando o denominador e nulo ou negativo, o indicador nao e calculado.</dd>
-              <dt>Emprego RAIS</dt>
-              <dd>Vinculos formais ativos em 31/12, massa de remuneracao nominal de dezembro e salario medio de dezembro sao agregados por CNAE, UF e municipio e vinculados aos setores priorizados da plataforma pela classe CNAE.</dd>
+              <dt>Emprego RAIS setorial</dt>
+              <dd>Vinculos formais ativos em 31/12, massa de remuneracao nominal de dezembro e salario medio de dezembro sao agregados por CNAE, UF e municipio e vinculados aos setores priorizados da plataforma pela classe CNAE. Esta versao nao mede ocupacoes verdes individuais.</dd>
               <dt>Escopo RAIS</dt>
               <dd>`Prioritarios` indica CNAEs com prioridade final na plataforma; `No escopo` indica CNAEs industriais presentes nos indicadores, mas sem prioridade final; `Fora do escopo` indica setores RAIS fora do recorte industrial Border Value.</dd>
-              <dt>Score preliminar emprego-plataforma</dt>
+              <dt>Score preliminar emprego setorial-plataforma</dt>
               <dd>Ordenador exploratorio: 45% percentil de vinculos RAIS, 35% prioridade setorial ja calculada e 20% dependencia externa. Nao substitui a prioridade oficial.</dd>
-              <dt>Combustiveis da transicao</dt>
-              <dd>Recorte transversal para hidrogenio, amonia, SAF, metanol, etanol e combustiveis maritimos de baixa emissao. A classificacao e preliminar e nao infere baixa emissao somente pela NCM.</dd>
+              <dt>Aderencia TSB-BV</dt>
+              <dd>Score complementar: 40% exposicao TSB, 25% prioridade Border Value, 20% escala RAIS e 15% dependencia externa ou oportunidade comercial. Nao substitui a prioridade oficial.</dd>
+              <dt>Produtos relacionados a transicao</dt>
+              <dd>Recorte transversal de produtos, insumos, equipamentos e usos finais relacionados a hidrogenio, amonia, metanol, etanol, combustiveis de aviacao e combustiveis maritimos. A classificacao e exploratoria e nao infere baixa emissao somente pela NCM.</dd>
               <dt>Fase das atividades transversais</dt>
               <dd>RAIS, cartografia, mapa mundial, integracao, automacao, hidrogenio e amonia entram somente em consolidacao, documentacao e testes.</dd>
             </dl>
@@ -307,15 +412,16 @@
             <h2>Limitacoes de leitura</h2>
             <ul class="method-notes">
               <li>Comercio: Comex Stat jan-jun/2026 no grao NCM-8, fluxo e mes.</li>
-              <li>Producao: PIA-Produto 2024; ha defasagem temporal entre comercio e producao.</li>
+              <li>Producao e emprego: PIA-Produto 2024 e RAIS 2024; ha defasagem temporal em relacao ao comercio Comex Stat jan-jun/2026.</li>
               <li>Sigilo estatistico PIA (`X`) e indisponibilidade (`-`, `..` ou ausencia) nao sao imputados.</li>
               <li>NCM sem ponte e codigos genericos 9/90/99 exigem validacao oficial ou manual documentada.</li>
               <li>Cadeias minerais estrategicas sao recorte analitico transversal e nao alteram a ponte CONCLA/IBGE.</li>
               <li>A RAIS nao cria prioridade setorial sozinha; ela qualifica impacto social e territorial dos mesmos CNAEs avaliados por comercio, producao, dependencia externa e relevancia para transicao.</li>
+              <li>A leitura de emprego e setorial, baseada em CNAE/RAIS; ocupacoes verdes individuais ficam como expansao metodologica futura.</li>
               <li>Setores RAIS fora do escopo da plataforma permanecem visiveis para controle territorial, mas nao entram como evidencia setorial Border Value sem decisao metodologica explicita.</li>
-              <li>O score emprego-plataforma e preliminar e serve para triagem; decisoes oficiais continuam baseadas nos indicadores setoriais documentados e revisao metodologica.</li>
+              <li>O score emprego setorial-plataforma e preliminar e serve para triagem; decisoes oficiais continuam baseadas nos indicadores setoriais documentados e revisao metodologica.</li>
               <li>A remuneracao media nominal anual da RAIS e preservada como variavel auxiliar, mas a massa salarial oficial da plataforma usa dezembro para manter coerencia com o estoque de vinculos ativos em 31/12.</li>
-              <li>Hidrogenio, amonia, SAF, metanol, etanol e combustiveis maritimos usam NCMs e prefixos curados para organizar fluxos, insumos, equipamentos, derivados e usos finais; rotas verdes, renovaveis ou de baixa emissao exigem fontes complementares.</li>
+              <li>Produtos relacionados a hidrogenio, amonia, metanol, etanol, combustiveis de aviacao e combustiveis maritimos usam NCMs e prefixos curados para organizar fluxos, insumos, equipamentos, derivados e usos finais; rotas verdes, renovaveis ou de baixa emissao exigem fontes complementares.</li>
             </ul>
           </article>
         </div>

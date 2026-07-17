@@ -1,29 +1,60 @@
+const DEFAULT_FILTERS = {
+  period: "all",
+  flow: "all",
+  cnae: "all",
+  prodlist: "all",
+  ncm: "",
+  country: "",
+  status: "all",
+  uf: "all",
+  municipality: "all",
+  scope: "all",
+  fuel: "all",
+  layer: "all",
+};
+
+const FILTER_KEYS = Object.keys(DEFAULT_FILTERS);
+const FILTER_LABELS = {
+  period: "Periodo",
+  flow: "Fluxo",
+  cnae: "CNAE",
+  prodlist: "PRODLIST",
+  ncm: "NCM",
+  country: "Pais",
+  status: "Situacao",
+  uf: "UF",
+  municipality: "Municipio",
+  scope: "Escopo RAIS",
+  fuel: "Combustivel",
+  layer: "Etapa",
+};
+
 const state = {
   data: null,
   view: null,
   geoCache: new Map(),
   mapRequestId: 0,
   worldMapRequestId: 0,
-  filters: {
-    period: "all",
-    flow: "all",
-    cnae: "all",
-    prodlist: "all",
-    ncm: "",
-    country: "",
-    status: "all",
-    uf: "all",
-    municipality: "all",
-    scope: "all",
-    fuel: "all",
-    layer: "all",
+  impactSimulation: {
+    amountMillionBrl: 100,
+    sector: "media_low_carbon",
   },
+  filters: { ...DEFAULT_FILTERS },
 };
 
 const fmtMoney = new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 1 });
 const fmtPct = new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 1 });
 const fmtNum = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
+const fmtOneDecimal = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
 const fmtDateTime = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
+const LOW_CARBON_AVERAGE_MULTIPLIERS = {
+  id: "media_low_carbon",
+  label: "Media TSB: setores com participacao baixo carbono",
+  production: 1.97,
+  income: 0.72,
+  employment: 9,
+  source: "Media por grupo informada no relatorio TSB",
+};
 const WORLD_POINTS = {
   AGO: [17.87, -11.2], ARE: [54.3, 23.4], ARG: [-64.0, -34.0], AUS: [134.0, -25.0],
   AUT: [14.6, 47.6], BGD: [90.4, 23.7], BEL: [4.7, 50.6], BGR: [25.5, 42.7],
@@ -69,6 +100,9 @@ async function init() {
   const response = await fetch("data.json");
   state.data = await response.json();
   setupFilters();
+  hydrateFiltersFromUrl();
+  applyFiltersToControls();
+  setupImpactSimulator();
   setupTabs();
   await render();
 }
@@ -140,7 +174,7 @@ function setupFilters() {
   byId("nextPeriod").addEventListener("click", () => stepPeriod(1));
   updateExportLinks();
 
-  byId("sourceInfo").textContent = `Fonte: ${summary.generated_from.indicators} | US$ FOB, kg liquido, PIA 2024`;
+  byId("sourceInfo").textContent = `Fonte: ${summary.generated_from.indicators} | US$ FOB, kg liquido, Comex 2026 H1, PIA/RAIS 2024`;
 }
 
 function fillSelect(select, values) {
@@ -162,6 +196,34 @@ function setupMunicipalityFilter(labels) {
   state.municipalityByCode = new Map(state.municipalities.map((m) => [m.code, m.code]));
   state.municipalityByCodeInfo = new Map(state.municipalities.map((m) => [m.code, m]));
   updateMunicipalityOptions();
+}
+
+function hydrateFiltersFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  FILTER_KEYS.forEach((key) => {
+    if (params.has(key)) state.filters[key] = params.get(key) || DEFAULT_FILTERS[key];
+  });
+}
+
+function applyFiltersToControls() {
+  ["period", "flow", "cnae", "prodlist", "status", "uf", "scope", "fuel", "layer"].forEach((key) => {
+    setSelectValue(byId(`${key}Filter`), state.filters[key], DEFAULT_FILTERS[key]);
+  });
+  byId("ncmFilter").value = state.filters.ncm || "";
+  byId("countryFilter").value = state.filters.country || "";
+  const municipalityInfo = state.municipalityByCodeInfo?.get(state.filters.municipality);
+  byId("municipalityFilter").value = municipalityInfo?.label || "";
+  updateMunicipalityOptions(byId("municipalityFilter").value);
+}
+
+function setSelectValue(select, value, fallback) {
+  if (!select) return;
+  const hasValue = Array.from(select.options).some((option) => option.value === value);
+  select.value = hasValue ? value : fallback;
+  if (!hasValue) {
+    const key = select.id.replace(/Filter$/, "");
+    if (key in state.filters) state.filters[key] = fallback;
+  }
 }
 
 function updateMunicipalityOptions(query = "") {
@@ -198,21 +260,58 @@ function setupTabs() {
   });
 }
 
+function setupImpactSimulator() {
+  const amount = byId("impactAmount");
+  const sector = byId("impactSector");
+  if (!amount || !sector) return;
+  fillSelect(sector, impactSectorOptions().map((item) => [item.id, item.label]));
+  sector.value = state.impactSimulation.sector;
+  amount.value = String(state.impactSimulation.amountMillionBrl);
+  amount.addEventListener("input", () => {
+    state.impactSimulation.amountMillionBrl = Math.max(0, Number(amount.value) || 0);
+    renderImpactSimulation();
+  });
+  sector.addEventListener("change", () => {
+    state.impactSimulation.sector = sector.value;
+    renderImpactSimulation();
+  });
+}
+
+function impactSectorOptions() {
+  const rows = state.data?.multiplicadores_scn67 || [];
+  const sectorRows = rows
+    .filter((row) => row.scn67 && impactMultiplier(row, "production") != null && impactMultiplier(row, "income") != null && impactMultiplier(row, "employment") != null)
+    .map((row) => ({
+      id: String(row.scn67).padStart(4, "0"),
+      label: optionLabel(String(row.scn67).padStart(4, "0"), row.setor_scn67 || ""),
+      production: impactMultiplier(row, "production"),
+      income: impactMultiplier(row, "income"),
+      employment: impactMultiplier(row, "employment"),
+      source: row.tipo_registro || "Multiplicador setorial SCN67",
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  return [LOW_CARBON_AVERAGE_MULTIPLIERS, ...sectorRows];
+}
+
+function selectedImpactMultipliers() {
+  return impactSectorOptions().find((item) => item.id === state.impactSimulation.sector) || LOW_CARBON_AVERAGE_MULTIPLIERS;
+}
+
+function impactMultiplier(row, type) {
+  const columns = {
+    production: ["multiplicador_producao_tsb", "multiplicador_producao"],
+    income: ["multiplicador_renda_tsb", "multiplicador_renda"],
+    employment: ["multiplicador_emprego_tsb", "multiplicador_emprego"],
+  }[type];
+  for (const column of columns) {
+    const value = Number(row[column]);
+    if (Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
 function clearFilters() {
-  state.filters = {
-    period: "all",
-    flow: "all",
-    cnae: "all",
-    prodlist: "all",
-    ncm: "",
-    country: "",
-    status: "all",
-    uf: "all",
-    municipality: "all",
-    scope: "all",
-    fuel: "all",
-    layer: "all",
-  };
+  state.filters = { ...DEFAULT_FILTERS };
   ["period", "flow", "cnae", "prodlist", "status", "uf", "scope", "fuel", "layer"].forEach((key) => (byId(`${key}Filter`).value = "all"));
   byId("municipalityFilter").value = "";
   byId("ncmFilter").value = "";
@@ -232,18 +331,23 @@ function stepPeriod(delta) {
 
 async function render() {
   const params = new URLSearchParams(state.filters);
+  updateBrowserUrl();
+  updateContextSummary();
   updateExportLinks(params);
-  const [response, employmentResponse, fuelResponse] = await Promise.all([
+  const [response, employmentResponse, fuelResponse, tsbResponse] = await Promise.all([
     fetch(`/api/query?${params.toString()}`),
     fetch(`/api/employment?${params.toString()}`),
     fetch(`/api/fuels?${params.toString()}`),
+    fetch(`/api/tsb?${params.toString()}`),
   ]);
   if (!response.ok) throw new Error("API local indisponivel. Inicie com python dashboard/server.py.");
   if (!employmentResponse.ok) throw new Error("API local de empregos indisponivel.");
   if (!fuelResponse.ok) throw new Error("API local de combustiveis indisponivel.");
+  if (!tsbResponse.ok) throw new Error("API local de TSB indisponivel.");
   state.view = await response.json();
   state.employment = await employmentResponse.json();
   state.fuels = await fuelResponse.json();
+  state.tsb = await tsbResponse.json();
   const { groups } = state.view;
   renderKpis(state.view.kpis);
   barChart("monthlyChart", groups.monthly, { horizontal: false });
@@ -256,10 +360,50 @@ async function render() {
   sankeyChart("sankeyCnaeChart", groups.sankey_cnae);
   sankeyChart("sankeyProdChart", groups.sankey_prodlist);
   renderEmployment(state.employment);
+  renderTsbOperational(state.tsb);
   renderTransitionFuels(state.fuels);
   renderTables(state.view);
   renderEtl();
+  renderTsbReference();
   setupEtlButtons();
+}
+
+function activeFilterParams() {
+  const params = new URLSearchParams();
+  FILTER_KEYS.forEach((key) => {
+    const value = state.filters[key];
+    if (value && value !== DEFAULT_FILTERS[key]) params.set(key, value);
+  });
+  return params;
+}
+
+function updateBrowserUrl() {
+  const params = activeFilterParams();
+  const query = params.toString();
+  const nextUrl = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
+  if (nextUrl !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
+    window.history.replaceState(null, "", nextUrl);
+  }
+}
+
+function updateContextSummary() {
+  const target = byId("contextSummary");
+  if (!target) return;
+  const active = FILTER_KEYS
+    .filter((key) => state.filters[key] && state.filters[key] !== DEFAULT_FILTERS[key])
+    .map((key) => `${FILTER_LABELS[key]}: ${filterDisplayValue(key, state.filters[key])}`);
+  target.textContent = active.length
+    ? `Filtros ativos: ${active.join(" | ")}`
+    : "Filtros ativos: todos os recortes. Recortes exploratorios ficam sinalizados nas abas metodologicas.";
+}
+
+function filterDisplayValue(key, value) {
+  if (key === "municipality") {
+    return state.municipalityByCodeInfo?.get(value)?.label || value;
+  }
+  const select = byId(`${key}Filter`);
+  if (select) return select.options[select.selectedIndex]?.textContent || value;
+  return value;
 }
 
 function updateExportLinks(params = new URLSearchParams(state.filters)) {
@@ -267,6 +411,7 @@ function updateExportLinks(params = new URLSearchParams(state.filters)) {
   [
     ["exportTrade", "trade"],
     ["exportEmployment", "employment"],
+    ["exportTsb", "tsb"],
     ["exportFuels", "fuels"],
   ].forEach(([id, dataset]) => {
     const link = byId(id);
@@ -315,6 +460,47 @@ function renderEmploymentScope(rows) {
     .join("");
 }
 
+function renderTsbOperational(view) {
+  const k = view.kpis || {};
+  const cards = [
+    ["Massa salarial TSB", brl(k.wage_mass || 0)],
+    ["Vinculos TSB", fmtNum.format(k.formal_jobs || 0)],
+    ["Salario medio TSB", brl(k.average_wage || 0)],
+    ["Massa industrial no relatorio", fmtPct.format(k.report_industrial_wage_share || 0)],
+    ["CNAEs criterio principal", fmtNum.format(k.report_main_cnae_count || 0)],
+    ["CNAEs operacionais", fmtNum.format(k.cnaes || 0)],
+    ["Setores industriais expostos", fmtNum.format(k.report_exposed_industrial_sectors || 0)],
+    ["SCN67 operacionais", fmtNum.format(k.scn67 || 0)],
+  ];
+  byId("tsbKpis").innerHTML = cards.map(([label, value]) => `<article class="kpi"><span>${label}</span><strong>${value}</strong></article>`).join("");
+  renderImpactSimulation();
+  barChart("tsbCnaeChart", view.groups?.cnae || [], { horizontal: true, limit: 20, valueFormatter: (v) => fmtNum.format(v || 0) });
+  barChart("tsbScnChart", view.groups?.scn67 || [], { horizontal: true, limit: 20, valueFormatter: (v) => fmtNum.format(v || 0) });
+  barChart("tsbUfChart", view.groups?.uf || [], { horizontal: true, limit: 27, valueFormatter: (v) => fmtNum.format(v || 0) });
+  barChart("tsbMunicipalityChart", view.groups?.municipality || [], { horizontal: true, limit: 25, valueFormatter: (v) => fmtNum.format(v || 0) });
+  renderTsbComparisonTable("tsbComparisonTable", view.comparison || []);
+  renderTsbTerritoryTable("tsbOperationalTerritoryTable", view.territory || []);
+}
+
+function renderImpactSimulation() {
+  const results = byId("impactResults");
+  const note = byId("impactMethodNote");
+  if (!results || !note) return;
+  const amount = Math.max(0, Number(state.impactSimulation.amountMillionBrl) || 0);
+  const multiplier = selectedImpactMultipliers();
+  const production = amount * (multiplier.production || 0);
+  const income = amount * (multiplier.income || 0);
+  const jobs = amount * (multiplier.employment || 0);
+  const cards = [
+    ["Producao estimada", `R$ ${fmtOneDecimal.format(production)} mi`],
+    ["Renda estimada", `R$ ${fmtOneDecimal.format(income)} mi`],
+    ["Empregos estimados", fmtNum.format(jobs)],
+    ["Multiplicadores", `${formatDecimal(multiplier.production)} | ${formatDecimal(multiplier.income)} | ${formatDecimal(multiplier.employment)}`],
+  ];
+  results.innerHTML = cards.map(([label, value]) => `<article class="kpi"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></article>`).join("");
+  note.textContent = `${multiplier.source}. Calculo: valor informado em R$ milhoes multiplicado por producao, renda e emprego por R$ 1 milhao. Resultado exploratorio para discussao de cenarios, nao uma previsao fiscal ou contratual.`;
+}
+
 function fuelLabel(value) {
   return (
     {
@@ -322,8 +508,8 @@ function fuelLabel(value) {
       amonia: "Amonia",
       metanol_derivados: "Metanol e derivados",
       etanol: "Etanol",
-      saf: "SAF",
-      combustiveis_maritimos_baixa_emissao: "Combustiveis maritimos",
+      saf: "Produtos relacionados a combustiveis de aviacao",
+      combustiveis_maritimos_baixa_emissao: "Produtos relacionados a combustiveis maritimos",
     }[value] || String(value || "-").replaceAll("_", " ")
   );
 }
@@ -353,7 +539,7 @@ function renderTransitionFuels(view) {
     ["Recortes", fmtNum.format(k.fuels || 0)],
     ["Etapas", fmtNum.format(k.layers || 0)],
     ["NCMs", fmtNum.format(k.ncms || 0)],
-    ["Classificacao", "Preliminar"],
+    ["Classificacao", "Exploratoria"],
   ];
   byId("fuelKpis").innerHTML = cards.map(([label, value]) => `<article class="kpi"><span>${label}</span><strong>${value}</strong></article>`).join("");
   barChart("fuelChart", (view.groups?.fuel || []).map((r) => ({ ...r, label: fuelLabel(r.key) })), { horizontal: true, limit: 20 });
@@ -378,7 +564,7 @@ function renderTransitionFuels(view) {
 function renderFuelIndicatorsTable(id, rows) {
   renderSimpleTable(
     id,
-    ["Combustivel", "Etapa", "Valor comercial", "Importacoes", "Exportacoes", "Saldo", "NCMs", "Status"],
+    ["Recorte", "Etapa", "Valor comercial", "Importacoes", "Exportacoes", "Saldo", "NCMs", "Status"],
     rows,
     (r) => [
       fuelLabel(r.recorte_combustivel),
@@ -396,7 +582,7 @@ function renderFuelIndicatorsTable(id, rows) {
 function renderFuelDriversTable(id, rows) {
   renderSimpleTable(
     id,
-    ["Combustivel", "Etapa", "NCM", "Fluxo", "Valor", "Peso kg", "Papel no recorte"],
+    ["Recorte", "Etapa", "NCM", "Fluxo", "Valor", "Peso kg", "Papel no recorte"],
     rows,
     (r) => [
       fuelLabel(r.recorte_combustivel),
@@ -481,6 +667,97 @@ function renderEtl() {
   refreshEtlStatus();
 }
 
+function renderTsbReference() {
+  renderSimpleTable(
+    "tsbRaisSummaryTable",
+    ["Ano", "Associado TSB", "Grupo", "Vinculos RAIS", "CNAEs", "Municipios"],
+    state.data.rais_tsb_employment_summary || [],
+    (r) => [
+      r.year,
+      r.tsb_associated ? "Sim" : "Nao",
+      r.tsb_grupo_exposicao,
+      fmtNum.format(r.formal_jobs || 0),
+      fmtNum.format(r.cnae_count || 0),
+      fmtNum.format(r.municipality_count || 0),
+    ],
+  );
+  renderSimpleTable(
+    "tsbCnaeBridgeTable",
+    ["CNAE", "Associado TSB", "Grupo", "Exposicao SCN67", "CNAE5 TSB", "SCN67"],
+    state.data.bridge_tsb_cnae_class || [],
+    (r) => [
+      r.cnae_class,
+      r.tsb_associated ? "Sim" : "Nao",
+      r.tsb_grupo_exposicao,
+      fmtPct.format(r.tsb_exposicao_scn67_max || 0),
+      r.tsb_cnae5_list,
+      r.tsb_scn67_list,
+    ],
+  );
+  renderSimpleTable(
+    "tsbNcmBridgeTable",
+    ["NCM", "Associado TSB", "Grupo", "CNAEs", "PRODLIST", "CNAE5 TSB"],
+    state.data.bridge_tsb_ncm || [],
+    (r) => [
+      r.ncm,
+      r.tsb_associated ? "Sim" : "Nao",
+      r.tsb_grupo_exposicao,
+      r.cnae_class_list,
+      r.prodlist_code_list,
+      r.tsb_cnae5_list,
+    ],
+  );
+  renderSimpleTable(
+    "tsbTerritoryTable",
+    ["Ano", "UF", "Municipio", "Grupo", "Vinculos RAIS", "CNAEs"],
+    state.data.rais_tsb_employment_territory || [],
+    (r) => [
+      r.year,
+      r.uf,
+      r.municipality_code,
+      r.tsb_grupo_exposicao,
+      fmtNum.format(r.formal_jobs || 0),
+      fmtNum.format(r.cnae_count || 0),
+    ],
+  );
+  renderSimpleTable(
+    "tsbCnae5Table",
+    ["CNAE5", "Descricao", "SCN67", "Setor SCN67", "Criterio"],
+    state.data.dim_tsb_cnae5 || [],
+    (r) => [r.cnae5, r.descricao_cnae5, r.scn67, r.setor_scn67, r.criterio_classificacao],
+  );
+  renderSimpleTable(
+    "tsbScn67Table",
+    ["SCN67", "Setor", "Exposicao TSB", "Grupo", "Leitura tecnica"],
+    state.data.dim_scn67_tsb || [],
+    (r) => [r.scn67, r.setor_scn67, r.exposicao_tsb, r.grupo_exposicao, r.leitura_tecnica],
+  );
+  renderSimpleTable(
+    "tsbMultipliersTable",
+    ["Tipo", "SCN67", "Setor/recorte", "Grupo", "Producao total", "Renda total", "Emprego total", "Producao TSB", "Renda TSB", "Emprego TSB", "Observacao"],
+    state.data.multiplicadores_scn67 || [],
+    (r) => [
+      r.tipo_registro,
+      r.scn67,
+      r.setor_scn67,
+      r.grupo_exposicao,
+      formatDecimal(r.multiplicador_producao),
+      formatDecimal(r.multiplicador_renda),
+      formatDecimal(r.multiplicador_emprego),
+      formatDecimal(r.multiplicador_producao_tsb),
+      formatDecimal(r.multiplicador_renda_tsb),
+      formatDecimal(r.multiplicador_emprego_tsb),
+      r.observacao,
+    ],
+  );
+  renderSimpleTable(
+    "tsbSourcesTable",
+    ["Tipo", "Nome", "Natureza/regra", "Criterio", "Uso", "Interpretacao"],
+    state.data.fontes_tsb_robustez || [],
+    (r) => [r.tipo_registro, r.nome, r.natureza_ou_regra, r.criterio_classificacao, r.uso_relatorio, r.interpretacao],
+  );
+}
+
 function renderTable(id, headers, rows, mapRow) {
   const total = rows.reduce((acc, r) => acc + r.value, 0) || 1;
   byId(id).innerHTML = `<thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows
@@ -497,6 +774,12 @@ function renderSimpleTable(id, headers, rows, mapRow) {
 function cellHtml(value) {
   const text = String(value || "-");
   return text.startsWith("<button ") ? text : escapeHtml(text);
+}
+
+function formatDecimal(value) {
+  if (value === null || value === undefined || value === "") return "-";
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 3 }).format(numeric) : String(value);
 }
 
 function setupEtlButtons() {
@@ -596,6 +879,39 @@ function renderEmploymentPlatformTable(id, rows) {
     .map((d) => {
       const cnae = optionLabel(d.cnae_class || "-", d.cnae_name || "");
       return `<tr><td>${escapeHtml(cnae)}</td><td>${escapeHtml(d.rationale || "-")}</td><td>${fmtNum.format(d.rais_formal_jobs || 0)}</td><td>${brl(d.rais_december_wage_mass ?? d.rais_wage_mass ?? 0)}</td><td>${brl(d.rais_average_december_wage ?? d.rais_average_wage ?? 0)}</td><td>${brl(d.rais_average_monthly_wage ?? 0)}</td><td>${money(d.trade_value_usd || 0)}</td><td>${d.external_dependency_ratio == null ? "-" : fmtPct.format(d.external_dependency_ratio)}</td><td>${escapeHtml(d.priority_tier || "-")}</td><td>${escapeHtml(scopeLabel(d.platform_scope_status))}</td><td>${fmtPct.format(d.employment_platform_prelim_score ?? d.employment_platform_score ?? 0)}</td><td>${escapeHtml(d.employment_platform_score_status || "preliminar")}</td></tr>`;
+    })
+    .join("")}</tbody>`;
+}
+
+function renderTsbComparisonTable(id, rows) {
+  const headers = [
+    "CNAE",
+    "SCN67",
+    "Aderencia TSB-BV",
+    "Prioridade Border Value",
+    "Exposicao TSB",
+    "Dependencia externa",
+    "Valor comercial",
+    "Massa salarial",
+    "Vinculos",
+    "Multiplicador emprego",
+  ];
+  byId(id).innerHTML = `<thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows
+    .map((d) => {
+      const cnae = optionLabel(d.cnae_class || "-", d.cnae_name || "");
+      const scn = optionLabel(d.primary_scn67 || "-", d.primary_setor_scn67 || "");
+      const alignment = d.tsb_platform_alignment_score == null ? "-" : `${fmtPct.format(d.tsb_platform_alignment_score)} ${d.tsb_platform_alignment_label || ""}`.trim();
+      return `<tr><td>${escapeHtml(cnae)}</td><td>${escapeHtml(scn)}</td><td>${escapeHtml(alignment)}</td><td>${escapeHtml(d.priority_border_value || "-")}</td><td>${escapeHtml(d.tsb_grupo_exposicao || "-")} (${fmtPct.format(d.tsb_exposicao_scn67_max || 0)})</td><td>${d.external_dependency_ratio == null ? "-" : fmtPct.format(d.external_dependency_ratio)}</td><td>${money(d.trade_value_usd || 0)}</td><td>${brl(d.wage_mass || 0)}</td><td>${fmtNum.format(d.formal_jobs || 0)}</td><td>${formatDecimal(d.employment_multiplier_tsb)}</td></tr>`;
+    })
+    .join("")}</tbody>`;
+}
+
+function renderTsbTerritoryTable(id, rows) {
+  const headers = ["Ano", "UF", "Municipio", "Grupo TSB", "Vinculos", "Massa salarial", "CNAEs"];
+  byId(id).innerHTML = `<thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows
+    .map((d) => {
+      const municipality = d.municipality_name ? `${d.municipality_name} (${d.municipality_code})` : d.municipality_code || "-";
+      return `<tr><td>${escapeHtml(d.year || "-")}</td><td>${escapeHtml(d.uf || "-")}</td><td>${escapeHtml(municipality)}</td><td>${escapeHtml(d.tsb_grupo_exposicao || "-")}</td><td>${fmtNum.format(d.formal_jobs || 0)}</td><td>${brl(d.wage_mass || 0)}</td><td>${fmtNum.format(d.cnae_count || 0)}</td></tr>`;
     })
     .join("")}</tbody>`;
 }

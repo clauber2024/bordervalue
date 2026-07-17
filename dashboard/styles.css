@@ -118,6 +118,35 @@ button:disabled {
   min-width: 0;
 }
 
+.context-bar {
+  align-items: center;
+  background: #f1f6f4;
+  border: 1px solid #bfd2cc;
+  border-left: 4px solid var(--green);
+  border-radius: 8px;
+  color: var(--ink);
+  display: flex;
+  gap: 10px;
+  line-height: 1.35;
+  margin: 0 0 14px;
+  min-height: 42px;
+  padding: 9px 12px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.context-bar strong {
+  flex: 0 0 auto;
+  font-size: 13px;
+}
+
+.context-bar span {
+  color: var(--muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
 .tabs {
   border-bottom: 1px solid var(--line);
   display: flex;
@@ -399,6 +428,10 @@ th {
   margin-top: 9px;
 }
 
+.tsb-reference {
+  margin-bottom: 16px;
+}
+
 .etl-summary {
   display: grid;
   gap: 10px;
@@ -449,6 +482,36 @@ th {
   padding: 12px 14px;
 }
 
+.impact-simulator {
+  margin-bottom: 16px;
+}
+
+.simulator-header {
+  align-items: end;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.simulator-source,
+.simulator-note {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.simulator-controls {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(260px, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.impact-results {
+  margin-bottom: 10px;
+}
+
 @media (max-width: 1100px) {
   .filters,
   .kpis,
@@ -482,6 +545,16 @@ th {
 
   .exports {
     justify-content: stretch;
+  }
+
+  .simulator-header,
+  .simulator-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .simulator-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .export-button {
