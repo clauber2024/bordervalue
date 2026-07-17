@@ -206,10 +206,7 @@ setorial especializada.
   de carbono, origem do hidrogênio ou intensidade de emissões. Classificações
   como verde, renovável, azul ou baixa emissão exigem bases complementares de
   projetos, plantas, capacidade, certificação e emissões.
-- **Combustíveis da transição:** SAF, metanol, etanol e combustíveis marítimos
-  são recortes preliminares. Códigos comerciais podem misturar produto fóssil e
-  renovável, uso energético e uso industrial; os módulos registram drivers e
-  campos complementares, mas não inferem atributo ambiental somente pela NCM.
+- **Produtos relacionados à transição:** metanol, etanol, combustíveis de aviação e combustíveis marítimos são recortes exploratórios. Códigos comerciais podem misturar produto fóssil e renovável, uso energético e uso industrial; os módulos registram drivers e campos complementares, mas não inferem atributo ambiental somente pela NCM.
 
 ## 9. Procedimento de atualização
 
@@ -235,7 +232,7 @@ Eles não devem aparecer na pauta de desenvolvimento inicial de novas atividades
 10. Compare `manifest.json`, `quality_summary.csv` e artefatos finais com a
     execução anterior.
 11. Revise manualmente NCM genéricas, lacunas NCM–Prodlist, Prodlist sem CNAE e
-    classificações preliminares de combustíveis da transição.
+    recortes exploratórios de produtos relacionados à transição.
 12. Registre data/hora, ambiente, comando, fontes, hashes, justificativas e
     responsável pela aprovação.
 

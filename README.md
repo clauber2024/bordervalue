@@ -23,7 +23,7 @@ O dashboard oficial do projeto é a interface em `dashboard/`.
 
 Essa interface concentra os módulos já concluídos: indicadores Border Value,
 RAIS e cartografia municipal, mapa mundial de parceiros comerciais, hidrogênio,
-amônia e combustíveis da transição. A antiga interface experimental em `src/`
+amônia e produtos relacionados à transição. A antiga interface experimental em `src/`
 foi removida para evitar dois produtos e dois contratos de dados concorrentes.
 
 ## Execução
@@ -52,6 +52,7 @@ python build_rankings_recortes.py
 python build_sensibilidade_rateio.py
 python build_cadeias_minerais_estrategicas.py
 python build_combustiveis_transicao.py
+python build_tsb_bridge.py
 python dashboard/build_dashboard_data.py
 node build_final_border_value_workbook.mjs
 python prepare_publication_package.py
@@ -82,14 +83,17 @@ O Node.js permanece necessário apenas para os scripts executivos em `.mjs`, com
   estratégicas, drivers por NCM, criticidade e priorização por etapa. Quando
   disponíveis, incorpora os dados abertos ANM/Anuário Mineral Brasileiro como
   camada complementar de produção mineral por substância.
-- `build_combustiveis_transicao.py`: organiza hidrogênio, amônia, SAF, metanol,
-  etanol e combustíveis marítimos em camadas analíticas, drivers NCM e fontes
-  complementares necessárias.
+- `build_combustiveis_transicao.py`: organiza hidrogênio, amônia, metanol,
+  etanol, combustíveis de aviação e combustíveis marítimos em camadas
+  analíticas, drivers NCM e fontes complementares necessárias.
 - `dashboard/build_dashboard_data.py` e `dashboard/server.py`: preparam os dados
   do painel e servem a interface local com fluxos mundiais, território RAIS,
-  escopo Border Value e combustíveis da transição.
+  escopo Border Value e produtos relacionados à transição.
 - `build_final_border_value_workbook.mjs`: gera a planilha executiva final em
   `outputs/final_border_value_2026`.
+- `build_tsb_bridge.py`: materializa a Etapa 2 TSB em
+  `outputs/tsb_bridge_2026`, preservando CNAE5 do relatorio e conectando a
+  classe CNAE de quatro digitos da plataforma a PRODLIST, NCM e RAIS territorial.
 - `prepare_publication_package.py`: monta o pacote publicável com bases,
   metadados, dicionário de dados, reprodução e arquivos compactados.
 
@@ -105,9 +109,37 @@ O Node.js permanece necessário apenas para os scripts executivos em `.mjs`, com
 8. `fact_gdp`, quando houver PIB configurado
 9. `analytic_trade_cnae`
 10. `border_value_indicators_cnae`
+11. `bridge_tsb_cnae_class` e derivados TSB, apos a base oficial com RAIS
 
 O fato de comércio nunca é ligado diretamente à ponte 1:N. A tabela analítica é
 uma camada posterior e reconciliada, evitando dupla contagem.
+
+## Ponte TSB
+
+A ponte TSB e uma camada derivada, executada por `build_tsb_bridge.py`. Ela nao
+substitui a correspondencia oficial CONCLA/IBGE: primeiro reduz o CNAE5 do
+relatorio TSB para a classe CNAE de quatro digitos usada pela plataforma; depois
+propaga esse sinal para PRODLIST e NCM pela ponte `bridge_ncm_prodlist_cnae.csv`
+e para emprego formal pela RAIS.
+
+A ponte TSB nao traz camada ocupacional futura nem classificacao de ocupacoes verdes individuais. A
+leitura de emprego e setorial, baseada em CNAE/RAIS/SCN67/MIP: ela responde
+onde ha emprego em setores expostos a TSB. Uma leitura de ocupacao verde individual
+deve ser tratada como expansao metodologica propria, com RAIS aberta por camada ocupacional futura,
+dimensao ocupacional especifica e cruzamento CNAE + camada ocupacional futura + municipio.
+
+Principais saidas em `outputs/tsb_bridge_2026`:
+
+- `bridge_tsb_cnae_class.csv`: responde se a classe CNAE esta associada a
+  atividade TSB e qual e o grupo de exposicao SCN67.
+- `bridge_tsb_ncm.csv`: propaga a classificacao TSB para cada NCM observada na
+  plataforma, mantendo listas de CNAE, PRODLIST, CNAE5 e SCN67.
+- `rais_tsb_employment_summary.csv`: consolida vinculos RAIS por grupo de
+  exposicao TSB.
+- `rais_tsb_employment_territory.csv`: mostra onde o emprego formal desses
+  setores se concentra por UF e municipio.
+- `border_value_indicadores_finais_cnae_tsb.csv`: anexa a classificacao TSB aos
+  indicadores finais por CNAE.
 
 ## Camada RAIS
 
@@ -335,7 +367,7 @@ ao produto oficial.
   inicial está em `outputs/official_2026/priorizacao_especialistas_cnae.md` e a
   base completa em `outputs/official_2026/priorizacao_especialistas_cnae.csv`.
 - Validar, com fontes setoriais complementares, quais fluxos de hidrogênio,
-  amônia, SAF, metanol, etanol e combustíveis marítimos podem ser classificados
+  amônia, metanol, etanol, combustíveis de aviação e combustíveis marítimos podem ser classificados
   como renováveis, verdes, azuis ou de baixa emissão. A NCM organiza o produto,
   mas não certifica rota tecnológica nem intensidade de emissões.
 - Retomar a camada ANM/AMB quando `Producao_Bruta.csv` e
@@ -357,7 +389,7 @@ ao produto oficial.
    e a documentação do período de emprego formal.
 6. Executar os testes, a base oficial e a base RAIS, conferindo `manifest.json` e
    `quality_summary.csv`.
-7. Regerar as camadas finais, recortes setoriais, combustíveis da transição,
+7. Regerar as camadas finais, recortes setoriais, produtos relacionados à transição,
    dashboard, workbook e pacote de publicação.
 8. Registrar hashes, ambiente, data de execução, diferenças de cobertura e
    auditorias manuais relevantes.
@@ -407,7 +439,7 @@ ao produto oficial.
   Qualquer classificação ambiental exige bases complementares de projetos,
   plantas, capacidade, tecnologia, certificação, origem do hidrogênio e
   intensidade de emissões.
-- **Combustíveis da transição:** SAF, metanol, etanol e combustíveis marítimos
+- **Produtos relacionados à transição:** metanol, etanol, combustíveis de aviação e combustíveis marítimos
   são recortes transversais preliminares. Alguns códigos misturam produto fóssil
   e renovável ou usos industriais e energéticos; por isso os módulos indicam
   drivers comerciais e campos complementares requeridos, sem inferir atributo de

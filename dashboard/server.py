@@ -210,7 +210,10 @@ def read_dashboard_table(name: str) -> pd.DataFrame:
     if not DATA_JSON.exists():
         return pd.DataFrame()
     payload = json.loads(DATA_JSON.read_text(encoding="utf-8"))
-    return pd.DataFrame(payload.get(name, []))
+    value = payload.get(name, [])
+    if isinstance(value, dict):
+        return pd.DataFrame([value])
+    return pd.DataFrame(value)
 
 
 def grouped_fuel(df: pd.DataFrame, key: str, value_col: str = "trade_value_usd", limit: int | None = None) -> list[dict]:
@@ -218,6 +221,19 @@ def grouped_fuel(df: pd.DataFrame, key: str, value_col: str = "trade_value_usd",
         return []
     out = (
         df.groupby(key, as_index=False)[value_col]
+        .sum(min_count=1)
+        .sort_values(value_col, ascending=False, kind="stable")
+    )
+    if limit:
+        out = out.head(limit)
+    return [{"key": finite(row[key]), "label": finite(row[key]), "value": finite(row[value_col])} for _, row in out.iterrows()]
+
+
+def grouped_tsb(df: pd.DataFrame, key: str, value_col: str = "formal_jobs", limit: int | None = None) -> list[dict]:
+    if df.empty or key not in df.columns:
+        return []
+    out = (
+        df.groupby(key, dropna=False, as_index=False)[value_col]
         .sum(min_count=1)
         .sort_values(value_col, ascending=False, kind="stable")
     )
@@ -325,6 +341,9 @@ def run_update(source: str) -> None:
         DashboardHandler.fuel_ncm_drivers = read_dashboard_table("transition_fuel_ncm_drivers")
         DashboardHandler.fuel_complementary_sources = read_dashboard_table("transition_fuel_complementary_sources")
         DashboardHandler.fuel_framework = read_dashboard_table("transition_fuel_framework")
+        DashboardHandler.tsb_cnae = read_dashboard_table("tsb_operational_cnae")
+        DashboardHandler.tsb_territory = read_dashboard_table("rais_tsb_employment_territory")
+        DashboardHandler.tsb_summary = read_dashboard_table("tsb_operational_summary")
         set_etl_job(
             running=False,
             status="success",
@@ -356,6 +375,9 @@ class DashboardHandler(SimpleHTTPRequestHandler):
     fuel_ncm_drivers = read_dashboard_table("transition_fuel_ncm_drivers")
     fuel_complementary_sources = read_dashboard_table("transition_fuel_complementary_sources")
     fuel_framework = read_dashboard_table("transition_fuel_framework")
+    tsb_cnae = read_dashboard_table("tsb_operational_cnae")
+    tsb_territory = read_dashboard_table("rais_tsb_employment_territory")
+    tsb_summary = read_dashboard_table("tsb_operational_summary")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(DASHBOARD), **kwargs)
@@ -370,6 +392,9 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             return
         if parsed.path == "/api/fuels":
             self.handle_fuels(parsed.query)
+            return
+        if parsed.path == "/api/tsb":
+            self.handle_tsb(parsed.query)
             return
         if parsed.path == "/api/etl/status":
             self.write_json(etl_snapshot())
@@ -634,6 +659,96 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         }
         self.write_json(payload)
 
+    def handle_tsb(self, query: str) -> None:
+        params = {k: v[0] for k, v in parse_qs(query).items()}
+        cnae = self.tsb_cnae.copy()
+        territory = self.tsb_territory.copy()
+        if not territory.empty and "tsb_associated" in territory.columns:
+            territory = territory.loc[territory["tsb_associated"].astype(bool)]
+
+        cnae_filter = params.get("cnae", "all")
+        if cnae_filter and cnae_filter != "all" and not cnae.empty:
+            cnae = cnae.loc[cnae["cnae_class"].astype(str) == cnae_filter]
+        if params.get("uf", "all") != "all" and not territory.empty and "uf" in territory.columns:
+            territory = territory.loc[territory["uf"].fillna("").astype(str) == params["uf"]]
+        if params.get("municipality", "all") != "all" and not territory.empty and "municipality_code" in territory.columns:
+            territory = territory.loc[territory["municipality_code"].fillna("").astype(str) == params["municipality"]]
+
+        jobs = float(cnae["formal_jobs"].sum()) if "formal_jobs" in cnae.columns else 0
+        wage = float(cnae["wage_mass"].sum()) if "wage_mass" in cnae.columns else 0
+        summary = self.tsb_summary.iloc[0].to_dict() if not self.tsb_summary.empty else {}
+
+        scn_rows = []
+        if not cnae.empty and "primary_scn67" in cnae.columns:
+            scn = (
+                cnae.groupby(["primary_scn67", "primary_setor_scn67"], dropna=False, as_index=False)[
+                    ["formal_jobs", "wage_mass", "trade_value_usd"]
+                ]
+                .sum(min_count=1)
+                .sort_values("formal_jobs", ascending=False, kind="stable")
+                .head(40)
+            )
+            scn_rows = json_records(scn)
+
+        comparison_cols = [
+            column
+            for column in [
+                "cnae_class",
+                "cnae_name",
+                "primary_scn67",
+                "primary_setor_scn67",
+                "tsb_platform_alignment_score",
+                "tsb_platform_alignment_label",
+                "priority_border_value",
+                "tsb_grupo_exposicao",
+                "tsb_exposicao_scn67_max",
+                "external_dependency_ratio",
+                "trade_value_usd",
+                "wage_mass",
+                "formal_jobs",
+                "employment_multiplier_tsb",
+            ]
+            if column in cnae.columns
+        ]
+        if comparison_cols:
+            comparison_sort_cols = [column for column in ["tsb_platform_alignment_score", "wage_mass", "trade_value_usd"] if column in cnae.columns]
+            comparison = cnae.sort_values(
+                comparison_sort_cols,
+                ascending=[False] * len(comparison_sort_cols),
+                kind="stable",
+            ).head(80)[comparison_cols]
+        else:
+            comparison = pd.DataFrame()
+        territory_detail = (
+            territory.sort_values("formal_jobs", ascending=False, kind="stable").head(120)
+            if not territory.empty and "formal_jobs" in territory.columns
+            else territory.head(120)
+        )
+        payload = {
+            "kpis": {
+                "formal_jobs": finite(jobs),
+                "wage_mass": finite(wage),
+                "average_wage": finite(wage / jobs) if jobs else None,
+                "cnaes": int(cnae["cnae_class"].nunique()) if "cnae_class" in cnae.columns else 0,
+                "scn67": int(cnae["primary_scn67"].replace("", pd.NA).dropna().nunique()) if "primary_scn67" in cnae.columns else 0,
+                "territory_jobs": finite(float(territory["formal_jobs"].sum())) if "formal_jobs" in territory.columns else 0,
+                "report_industrial_wage_share": finite(summary.get("report_industrial_wage_share", 0.27078)),
+                "report_main_cnae_count": finite(summary.get("report_main_cnae_count", 64)),
+                "report_exposed_industrial_sectors": finite(summary.get("report_exposed_industrial_sectors", 15)),
+            },
+            "groups": {
+                "cnae": grouped_tsb(cnae, "cnae_class", "formal_jobs", 30),
+                "scn67": [{"key": row.get("primary_scn67"), "label": row.get("primary_setor_scn67") or row.get("primary_scn67"), "value": row.get("formal_jobs")} for row in scn_rows],
+                "uf": grouped_tsb(territory, "uf", "formal_jobs", 27),
+                "municipality": grouped_tsb(territory, "municipality_code", "formal_jobs", 40),
+                "exposure": grouped_tsb(cnae, "tsb_grupo_exposicao", "formal_jobs", 10),
+            },
+            "comparison": json_records(comparison),
+            "territory": json_records(territory_detail),
+            "scn67": scn_rows,
+        }
+        self.write_json(payload)
+
     def handle_export(self, query: str) -> None:
         params = {k: v[0] for k, v in parse_qs(query).items()}
         dataset = params.get("dataset", "trade")
@@ -647,6 +762,9 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             _, drivers = self.filtered_fuels(params)
             frame = drivers.sort_values("value_usd", ascending=False).head(5000) if not drivers.empty else drivers
             filename = "border_value_combustiveis_filtrado.csv"
+        elif dataset == "tsb":
+            frame = self.tsb_cnae.sort_values("wage_mass", ascending=False).head(5000)
+            filename = "border_value_tsb_baixo_carbono.csv"
         else:
             self.send_error(400, "Dataset de exportacao invalido.")
             return

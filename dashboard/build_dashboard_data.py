@@ -22,6 +22,21 @@ INPUTS = ROOT / "inputs" / "official"
 MUNICIPALITY_DIM = ROOT / "dados" / "cache" / "dim_municipio_ibge.csv"
 COUNTRY_DIM = ROOT / "dados" / "cache" / "dim_pais_comex.csv"
 MUNICIPALITY_GEO_DIR = ROOT / "dashboard" / "geo"
+TSB_DIR = ROOT / "dados" / "tsb"
+TSB_REFERENCE_FILES = {
+    "dim_tsb_cnae5": TSB_DIR / "dim_tsb_cnae5.csv",
+    "dim_scn67_tsb": TSB_DIR / "dim_scn67_tsb.csv",
+    "multiplicadores_scn67": TSB_DIR / "multiplicadores_scn67.csv",
+    "fontes_tsb_robustez": TSB_DIR / "fontes_tsb_robustez.csv",
+}
+TSB_BRIDGE = ROOT / "outputs" / "tsb_bridge_2026"
+TSB_BRIDGE_FILES = {
+    "bridge_tsb_cnae_class": TSB_BRIDGE / "bridge_tsb_cnae_class.csv",
+    "bridge_tsb_ncm": TSB_BRIDGE / "bridge_tsb_ncm.csv",
+    "rais_tsb_employment_cnae": TSB_BRIDGE / "rais_tsb_employment_cnae.csv",
+    "rais_tsb_employment_territory": TSB_BRIDGE / "rais_tsb_employment_territory.csv",
+    "rais_tsb_employment_summary": TSB_BRIDGE / "rais_tsb_employment_summary.csv",
+}
 IBGE_MUNICIPALITIES_URL = "https://servicodados.ibge.gov.br/api/v1/localidades/municipios"
 COMEX_COUNTRIES_URL = "https://balanca.economia.gov.br/balanca/bd/tabelas/PAIS.csv"
 IBGE_MUNICIPALITY_MESH_URL = (
@@ -91,6 +106,13 @@ def read_optional_csv(path: Path, **kwargs) -> pd.DataFrame:
     if not path.exists() or path.stat().st_size == 0:
         return pd.DataFrame()
     return pd.read_csv(path, **kwargs)
+
+
+def read_reference_csv(path: Path, columns: list[str], dtype: str | dict = "string") -> pd.DataFrame:
+    frame = read_optional_csv(path, dtype=dtype)
+    if frame.empty:
+        return pd.DataFrame(columns=columns)
+    return frame.reindex(columns=columns)
 
 
 def clean_json_value(value):
@@ -331,6 +353,13 @@ def build_etl_metadata() -> dict:
             source_status(OFFICIAL_RAIS / "fact_employment_rais.csv", "RAIS vinculos formais", "Anual", "Tecnico de dados", "Emprego formal", "rais"),
             source_status(OFFICIAL_RAIS / "fact_gdp.csv", "PIB territorial", "Anual", "Tecnico de dados", "PIB", "gdp"),
             source_status(TRANSITION_FUEL_FILES["indicators"], "Hidrogenio, amonia e combustiveis da transicao", "A cada revisao metodologica", "Especialista setorial", "Recorte transversal", "transition_fuels"),
+            source_status(TSB_REFERENCE_FILES["dim_tsb_cnae5"], "TSB por CNAE5", "A cada revisao metodologica", "Relatorio TSB", "Referencia metodologica", "tsb_reference"),
+            source_status(TSB_REFERENCE_FILES["dim_scn67_tsb"], "Exposicao TSB por SCN67", "A cada revisao metodologica", "Relatorio TSB", "Referencia metodologica", "tsb_reference"),
+            source_status(TSB_REFERENCE_FILES["multiplicadores_scn67"], "Multiplicadores SCN67", "A cada revisao metodologica", "Relatorio TSB", "Referencia metodologica", "tsb_reference"),
+            source_status(TSB_REFERENCE_FILES["fontes_tsb_robustez"], "Fontes e robustez TSB", "A cada revisao metodologica", "Relatorio TSB", "Referencia metodologica", "tsb_reference"),
+            source_status(TSB_BRIDGE_FILES["bridge_tsb_cnae_class"], "Ponte TSB-CNAE classe", "A cada revisao metodologica", "Relatorio TSB + plataforma", "Artefato derivado", "tsb_bridge"),
+            source_status(TSB_BRIDGE_FILES["bridge_tsb_ncm"], "Ponte TSB-NCM", "A cada revisao metodologica", "Relatorio TSB + plataforma", "Artefato derivado", "tsb_bridge"),
+            source_status(TSB_BRIDGE_FILES["rais_tsb_employment_summary"], "RAIS por exposicao TSB", "A cada revisao RAIS/TSB", "Relatorio TSB + RAIS", "Artefato derivado", "tsb_bridge"),
             source_status(official / "quality_summary.csv", "Resumo automatico de qualidade", "A cada execucao", "Validador tecnico", "Controle", "quality"),
             source_status(official / "manifest.json", "Manifest da execucao oficial", "A cada publicacao", "Responsavel de documentacao", "Metadados", "manifest"),
         ],
@@ -552,6 +581,147 @@ def build_employment_scope_summary(employment_platform: pd.DataFrame) -> pd.Data
     return summary.sort_values("_order").drop(columns="_order").reset_index(drop=True)
 
 
+def first_list_value(value: object) -> str:
+    parts = [part for part in str(value or "").split(";") if part]
+    return parts[0] if parts else ""
+
+
+def percent_rank(series: pd.Series) -> pd.Series:
+    numeric = pd.to_numeric(series, errors="coerce").fillna(0)
+    if numeric.nunique(dropna=True) <= 1:
+        return pd.Series(0.0, index=series.index)
+    return numeric.rank(pct=True, method="average")
+
+
+def build_tsb_operational_cnae(
+    rais_tsb_cnae: pd.DataFrame,
+    bridge_tsb_cnae_class: pd.DataFrame,
+    final_cnae: pd.DataFrame,
+    multiplicadores_scn67: pd.DataFrame,
+) -> pd.DataFrame:
+    if rais_tsb_cnae.empty:
+        return pd.DataFrame()
+
+    result = rais_tsb_cnae.copy()
+    for column in ["formal_jobs", "wage_mass", "december_wage_mass", "tsb_exposicao_scn67_max"]:
+        if column in result.columns:
+            result[column] = pd.to_numeric(result[column], errors="coerce")
+    result = result.loc[result.get("tsb_associated", False).astype(bool)].copy()
+    if result.empty:
+        return result
+
+    bridge_cols = [
+        column
+        for column in [
+            "cnae_class",
+            "tsb_cnae5_count",
+            "tsb_cnae5_list",
+            "tsb_scn67_list",
+            "tsb_setor_scn67_list",
+            "tsb_leitura_tecnica",
+        ]
+        if column in bridge_tsb_cnae_class.columns
+    ]
+    if bridge_cols:
+        result = result.merge(
+            bridge_tsb_cnae_class[bridge_cols].drop_duplicates("cnae_class"),
+            on="cnae_class",
+            how="left",
+        )
+
+    final_cols = [
+        column
+        for column in [
+            "cnae_class",
+            "cnae_name",
+            "priority_tier",
+            "priority_score",
+            "trade_value_usd",
+            "import_value_usd",
+            "export_value_usd",
+            "external_dependency_ratio",
+            "external_dependency_status",
+            "rationale",
+        ]
+        if column in final_cnae.columns
+    ]
+    if final_cols:
+        result = result.merge(final_cnae[final_cols].drop_duplicates("cnae_class"), on="cnae_class", how="left")
+
+    multipliers = multiplicadores_scn67.loc[
+        multiplicadores_scn67.get("scn67", pd.Series(dtype="string")).notna()
+        & multiplicadores_scn67.get("multiplicador_emprego", pd.Series(dtype="float64")).notna()
+    ].copy()
+    multiplier_by_scn = {}
+    if not multipliers.empty:
+        multipliers["scn67"] = multipliers["scn67"].astype("string").str.zfill(4)
+        multipliers["employment_multiplier"] = multipliers["multiplicador_emprego_tsb"].fillna(
+            multipliers["multiplicador_emprego"]
+        )
+        multiplier_by_scn = multipliers.set_index("scn67")["employment_multiplier"].to_dict()
+
+    def max_multiplier(value: object):
+        values = [multiplier_by_scn.get(part) for part in str(value or "").split(";") if part in multiplier_by_scn]
+        values = [value for value in values if pd.notna(value)]
+        return max(values) if values else pd.NA
+
+    result["primary_scn67"] = result.get("tsb_scn67_list", pd.Series("", index=result.index)).map(first_list_value)
+    result["primary_setor_scn67"] = result.get("tsb_setor_scn67_list", pd.Series("", index=result.index)).map(first_list_value)
+    result["employment_multiplier_tsb"] = result.get("tsb_scn67_list", pd.Series("", index=result.index)).map(max_multiplier)
+    result["priority_border_value"] = result.get("priority_tier", pd.Series("", index=result.index)).fillna("")
+    if "tsb_platform_alignment_score" not in result.columns:
+        for column in ["tsb_exposicao_scn67_max", "priority_score", "formal_jobs", "wage_mass", "external_dependency_ratio", "trade_value_usd"]:
+            if column not in result.columns:
+                result[column] = 0.0
+            result[column] = pd.to_numeric(result[column], errors="coerce").fillna(0.0)
+        result["tsb_exposure_component_score"] = result["tsb_exposicao_scn67_max"].clip(lower=0, upper=1)
+        result["border_value_relevance_component_score"] = result["priority_score"].clip(lower=0, upper=1)
+        result["rais_scale_component_score"] = pd.concat(
+            [percent_rank(result["formal_jobs"]), percent_rank(result["wage_mass"])],
+            axis=1,
+        ).max(axis=1)
+        result["external_or_commercial_component_score"] = pd.concat(
+            [percent_rank(result["external_dependency_ratio"]), percent_rank(result["trade_value_usd"])],
+            axis=1,
+        ).max(axis=1)
+        result["tsb_platform_alignment_score"] = (
+            0.40 * result["tsb_exposure_component_score"]
+            + 0.25 * result["border_value_relevance_component_score"]
+            + 0.20 * result["rais_scale_component_score"]
+            + 0.15 * result["external_or_commercial_component_score"]
+        ).round(4)
+        result["tsb_platform_alignment_label"] = pd.cut(
+            result["tsb_platform_alignment_score"],
+            bins=[-0.001, 0.50, 0.70, 1.001],
+            labels=["3 - aderencia baixa", "2 - aderencia media", "1 - maior aderencia TSB"],
+        ).astype("string")
+    result["wage_mass_share_within_tsb"] = result["wage_mass"] / result["wage_mass"].sum() if result["wage_mass"].sum() else 0
+    result["jobs_share_within_tsb"] = result["formal_jobs"] / result["formal_jobs"].sum() if result["formal_jobs"].sum() else 0
+    return result.sort_values(["tsb_platform_alignment_score", "wage_mass"], ascending=[False, False], kind="stable").reset_index(drop=True)
+
+
+def build_tsb_operational_summary(tsb_cnae: pd.DataFrame, rais_tsb_summary: pd.DataFrame) -> dict:
+    associated = rais_tsb_summary.loc[rais_tsb_summary.get("tsb_associated", False).astype(bool)].copy()
+    total = rais_tsb_summary.copy()
+    wage = float(associated["wage_mass"].sum()) if "wage_mass" in associated.columns else 0
+    jobs = float(associated["formal_jobs"].sum()) if "formal_jobs" in associated.columns else 0
+    total_wage = float(total["wage_mass"].sum()) if "wage_mass" in total.columns else 0
+    total_jobs = float(total["formal_jobs"].sum()) if "formal_jobs" in total.columns else 0
+    return {
+        "formal_jobs_tsb": jobs,
+        "wage_mass_tsb": wage,
+        "formal_jobs_share_total_rais": jobs / total_jobs if total_jobs else 0,
+        "wage_mass_share_total_rais": wage / total_wage if total_wage else 0,
+        "report_industrial_wage_share": 0.27078,
+        "report_main_cnae_count": 64,
+        "report_exposed_industrial_sectors": 15,
+        "operational_cnae_count": int(tsb_cnae["cnae_class"].nunique()) if "cnae_class" in tsb_cnae.columns else 0,
+        "operational_scn67_count": int(
+            tsb_cnae.get("primary_scn67", pd.Series(dtype="string")).replace("", pd.NA).dropna().nunique()
+        ),
+    }
+
+
 def main() -> None:
     bridge = read_bridge()
     trade = aggregate_trade(bridge)
@@ -693,6 +863,103 @@ def main() -> None:
     fuel_ncm_drivers = read_optional_csv(TRANSITION_FUEL_FILES["ncm_drivers"], dtype={"recorte_combustivel": "string", "camada_analitica": "string", "ncm": "string"})
     fuel_complementary = read_optional_csv(TRANSITION_FUEL_FILES["complementary_sources"], dtype="string")
     fuel_framework = read_optional_csv(TRANSITION_FUEL_FILES["framework"], dtype="string")
+    dim_tsb_cnae5 = read_reference_csv(
+        TSB_REFERENCE_FILES["dim_tsb_cnae5"],
+        ["cnae5", "descricao_cnae5", "scn67", "setor_scn67", "criterio_classificacao"],
+    )
+    dim_scn67_tsb = read_reference_csv(
+        TSB_REFERENCE_FILES["dim_scn67_tsb"],
+        ["scn67", "setor_scn67", "exposicao_tsb", "grupo_exposicao", "leitura_tecnica"],
+    )
+    multiplicadores_scn67 = read_reference_csv(
+        TSB_REFERENCE_FILES["multiplicadores_scn67"],
+        [
+            "tipo_registro",
+            "scn67",
+            "setor_scn67",
+            "grupo_exposicao",
+            "multiplicador_producao",
+            "multiplicador_renda",
+            "multiplicador_emprego",
+            "multiplicador_producao_tsb",
+            "multiplicador_renda_tsb",
+            "multiplicador_emprego_tsb",
+            "observacao",
+        ],
+        dtype={
+            "tipo_registro": "string",
+            "scn67": "string",
+            "setor_scn67": "string",
+            "grupo_exposicao": "string",
+            "multiplicador_producao": "float64",
+            "multiplicador_renda": "float64",
+            "multiplicador_emprego": "float64",
+            "multiplicador_producao_tsb": "float64",
+            "multiplicador_renda_tsb": "float64",
+            "multiplicador_emprego_tsb": "float64",
+            "observacao": "string",
+        },
+    )
+    fontes_tsb_robustez = read_reference_csv(
+        TSB_REFERENCE_FILES["fontes_tsb_robustez"],
+        [
+            "tipo_registro",
+            "nome",
+            "natureza_ou_regra",
+            "criterio_classificacao",
+            "uso_relatorio",
+            "interpretacao",
+        ],
+    )
+    bridge_tsb_cnae_class = read_optional_csv(
+        TSB_BRIDGE_FILES["bridge_tsb_cnae_class"],
+        dtype={"cnae_class": "string", "tsb_cnae5_list": "string", "tsb_scn67_list": "string"},
+    )
+    bridge_tsb_ncm = read_optional_csv(
+        TSB_BRIDGE_FILES["bridge_tsb_ncm"],
+        dtype={"ncm": "string", "cnae_class_list": "string", "prodlist_code_list": "string"},
+    )
+    rais_tsb_summary = read_optional_csv(TSB_BRIDGE_FILES["rais_tsb_employment_summary"], dtype={"year": "string"})
+    rais_tsb_territory = read_optional_csv(
+        TSB_BRIDGE_FILES["rais_tsb_employment_territory"],
+        dtype={"year": "string", "uf": "string", "municipality_code": "string"},
+    )
+    rais_tsb_cnae = read_optional_csv(
+        TSB_BRIDGE_FILES["rais_tsb_employment_cnae"],
+        dtype={"year": "string", "cnae_class": "string"},
+    )
+    if not bridge_tsb_cnae_class.empty:
+        bridge_tsb_cnae_class = bridge_tsb_cnae_class.sort_values(
+            ["tsb_associated", "tsb_exposicao_scn67_max", "cnae_class"],
+            ascending=[False, False, True],
+            kind="stable",
+        )
+    if not bridge_tsb_ncm.empty:
+        bridge_tsb_ncm = bridge_tsb_ncm.sort_values(
+            ["tsb_associated", "tsb_exposicao_scn67_max", "ncm"],
+            ascending=[False, False, True],
+            kind="stable",
+        ).head(500)
+    if not rais_tsb_territory.empty:
+        rais_tsb_territory["municipality_code"] = rais_tsb_territory["municipality_code"].astype("string").str.zfill(6)
+        territory_label_cols = ["municipality_code", "uf", "municipality_name", "uf_name", "region_name"]
+        rais_tsb_territory = rais_tsb_territory.merge(
+            municipality_dim[territory_label_cols].drop_duplicates(["municipality_code", "uf"]),
+            on=["municipality_code", "uf"],
+            how="left",
+        )
+        rais_tsb_territory = rais_tsb_territory.sort_values(
+            ["tsb_associated", "formal_jobs"],
+            ascending=[False, False],
+            kind="stable",
+        ).head(500)
+    tsb_operational_cnae = build_tsb_operational_cnae(
+        rais_tsb_cnae,
+        bridge_tsb_cnae_class,
+        final_cnae,
+        multiplicadores_scn67,
+    )
+    tsb_operational_summary = build_tsb_operational_summary(tsb_operational_cnae, rais_tsb_summary)
 
     summary = {
         "periods": sorted(trade["period"].unique().tolist()),
@@ -750,6 +1017,16 @@ def main() -> None:
         "transition_fuel_ncm_drivers": compact_records(fuel_ncm_drivers),
         "transition_fuel_complementary_sources": compact_records(fuel_complementary),
         "transition_fuel_framework": compact_records(fuel_framework),
+        "dim_tsb_cnae5": compact_records(dim_tsb_cnae5),
+        "dim_scn67_tsb": compact_records(dim_scn67_tsb),
+        "multiplicadores_scn67": compact_records(multiplicadores_scn67),
+        "fontes_tsb_robustez": compact_records(fontes_tsb_robustez),
+        "bridge_tsb_cnae_class": compact_records(bridge_tsb_cnae_class),
+        "bridge_tsb_ncm": compact_records(bridge_tsb_ncm),
+        "rais_tsb_employment_summary": compact_records(rais_tsb_summary),
+        "rais_tsb_employment_territory": compact_records(rais_tsb_territory),
+        "tsb_operational_summary": clean_json_value(tsb_operational_summary),
+        "tsb_operational_cnae": compact_records(tsb_operational_cnae),
         "cnae_labels": compact_records(cnae_labels),
         "prodlist_labels": compact_records(prod_labels),
         "etl": build_etl_metadata(),

@@ -20,6 +20,19 @@ LOW_EMISSION_CAVEAT = (
     "fontes complementares de projeto, tecnologia e emissao."
 )
 
+RECORTE_LABELS = {
+    "hidrogenio": "Produtos relacionados a hidrogenio",
+    "amonia": "Produtos relacionados a amonia",
+    "metanol_derivados": "Produtos relacionados a metanol e derivados",
+    "etanol": "Produtos relacionados a etanol",
+    "saf": "Produtos relacionados a combustiveis de aviacao",
+    "combustiveis_maritimos_baixa_emissao": "Produtos relacionados a combustiveis maritimos",
+}
+
+
+def recorte_label(value: str) -> str:
+    return RECORTE_LABELS.get(str(value), str(value).replace("_", " "))
+
 
 COMPLEMENTARY_SOURCE_FIELDS = [
     {
@@ -44,13 +57,13 @@ COMPLEMENTARY_SOURCE_FIELDS = [
         "recorte_combustivel": "etanol",
         "camada_analitica": "projetos_capacidade_produtiva",
         "campo_requerido": "materia_prima, safra, usina, capacidade, certificacao, pegada_de_carbono, destino_energetico_industrial",
-        "uso": "Conectar producao, comercio, SAF por ATJ e combustiveis sinteticos.",
+        "uso": "Conectar producao, comercio, combustiveis de aviacao por ATJ e combustiveis sinteticos.",
     },
     {
         "recorte_combustivel": "saf",
         "camada_analitica": "rotas_tecnologicas",
         "campo_requerido": "rota_HEFA_ATJ_FT_eSAF, insumo, certificacao, capacidade, blend, offtake, intensidade_emissoes",
-        "uso": "Identificar SAF efetivo, pois NCM de querosene de aviacao nao separa produto fossil e SAF.",
+        "uso": "Identificar combustivel de aviacao certificado, pois NCM de querosene de aviacao nao separa produto fossil e produto certificado de menor carbono.",
     },
     {
         "recorte_combustivel": "combustiveis_maritimos_baixa_emissao",
@@ -250,13 +263,13 @@ FUEL_RULES = [
         "recorte_combustivel": "etanol",
         "camada_analitica": "aplicacoes_finais",
         "prefixes": ["220710", "220720", "271012", "271019", "382600"],
-        "papel_no_recorte": "Uso energetico, industrial, integracao com SAF por ATJ e combustiveis sinteticos.",
+        "papel_no_recorte": "Uso energetico, industrial, integracao com combustiveis de aviacao por ATJ e combustiveis sinteticos.",
     },
     {
         "recorte_combustivel": "saf",
         "camada_analitica": "rotas_tecnologicas",
         "prefixes": ["1507", "1508", "1509", "1510", "1511", "1512", "1513", "1514", "1515", "1516", "1517", "1518", "220710", "220720", "280410", "290511"],
-        "papel_no_recorte": "Insumos para HEFA, ATJ, FT/e-SAF e rotas correlatas.",
+        "papel_no_recorte": "Insumos para HEFA, ATJ, FT/e-combustiveis de aviacao e rotas correlatas.",
     },
     {
         "recorte_combustivel": "saf",
@@ -268,7 +281,7 @@ FUEL_RULES = [
         "recorte_combustivel": "saf",
         "camada_analitica": "aplicacoes_finais",
         "prefixes": ["27101911"],
-        "papel_no_recorte": "Querosene de aviacao; NCM nao separa fossil e SAF.",
+        "papel_no_recorte": "Querosene de aviacao; NCM nao separa fossil e produto certificado de menor carbono.",
     },
     {
         "recorte_combustivel": "combustiveis_maritimos_baixa_emissao",
@@ -427,7 +440,7 @@ def money(value: float) -> str:
 
 def write_report(seed: pd.DataFrame, indicators: pd.DataFrame, ncm_detail: pd.DataFrame, complementary: pd.DataFrame, framework: pd.DataFrame) -> None:
     lines = [
-        "# Recortes de combustiveis da transicao",
+        "# Produtos relacionados a transicao",
         "",
         "Camada analitica transversal ao mapeamento Prodlist/CNAE. A seed usa NCMs e prefixos curados para organizar comercio exterior, equipamentos, insumos, derivados e aplicacoes finais. Ela nao altera a ponte oficial CONCLA/IBGE.",
         "",
@@ -442,14 +455,14 @@ def write_report(seed: pd.DataFrame, indicators: pd.DataFrame, ncm_detail: pd.Da
     ]
     for _, row in indicators.iterrows():
         lines.append(
-            f"| {row['recorte_combustivel']} | {row['camada_analitica']} | "
+            f"| {recorte_label(row['recorte_combustivel'])} | {row['camada_analitica']} | "
             f"{money(row['trade_value_usd'])} | {money(row['import_value_usd'])} | "
             f"{money(row['export_value_usd'])} | {money(row['trade_balance_usd'])} | {int(row['unique_ncm_count'])} |"
         )
 
     lines.extend(["", "## Hidrogenio e amonia: camadas obrigatorias", ""])
     for fuel in ["hidrogenio", "amonia"]:
-        lines.append(f"### {fuel}")
+        lines.append(f"### {recorte_label(fuel)}")
         subset = framework[framework["recorte_combustivel"].eq(fuel)]
         for _, row in subset.iterrows():
             count = seed[
@@ -462,7 +475,7 @@ def write_report(seed: pd.DataFrame, indicators: pd.DataFrame, ncm_detail: pd.Da
 
     lines.extend(["## Principais NCMs observadas por recorte", ""])
     for fuel in indicators["recorte_combustivel"].drop_duplicates().tolist():
-        lines.append(f"### {fuel}")
+        lines.append(f"### {recorte_label(fuel)}")
         subset = ncm_detail[ncm_detail["recorte_combustivel"].eq(fuel)].sort_values("value_usd", ascending=False).head(8)
         if subset.empty:
             lines.append("- Sem comercio observado no periodo.")
@@ -476,7 +489,7 @@ def write_report(seed: pd.DataFrame, indicators: pd.DataFrame, ncm_detail: pd.Da
     lines.extend(["## Fontes complementares necessarias", ""])
     for _, row in complementary.iterrows():
         lines.append(
-            f"- {row['recorte_combustivel']} / {row['camada_analitica']}: "
+            f"- {recorte_label(row['recorte_combustivel'])} / {row['camada_analitica']}: "
             f"{row['campo_requerido']}."
         )
 

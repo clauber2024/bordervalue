@@ -98,6 +98,12 @@ test("APIs, exportacoes e dados filtrados respondem de ponta a ponta", async (t)
   const fuelsPayload = await fuels.json();
   assert.ok("total" in fuelsPayload.kpis);
 
+  const tsb = await fetch(`${baseUrl}/api/tsb?uf=MG`);
+  assert.equal(tsb.status, 200);
+  const tsbPayload = await tsb.json();
+  assert.ok("wage_mass" in tsbPayload.kpis);
+  assert.ok(Array.isArray(tsbPayload.comparison));
+
   const exportResponse = await fetch(`${baseUrl}/api/export?dataset=trade&flow=IMP`);
   assert.equal(exportResponse.status, 200);
   assert.match(exportResponse.headers.get("content-type") || "", /text\/csv/);
@@ -114,6 +120,13 @@ test("HTML/CSS/JS mantem controles essenciais da interface", async () => {
   assert.match(html, /id="periodFilter"/);
   assert.match(html, /id="worldTradeMap"/);
   assert.match(html, /id="employmentMunicipalityMap"/);
+  assert.match(html, /id="tsb-low-carbon"/);
+  assert.match(html, /id="impactAmount"/);
+  assert.match(html, /id="impactSector"/);
+  assert.match(html, /id="impactResults"/);
+  assert.match(html, /id="exportTsb"/);
+  assert.match(js, /renderTsbOperational/);
+  assert.match(js, /renderImpactSimulation/);
   assert.match(html, /id="exportTrade"/);
   assert.doesNotMatch(html + js, /esm\.sh/);
   assert.match(css, /@media \(max-width: 720px\)/);
@@ -146,6 +159,12 @@ test("dashboard renderiza em Chrome headless com filtros, mapas e tamanhos de te
   await page.eval("document.querySelector('[data-tab=\"employment\"]').click()");
   await page.waitFor("document.querySelector('#employmentMunicipalityMap svg, #employmentMunicipalityMap .empty')");
   await page.waitFor("document.querySelector('#etlRunStatus').textContent.length > 0");
+
+  await page.eval("document.querySelector('[data-tab=\"tsb-low-carbon\"]').click()");
+  await page.waitFor("document.querySelectorAll('#tsbKpis .kpi').length >= 8");
+  await page.waitFor("document.querySelectorAll('#impactResults .kpi').length >= 4");
+  assert.equal(await page.eval("document.querySelector('#impactResults').textContent.includes('197')"), true);
+  await page.waitFor("document.querySelector('#tsbComparisonTable tbody tr')");
 
   for (const width of [390, 768, 1280]) {
     await page.send("Emulation.setDeviceMetricsOverride", {
