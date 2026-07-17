@@ -20,6 +20,7 @@ ALREADY_COMPRESSED_SUFFIXES = {".7z", ".gz", ".zip", ".xlsx", ".docx", ".pptx", 
 SOURCE_GROUPS = {
     "bases/official_2026": ROOT / "outputs" / "official_2026",
     "bases/final_border_value_2026": ROOT / "outputs" / "final_border_value_2026",
+    "bases/top_partner_growth_2026_h1_vs_2025_h1": ROOT / "outputs" / "top_partner_growth_2026_h1_vs_2025_h1",
     "bases/fontes_entrada": ROOT / "inputs" / "official",
 }
 
@@ -34,6 +35,7 @@ REPRODUCTION_FILES = [
     "build_sensibilidade_rateio.py",
     "build_cadeias_minerais_estrategicas.py",
     "build_combustiveis_transicao.py",
+    "build_top_partner_growth_outputs.py",
     "audit_variacao_ncm.py",
     "audit_nao_mapeado_prioritario.py",
     "build_auditoria.mjs",
@@ -92,6 +94,9 @@ TABLE_DESCRIPTIONS = {
     "drivers_cadeias_minerais_ncm": "Principais NCMs por cadeia mineral estrategica.",
     "fact_anm_mineral_production": "Camada complementar ANM/AMB de producao mineral por substancia, normalizada para mineral-base.",
     "fontes_anm_amb_status": "Status de acesso, cache e leitura das fontes abertas ANM/AMB.",
+    "top5_paises_2026_h1": "Cinco principais paises parceiros no comercio total de janeiro a junho de 2026.",
+    "comparacao_produtos_top5_paises": "Comparacao por pais, fluxo e NCM entre janeiro-junho de 2025 e janeiro-junho de 2026.",
+    "rankings_produtos_crescimento_top5_paises": "Produtos com maior crescimento percentual entre os principais paises parceiros.",
 }
 
 COLUMN_DESCRIPTIONS = {
@@ -389,6 +394,7 @@ def write_metadata(copied_files: list[Path], dictionary_rows: list[dict[str, obj
         "- Emprego formal: RAIS 2024 por CNAE, UF e municipio, quando disponivel no pacote.",
         "- Mapas: fluxos mundiais por pais parceiro e leitura territorial RAIS municipal no dashboard.",
         "- Combustiveis da transicao: hidrogenio, amonia, SAF, metanol, etanol e combustiveis maritimos, com classificacao preliminar e fontes complementares requeridas.",
+        "- Parceiros comerciais: top 5 paises de janeiro a junho de 2026 e produtos com maior crescimento frente a janeiro-junho de 2025.",
         "- Governanca de atividades: RAIS, cartografia, mapa mundial, integracao, automacao, hidrogenio e amonia entram somente em consolidacao, documentacao e testes.",
         "- Conversao monetaria: fator documentado em `config.official.2026.json`.",
         "- Rateio: pesos por valor de producao por CNAE, com fallback igualitario quando necessario.",
@@ -402,6 +408,7 @@ def write_metadata(copied_files: list[Path], dictionary_rows: list[dict[str, obj
         "python operational_pipeline.py config.official.2026.json",
         "python build_final_border_value_outputs.py",
         "python build_combustiveis_transicao.py",
+        "python build_top_partner_growth_outputs.py",
         "node build_final_border_value_workbook.mjs",
         "python prepare_publication_package.py",
         "```",

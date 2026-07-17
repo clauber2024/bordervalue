@@ -22,6 +22,7 @@ python build_rankings_recortes.py
 python build_sensibilidade_rateio.py
 python build_cadeias_minerais_estrategicas.py
 python build_combustiveis_transicao.py
+python build_top_partner_growth_outputs.py
 python dashboard/build_dashboard_data.py
 node build_final_border_value_workbook.mjs
 python prepare_publication_package.py
@@ -40,6 +41,7 @@ Endereco local: `http://localhost:8765`.
 - Abrir o dashboard e confirmar carregamento de indicadores, filtros, mapas e tabelas.
 - Conferir `outputs/publicacao_border_value_2026/metadados/inventario_arquivos.csv`.
 - Conferir `outputs/publicacao_border_value_2026/metadados/checksums_sha256.csv`.
+- Confirmar a presenca do recorte `bases/top_partner_growth_2026_h1_vs_2025_h1` no pacote.
 - Confirmar a existencia dos arquivos em `outputs/publicacao_border_value_2026/pacotes_zip`.
 - Confirmar a existencia de `outputs/publicacao_border_value_2026_completo.zip`.
 
