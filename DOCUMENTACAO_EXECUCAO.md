@@ -79,6 +79,7 @@ python build_rankings_recortes.py
 python build_sensibilidade_rateio.py
 python build_cadeias_minerais_estrategicas.py
 python build_combustiveis_transicao.py
+python build_nib_territorializacao.py
 python dashboard/build_dashboard_data.py
 node build_final_border_value_workbook.mjs
 python prepare_publication_package.py
@@ -171,6 +172,14 @@ arquivos junto com `outputs/official_2026_rais` para exibir fluxos mundiais,
 território RAIS, escopo Border Value e hidrogênio/amônia/combustíveis da
 transição.
 
+A camada NIB, publicada em `outputs/nib_territorializacao_2026`, cruza uma
+ponte editavel CNAE-cadeia NIB com a RAIS municipal e os indicadores Border
+Value por CNAE. Ela segue a logica do mapeamento DIEESE de julho de 2025 ao
+identificar regioes industriais maduras a partir do emprego formal, mas deve ser
+lida como triagem territorial para validacao especialista. Os valores de
+comercio nas tabelas municipais sao referencias das CNAEs associadas a cadeia,
+nao uma municipalizacao direta dos fluxos comerciais.
+
 ## 8. Limitações, sigilo e defasagens das fontes
 
 As saídas do Border Value preservam as restrições das fontes oficiais. Elas não
@@ -244,6 +253,7 @@ python operational_pipeline.py config.official.2026.json
 python operational_pipeline.py config.official.2026.rais.json
 python build_final_border_value_outputs.py
 python build_combustiveis_transicao.py
+python build_nib_territorializacao.py
 Get-FileHash inputs/official/EXP_2026.csv,inputs/official/IMP_2026.csv,inputs/official/ncm_prodlist_2025.xlsx -Algorithm SHA256
 ```
 

@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "build:auditoria": "node build_auditoria.mjs",
     "build:workbook": "node build_final_border_value_workbook.mjs",
     "inspect:diagnostico": "node inspect_diagnostico.mjs",
@@ -13,6 +16,23 @@
     "homolog:dashboard": "python dashboard/server.py 8765"
   },
   "dependencies": {
-    "@oai/artifact-tool": "file:C:/Users/Rosana Santos/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/@oai/artifact-tool"
+    "@oai/artifact-tool": "file:C:/Users/Rosana Santos/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/@oai/artifact-tool",
+    "framer-motion": "^12.23.6",
+    "lucide-react": "^0.468.0",
+    "next": "^14.2.30",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-simple-maps": "^3.0.0",
+    "recharts": "^2.15.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^20.19.9",
+    "@types/react": "^18.3.23",
+    "@types/react-dom": "^18.3.7",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^10.7.0",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3"
   }
 }

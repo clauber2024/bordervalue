@@ -1,111 +1,122 @@
 /**
- * Metadados de auditoria associados ao dado institucional utilizado pela
- * plataforma Border Value.
+ * Metadados de auditoria que acompanham cada produto conceitual.
+ *
+ * Use este bloco para exibir ano de referencia, qualidade do dado e alertas
+ * metodologicos nos modulos premium de visualizacao.
  */
 export interface MetadadosAuditoria {
   /**
-   * Ano de referencia da observacao ou consolidacao estatistica utilizada.
+   * Ano-base utilizado na consolidacao estatistica do registro.
    */
   reference_year: number;
 
   /**
-   * Nivel qualitativo de confianca do dado consolidado apos auditoria.
+   * Nivel qualitativo de confianca atribuido pela camada de inteligencia.
    */
   confidence_level: 'alta' | 'media' | 'baixa';
 
   /**
-   * Indica se o codigo NCM representa uma categoria generica ou residual.
+   * Indica se o codigo NCM representa uma categoria generica, residual ou ampla.
    */
   is_ncm_generica: boolean;
 
   /**
-   * Indica se ha restricao de sigilo estatistico associada aos dados da PIA.
+   * Indica se ha restricao de sigilo estatistico nos dados industriais da PIA.
    */
   has_sigilo_pia: boolean;
 
   /**
-   * Versao da metodologia institucional aplicada na construcao do indicador.
+   * Versao da metodologia aplicada na geracao dos indicadores.
    */
   metodologia_versao: string;
 }
 
 /**
- * Indicadores de comercio exterior associados a um produto conceitual.
+ * Indicadores de fluxo comercial internacional associados ao produto.
+ *
+ * Use este bloco para graficos de importacao, exportacao, deficit,
+ * concentracao de origem e exposicao externa.
  */
 export interface FluxoComercial {
   /**
-   * Valor FOB total das importacoes, na moeda de referencia da base oficial.
+   * Valor FOB total importado no ano de referencia.
    */
   importacao_valor_fob: number;
 
   /**
-   * Peso liquido total das importacoes.
+   * Peso liquido total importado no ano de referencia.
    */
   importacao_peso_liquido: number;
 
   /**
-   * Valor FOB total das exportacoes, na moeda de referencia da base oficial.
+   * Valor FOB total exportado no ano de referencia.
    */
   exportacao_valor_fob: number;
 
   /**
-   * Peso liquido total das exportacoes.
+   * Peso liquido total exportado no ano de referencia.
    */
   exportacao_peso_liquido: number;
 
   /**
-   * Diferenca entre importacoes e exportacoes em valor FOB.
+   * Importacao menos exportacao em valor FOB.
+   *
+   * Pode ser negativo quando o produto apresenta superavit comercial.
    */
   deficit_comercial: number;
 
   /**
-   * Principal pais de origem das importacoes do produto.
+   * Pais com maior participacao na origem das importacoes.
    */
   principal_pais_origem: string;
 
   /**
-   * Participacao fracionaria do principal pais de origem no fluxo importado.
+   * Participacao do principal pais de origem no total importado.
+   *
+   * Deve ser interpretado como fracao, nao percentual formatado.
    */
   principal_pais_participacao: number;
 
   /**
-   * Indice Herfindahl-Hirschman global para concentracao das origens comerciais.
+   * Indice Herfindahl-Hirschman global de concentracao das origens comerciais.
    */
   hhi_global: number;
 }
 
 /**
- * Indicadores de estrutura produtiva domestica associados a um produto
- * conceitual.
+ * Indicadores da estrutura produtiva domestica vinculada ao produto.
+ *
+ * Use este bloco para analises de producao nacional, consumo aparente, emprego
+ * formal e dependencia externa.
  */
 export interface EstruturaDomestica {
   /**
-   * Codigo CNAE vinculado a atividade produtiva domestica predominante.
+   * Codigo CNAE da atividade economica associada ao produto.
    */
   cnae_codigo: string;
 
   /**
-   * Codigo PRODLIST associado ao produto industrial domestico correspondente.
+   * Codigo PRODLIST usado para vincular o produto a producao industrial.
    */
   prodlist_codigo: string;
 
   /**
-   * Valor da producao industrial observado na PIA para o recorte mapeado.
+   * Valor da producao industrial observado ou estimado pela PIA.
    */
   valor_producao_pia: number;
 
   /**
-   * Estimativa de consumo aparente do produto no mercado domestico.
+   * Consumo aparente calculado para o mercado domestico.
    */
   consumo_aparente: number;
 
   /**
-   * Fracao do consumo aparente atendida por fontes externas.
+   * Fracao do consumo aparente atendida por importacoes.
    */
   dependencia_externa_fracao: number;
 
   /**
-   * Quantidade de vinculos formais RAIS associados a estrutura produtiva.
+   * Quantidade de vinculos formais RAIS associados ao recorte produtivo.
    */
   qtde_vinculos_rais: number;
 
@@ -116,119 +127,69 @@ export interface EstruturaDomestica {
 }
 
 /**
- * Produto analitico agregado pela plataforma Border Value, conectando comercio
- * exterior, industria domestica e metadados de auditoria.
+ * Produto conceitual consolidado pela plataforma Border Value.
+ *
+ * Esta e a unidade central para alimentar dashboards, cards estrategicos,
+ * rankings setoriais e visualizacoes de cadeia produtiva.
  */
 export interface ProdutoConceitual {
   /**
-   * Identificador institucional unico do produto conceitual.
+   * Identificador unico e estavel do produto conceitual.
    */
   conceptual_product_id: string;
 
   /**
-   * Nome padronizado do produto exibido nas camadas analiticas da plataforma.
+   * Nome padronizado do produto para exibicao na interface.
    */
   produto_nome: string;
 
   /**
-   * Cadeia prioritaria de politica industrial ou transicao energetica.
+   * Cadeia prioritaria a qual o produto pertence.
    */
-  cadeia_prioritaria:
-    | 'fertilizantes'
-    | 'combustiveis_transicao'
-    | 'aco'
-    | 'silicio';
+  cadeia_prioritaria: 'fertilizantes' | 'combustiveis_transicao' | 'aco' | 'silicio';
 
   /**
-   * Etapa da cadeia de valor em que o produto conceitual se posiciona.
+   * Posicao do produto na cadeia de valor.
    */
   chain_stage: 'insumo' | 'processamento' | 'produto_final' | 'equipamento';
 
   /**
-   * Codigo NCM principal utilizado no mapeamento do produto conceitual.
+   * Codigo NCM principal usado no mapeamento comercial do produto.
    */
   ncm_codigo: string;
 
   /**
-   * Bloco de indicadores de comercio exterior do produto.
+   * Indicadores de comercio exterior vinculados ao produto.
    */
   comercio: FluxoComercial;
 
   /**
-   * Bloco de indicadores de estrutura produtiva domestica do produto.
+   * Indicadores da estrutura produtiva domestica vinculados ao produto.
    */
   industria: EstruturaDomestica;
 
   /**
-   * Metadados de auditoria que documentam qualidade, ano e metodologia do dado.
+   * Metadados de auditoria, rastreabilidade e qualidade metodologica.
    */
   auditoria: MetadadosAuditoria;
 
   /**
-   * Parametros do fator de proporcionalidade aplicado para compatibilizar
-   * proxies produtivas, comerciais ou setoriais.
+   * Parametros usados quando o backend aplica fator de proporcionalidade.
    */
   fator_proporcionalidade: {
     /**
-     * Indica se houve aplicacao efetiva do fator de proporcionalidade.
+     * Indica se o fator de proporcionalidade foi aplicado ao registro.
      */
     aplicado: boolean;
 
     /**
-     * Valor numerico do fator alpha usado no ajuste proporcional.
+     * Valor do fator alpha usado para ajustar o indicador proporcionalmente.
      */
     fator_alpha: number;
 
     /**
-     * Fonte ou criterio de proxy utilizado para estimar o fator proporcional.
+     * Fonte, proxy ou criterio usado para estimar o fator de proporcionalidade.
      */
     fonte_proxy: string;
   };
 }
-
-/**
- * Payload institucional de referencia usado para orientar os proximos modulos.
- *
- * Observacoes de escala:
- * - `importacao_valor_fob` esta em valor absoluto de USD FOB; neste exemplo,
- *   2.449.195.653 equivale a aproximadamente US$ 2,45 bilhoes.
- * - `principal_pais_participacao` esta em fracao; 0.9982 equivale a 99,82%.
- */
-export const produtoConceitualPayloadReferencia = {
-  "conceptual_product_id": "fert-kcl-310420",
-  "produto_nome": "Cloreto de Potassio",
-  "cadeia_prioritaria": "fertilizantes",
-  "chain_stage": "insumo",
-  "ncm_codigo": "31042090",
-  "comercio": {
-    "importacao_valor_fob": 2449195653,
-    "importacao_peso_liquido": 7297288091,
-    "exportacao_valor_fob": 7927187,
-    "exportacao_peso_liquido": 15018165,
-    "deficit_comercial": 2441268466,
-    "principal_pais_origem": "Canada",
-    "principal_pais_participacao": 0.9982,
-    "hhi_global": 0.9964,
-  },
-  "industria": {
-    "cnae_codigo": "2012",
-    "prodlist_codigo": "2012.2060",
-    "valor_producao_pia": 1245267982.189208,
-    "consumo_aparente": 3686536448.189208,
-    "dependencia_externa_fracao": 0.66,
-    "qtde_vinculos_rais": 0,
-    "massa_salarial_rais": 0,
-  },
-  "auditoria": {
-    "reference_year": 2026,
-    "confidence_level": "alta",
-    "is_ncm_generica": true,
-    "has_sigilo_pia": false,
-    "metodologia_versao": "border-value-piloto-fertilizantes-v1",
-  },
-  "fator_proporcionalidade": {
-    "aplicado": true,
-    "fator_alpha": 1,
-    "fonte_proxy": "PIA-Produto 2024 / PRODLIST 2012.2060",
-  },
-} satisfies ProdutoConceitual;

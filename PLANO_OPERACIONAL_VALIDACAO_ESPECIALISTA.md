@@ -50,6 +50,10 @@ Entregar preferencialmente os arquivos abaixo, sem exigir que ele navegue no cod
 - `outputs/final_border_value_2026/ncm_sem_ponte_priorizacao.csv`: NCMs sem ponte oficial priorizadas para avaliacao.
 - `outputs/final_border_value_2026/ncm_validacao_manual_concla.csv`: itens que exigem validacao manual da correspondencia.
 - `outputs/final_border_value_2026/resumo_metodologico.md`: resumo das regras usadas.
+- `outputs/nib_territorializacao_2026/metodologia_territorializacao_nib.md`: nota metodologica da camada NIB/DIEESE.
+- `outputs/nib_territorializacao_2026/resumo_cadeias_nib_territorio.csv`: resumo por cadeia prioritaria NIB.
+- `outputs/nib_territorializacao_2026/rais_nib_employment_territory.csv`: emprego RAIS por municipio e cadeia NIB.
+- `outputs/nib_territorializacao_2026/bridge_nib_cnae_class.csv`: ponte editavel entre CNAE e cadeias NIB.
 - `DOCUMENTACAO_EXECUCAO.md`: documentacao de fontes, parametros e limitacoes.
 - `HOMOLOGACAO_TECNICA.md`: criterios tecnicos da candidata.
 - `VERSION_CANDIDATE.md`: escopo formal da candidata `1.0.0-rc.1`.
@@ -228,7 +232,29 @@ Evidencia a consultar:
 
 Expansao posterior recomendada: criar uma etapa ocupacional propria, fora do escopo entregue nesta candidata. Essa etapa deve carregar RAIS em granularidade ocupacional, criar dimensao metodologica especifica, classificar ocupacoes como diretamente verdes, habilitadoras, industriais em setores TSB ou convencionais em setores de transicao, e cruzar CNAE, ocupacao e municipio. Assim, ficam separadas duas perguntas: "emprego em setor verde/TSB", coberto pela leitura setorial atual, e "ocupacao verde individual", que exige metodologia adicional.
 
-### Etapa 8: validacao da comparacao 2024 H1 versus 2026 H1
+### Etapa 8: validacao da territorializacao das cadeias NIB
+
+Objetivo: validar a camada inspirada no mapeamento DIEESE das cadeias
+prioritarias da Nova Industria Brasil nos territorios.
+
+Checklist:
+
+- [ ] Confirmar se a ponte CNAE-cadeia NIB esta adequada para cada missao e cadeia.
+- [ ] Marcar CNAEs amplas demais que devem ficar apenas como referencia exploratoria.
+- [ ] Validar a classificacao dos municipios como `regiao_industrial_madura`, `polo_relevante_da_cadeia` ou `territorio_emergente_ou_disperso`.
+- [ ] Verificar se os principais polos industriais esperados aparecem nas cadeias correspondentes.
+- [ ] Identificar cadeias NIB com elos de servicos, tecnologia ou rotas produtivas que nao sao capturados por NCM/PRODLIST.
+- [ ] Definir quais tabelas NIB podem entrar no pacote publico e quais devem permanecer como homologacao.
+
+Evidencia a consultar:
+
+- `outputs/nib_territorializacao_2026/metodologia_territorializacao_nib.md`
+- `outputs/nib_territorializacao_2026/bridge_nib_cnae_class.csv`
+- `outputs/nib_territorializacao_2026/resumo_cadeias_nib_territorio.csv`
+- `outputs/nib_territorializacao_2026/rais_nib_employment_territory.csv`
+- `outputs/nib_territorializacao_2026/top100_municipios_industria_transformacao_rais.csv`
+
+### Etapa 9: validacao da comparacao 2024 H1 versus 2026 H1
 
 Objetivo: revisar se as variacoes setoriais e por produto podem ser comunicadas como tendencia ou apenas como sinal de triagem.
 
@@ -248,7 +274,7 @@ Evidencia a consultar:
 - `outputs/final_border_value_2026/rankings_variacao_periodos_cnae.csv`
 - `outputs/final_border_value_2026/relatorio_auditoria_variacao_ncm.md`
 
-### Etapa 9: validacao do dashboard e comunicacao executiva
+### Etapa 10: validacao do dashboard e comunicacao executiva
 
 Objetivo: aprovar a leitura publica da interface, planilha, relatorio e apresentacao.
 
@@ -279,8 +305,9 @@ Evidencia a consultar:
 | 3 | Produtos relacionados a transicao |  |  |  | Aprovado / Ressalva / Revisar / Excluir |  |  | Alta / Media / Baixa |  |
 | 4 | Cadeias minerais | `outputs/final_border_value_2026/priorizacao_cadeias_minerais_estrategicas.csv`; `outputs/final_border_value_2026/relatorio_cadeias_minerais_estrategicas.md` | Etapa 6 | Camada ANM/AMB ainda nao incorporada ao banco de dados; cadeias minerais carecem de dados oficiais de mineracao para materialidade produtiva, reservas, beneficiamento e capacidade industrial. | Ressalva: manter apenas exploratorio na versao publica | Nao publicar como painel conclusivo ate incorporar e validar ANM/AMB; usar somente como triagem analitica baseada em NCM/Comex e criticidade. | ANM/AMB; fontes oficiais complementares de mineracao | Alta | Especialista setorial |
 | 5 | RAIS/territorio |  |  |  | Aprovado / Ressalva / Revisar / Excluir |  |  | Alta / Media / Baixa |  |
-| 6 | Expansao ocupacional futura |  |  |  | Aprovado / Ressalva / Revisar / Excluir |  |  | Alta / Media / Baixa |  |
-| 7 | Comunicacao executiva |  |  |  | Aprovado / Ressalva / Revisar / Excluir |  |  | Alta / Media / Baixa |  |
+| 6 | Territorializacao NIB/DIEESE | `outputs/nib_territorializacao_2026/resumo_cadeias_nib_territorio.csv`; `outputs/nib_territorializacao_2026/bridge_nib_cnae_class.csv` | Etapa 8 | Ponte CNAE-cadeia NIB e tipologia territorial ainda dependem de validacao especialista. Comercio municipal aparece apenas como referencia setorial da cadeia. | Aprovado / Ressalva / Revisar / Excluir | Validar CNAEs amplas, polos territoriais e status publico ou exploratorio da camada. | DIEESE; MDIC/CNDI; fontes setoriais das cadeias | Alta | Especialista setorial |
+| 7 | Expansao ocupacional futura |  |  |  | Aprovado / Ressalva / Revisar / Excluir |  |  | Alta / Media / Baixa |  |
+| 8 | Comunicacao executiva |  |  |  | Aprovado / Ressalva / Revisar / Excluir |  |  | Alta / Media / Baixa |  |
 
 ## 6. Criterios de aceite para promover a candidata
 
@@ -293,6 +320,7 @@ A candidata pode avancar para publicacao institucional somente se:
 - [ ] Limites de PIA sigilosa, defasagem temporal e rateio 1:N estiverem descritos.
 - [ ] A leitura de emprego estiver descrita como setorial, baseada em CNAE/RAIS/SCN67/MIP, sem classificacao ocupacional camada ocupacional futura.
 - [ ] A camada ANM/AMB estiver corretamente marcada como pendente, se as fontes oficiais ainda nao estiverem incorporadas, e os paineis de cadeias minerais estiverem classificados como apenas exploratorios na versao publica.
+- [ ] A camada NIB/DIEESE estiver descrita como triagem territorial por CNAE/RAIS, com comercio usado apenas como referencia setorial da cadeia.
 - [ ] Dashboard, relatorio, apresentacao e workbook usarem a mesma narrativa metodologica.
 - [ ] O pacote de publicacao preservar inventario e checksums.
 - [ ] O especialista tiver indicado bloqueios, ressalvas e itens pos-publicacao.
@@ -306,8 +334,9 @@ A candidata pode avancar para publicacao institucional somente se:
 5. Quais fontes complementares sao indispensaveis para classificar hidrogenio, amonia, metanol, etanol, combustiveis de aviacao e combustiveis maritimos como renovaveis, verdes, azuis ou de baixa emissao?
 6. O recorte de minerais estrategicos esta tecnicamente defensavel sem a camada ANM/AMB incorporada?
 7. A leitura territorial da RAIS deve entrar na versao publica ou permanecer em homologacao?
-8. A expansao ocupacional deve ser tratada como frente metodologica posterior para ocupacoes verdes, separada da leitura atual de emprego setorial?
-9. Que ressalvas precisam aparecer obrigatoriamente no dashboard e nos materiais executivos?
+8. A territorializacao das cadeias NIB por CNAE/RAIS esta madura para publicacao ou deve ficar como anexo de homologacao?
+9. A expansao ocupacional deve ser tratada como frente metodologica posterior para ocupacoes verdes, separada da leitura atual de emprego setorial?
+10. Que ressalvas precisam aparecer obrigatoriamente no dashboard e nos materiais executivos?
 
 ## 8. Saida minima esperada
 

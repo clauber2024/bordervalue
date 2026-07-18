@@ -1,0 +1,49 @@
+missao_nib,cadeia_nib,cadeia_nome,cnae_class,cnae_name,nib_mapping_status,source_note
+M1,C1,Agricultura de precisao - drones e sensores,2651,Fabricacao de aparelhos e equipamentos de medida teste e controle,seed_validacao,DIEESE 2025 usa CNAE para territorializar cadeias NIB por emprego RAIS; ponte preliminar para validacao especialista
+M1,C1,Agricultura de precisao - drones e sensores,3042,Fabricacao de turbinas motores e outros componentes e pecas para aeronaves,seed_validacao,DIEESE 2025 lista drones e sensores como cadeia prioritaria NIB
+M1,C2,Maquinas e equipamentos agroindustriais,2833,Fabricacao de maquinas e equipamentos para a agricultura e pecuaria exceto para irrigacao,seed_validacao,CNAE industrial aderente a maquinas agropecuarias
+M1,C2,Maquinas e equipamentos agroindustriais,2832,Fabricacao de equipamentos para irrigacao agricola,seed_validacao,CNAE industrial aderente a maquinas agropecuarias
+M1,C3,Fertilizantes e biofertilizantes,2012,Fabricacao de intermediarios para fertilizantes,seed_validacao,DIEESE 2025 lista fertilizantes e biofertilizantes como cadeia prioritaria NIB
+M1,C3,Fertilizantes e biofertilizantes,2091,Fabricacao de produtos quimicos inorganicos nao especificados anteriormente,seed_validacao,CNAE potencialmente associada a insumos quimicos para fertilizantes; exige validacao
+M1,C4,Textil,1311,Preparacao e fiacao de fibras texteis,seed_validacao,DIEESE 2025 lista textil como cadeia prioritaria NIB
+M1,C4,Textil,1321,Tecelagem exceto malha,seed_validacao,DIEESE 2025 lista textil como cadeia prioritaria NIB
+M1,C4,Textil,1330,Fabricacao de tecidos de malha,seed_validacao,DIEESE 2025 lista textil como cadeia prioritaria NIB
+M2,C5,Medicamentos e principios ativos biologicos,2110,Fabricacao de produtos farmoquimicos,seed_validacao,DIEESE 2025 lista medicamentos e principios ativos biologicos como cadeia prioritaria NIB
+M2,C5,Medicamentos e principios ativos biologicos,2121,Fabricacao de medicamentos para uso humano,seed_validacao,DIEESE 2025 lista medicamentos e principios ativos biologicos como cadeia prioritaria NIB
+M2,C5,Medicamentos e principios ativos biologicos,2122,Fabricacao de medicamentos para uso veterinario,seed_validacao,CNAE farmaceutica correlata; exige validacao para escopo NIB
+M2,C6,Vacinas hemoderivados e terapias avancadas,2110,Fabricacao de produtos farmoquimicos,seed_validacao,DIEESE 2025 lista vacinas hemoderivados e terapias avancadas como cadeia prioritaria NIB
+M2,C6,Vacinas hemoderivados e terapias avancadas,2121,Fabricacao de medicamentos para uso humano,seed_validacao,DIEESE 2025 lista vacinas hemoderivados e terapias avancadas como cadeia prioritaria NIB
+M2,C7,Dispositivos medicos e equipamentos medicos,2660,Fabricacao de aparelhos eletromedicos e eletroterapeuticos e equipamentos de irradiacao,seed_validacao,DIEESE 2025 lista dispositivos medicos como cadeia prioritaria NIB
+M2,C7,Dispositivos medicos e equipamentos medicos,3250,Fabricacao de instrumentos e materiais para uso medico e odontologico e de artigos opticos,seed_validacao,DIEESE 2025 lista dispositivos medicos como cadeia prioritaria NIB
+M3,C8,Sistemas de propulsao,2811,Fabricacao de motores e turbinas exceto para avioes e veiculos rodoviarios,seed_validacao,DIEESE 2025 lista sistemas de propulsao como cadeia prioritaria NIB
+M3,C8,Sistemas de propulsao,2910,Fabricacao de automoveis camionetas e utilitarios,seed_validacao,CNAE automotiva relacionada a propulsao; exige validacao por elo
+M3,C8,Sistemas de propulsao,2930,Fabricacao de cabines carrocerias e reboques para veiculos automotores,seed_validacao,CNAE automotiva relacionada; exige validacao por elo
+M3,C9,Baterias eletricas,2721,Fabricacao de pilhas baterias e acumuladores eletricos exceto para veiculos automotores,seed_validacao,DIEESE 2025 lista baterias eletricas como cadeia prioritaria NIB
+M3,C9,Baterias eletricas,2722,Fabricacao de baterias e acumuladores para veiculos automotores,seed_validacao,DIEESE 2025 lista baterias eletricas como cadeia prioritaria NIB
+M3,C10,Sistemas metroferroviarios e pecas partes e componentes,3031,Fabricacao de locomotivas vagoes e outros materiais rodantes,seed_validacao,DIEESE 2025 lista sistemas metroferroviarios como cadeia prioritaria NIB
+M3,C10,Sistemas metroferroviarios e pecas partes e componentes,3032,Fabricacao de pecas e acessorios para veiculos ferroviarios,seed_validacao,DIEESE 2025 lista sistemas metroferroviarios como cadeia prioritaria NIB
+M4,C11,Semicondutores,2610,Fabricacao de componentes eletronicos,seed_validacao,MDIC lista semicondutores como cadeia prioritaria da Missao 4 da NIB
+M4,C11,Semicondutores,2621,Fabricacao de equipamentos de informatica,seed_validacao,CNAE eletroeletronica correlata; exige validacao por elo
+M4,C12,Robos industriais,2651,Fabricacao de aparelhos e equipamentos de medida teste e controle,seed_validacao,DIEESE 2025 exemplifica CNAE 26.51-5 para robos industriais
+M4,C12,Robos industriais,2822,Fabricacao de maquinas equipamentos e aparelhos para transporte e elevacao de cargas e pessoas,seed_validacao,CNAE potencialmente associada a automacao industrial; exige validacao
+M4,C12,Robos industriais,2869,Fabricacao de maquinas e equipamentos de uso industrial especifico nao especificados anteriormente,seed_validacao,CNAE potencialmente associada a automacao industrial; exige validacao
+M4,C13,Produtos e servicos digitais avancados,2621,Fabricacao de equipamentos de informatica,seed_validacao,DIEESE 2025 lista produtos e servicos digitais avancados como cadeia prioritaria NIB
+M4,C13,Produtos e servicos digitais avancados,2631,Fabricacao de equipamentos transmissores de comunicacao pecas e acessorios,seed_validacao,CNAE eletroeletronica correlata; exige validacao por elo
+M4,C13,Produtos e servicos digitais avancados,6201,Desenvolvimento de programas de computador sob encomenda,fora_escopo_prodlist_industria,DIEESE inclui servicos digitais; Border Value industrial trata este item apenas como referencia fora da ponte NCM-Prodlist
+M5,C14,Novas fontes de energia - hidrogenio diesel verde e SAF,2014,Fabricacao de gases industriais,seed_validacao,DIEESE 2025 lista novas fontes de energia como cadeia prioritaria NIB
+M5,C14,Novas fontes de energia - hidrogenio diesel verde e SAF,1921,Fabricacao de produtos do refino de petroleo,seed_validacao,CNAE associada a combustiveis; NCM nao certifica rota verde ou baixa emissao
+M5,C14,Novas fontes de energia - hidrogenio diesel verde e SAF,1931,Fabricacao de alcool,seed_validacao,CNAE associada a combustiveis renovaveis; exige validacao por produto/rota
+M5,C15,Equipamentos de energia verde - paineis solares e aerogeradores,2710,Fabricacao de geradores transformadores e motores eletricos,seed_validacao,DIEESE 2025 lista equipamentos de energia verde como cadeia prioritaria NIB
+M5,C15,Equipamentos de energia verde - paineis solares e aerogeradores,2811,Fabricacao de motores e turbinas exceto para avioes e veiculos rodoviarios,seed_validacao,CNAE potencialmente associada a aerogeradores; exige validacao
+M5,C15,Equipamentos de energia verde - paineis solares e aerogeradores,2790,Fabricacao de equipamentos e aparelhos eletricos nao especificados anteriormente,seed_validacao,CNAE potencialmente associada a equipamentos eletricos para energia; exige validacao
+M5,C16,Descarbonizacao da industria de base - cimento aco e quimica verdes,2320,Fabricacao de cimento,seed_validacao,DIEESE 2025 lista cimento aco e quimica verdes como cadeia prioritaria NIB
+M5,C16,Descarbonizacao da industria de base - cimento aco e quimica verdes,2411,Producao de ferro-gusa,seed_validacao,DIEESE 2025 lista cimento aco e quimica verdes como cadeia prioritaria NIB
+M5,C16,Descarbonizacao da industria de base - cimento aco e quimica verdes,2421,Producao de laminados planos de aco,seed_validacao,DIEESE 2025 lista cimento aco e quimica verdes como cadeia prioritaria NIB
+M5,C16,Descarbonizacao da industria de base - cimento aco e quimica verdes,2431,Producao de tubos de aco com costura,seed_validacao,DIEESE 2025 lista cimento aco e quimica verdes como cadeia prioritaria NIB
+M5,C16,Descarbonizacao da industria de base - cimento aco e quimica verdes,2019,Fabricacao de produtos quimicos inorganicos nao especificados anteriormente,seed_validacao,CNAE quimica de base; exige validacao
+M5,C16,Descarbonizacao da industria de base - cimento aco e quimica verdes,2029,Fabricacao de produtos quimicos organicos nao especificados anteriormente,seed_validacao,CNAE quimica de base; exige validacao
+M6,C17,Veiculos lancadores,3042,Fabricacao de turbinas motores e outros componentes e pecas para aeronaves,seed_validacao,DIEESE 2025 lista veiculos lancadores como cadeia prioritaria NIB
+M6,C17,Veiculos lancadores,3050,Fabricacao de veiculos militares de combate,seed_validacao,CNAE defesa/aeroespacial correlata; exige validacao
+M6,C18,Radares e satelites,2631,Fabricacao de equipamentos transmissores de comunicacao pecas e acessorios,seed_validacao,DIEESE 2025 lista radares e satelites como cadeia prioritaria NIB
+M6,C18,Radares e satelites,2640,Fabricacao de aparelhos de recepcao reproducao gravacao e amplificacao de audio e video,seed_validacao,CNAE eletroeletronica correlata; exige validacao por produto
+M6,C18,Radares e satelites,2651,Fabricacao de aparelhos e equipamentos de medida teste e controle,seed_validacao,CNAE instrumentacao correlata a radares; exige validacao

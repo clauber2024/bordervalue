@@ -53,6 +53,7 @@ python build_sensibilidade_rateio.py
 python build_cadeias_minerais_estrategicas.py
 python build_combustiveis_transicao.py
 python build_tsb_bridge.py
+python build_nib_territorializacao.py
 python dashboard/build_dashboard_data.py
 node build_final_border_value_workbook.mjs
 python prepare_publication_package.py
@@ -94,6 +95,10 @@ O Node.js permanece necessário apenas para os scripts executivos em `.mjs`, com
 - `build_tsb_bridge.py`: materializa a Etapa 2 TSB em
   `outputs/tsb_bridge_2026`, preservando CNAE5 do relatorio e conectando a
   classe CNAE de quatro digitos da plataforma a PRODLIST, NCM e RAIS territorial.
+- `build_nib_territorializacao.py`: materializa a camada de territorializacao
+  das cadeias prioritarias da Nova Industria Brasil em
+  `outputs/nib_territorializacao_2026`, a partir de uma ponte editavel
+  CNAE-cadeia NIB e da RAIS territorial.
 - `prepare_publication_package.py`: monta o pacote publicável com bases,
   metadados, dicionário de dados, reprodução e arquivos compactados.
 
@@ -110,6 +115,8 @@ O Node.js permanece necessário apenas para os scripts executivos em `.mjs`, com
 9. `analytic_trade_cnae`
 10. `border_value_indicators_cnae`
 11. `bridge_tsb_cnae_class` e derivados TSB, apos a base oficial com RAIS
+12. `bridge_nib_cnae_class` e derivados NIB, apos a base oficial com RAIS e
+    indicadores finais
 
 O fato de comércio nunca é ligado diretamente à ponte 1:N. A tabela analítica é
 uma camada posterior e reconciliada, evitando dupla contagem.
