@@ -1,136 +1,158 @@
 /**
- * Metadados de auditoria que acompanham cada produto conceitual.
+ * Metadados de auditoria que acompanham cada produto conceitual retornado pela API Published.
  *
- * Use este bloco para exibir ano de referencia, qualidade do dado e alertas
- * metodologicos nos modulos premium de visualizacao.
+ * Este bloco deve orientar badges, notas metodologicas, filtros de qualidade e alertas
+ * de rastreabilidade nos modulos premium de visualizacao da plataforma Border Value.
  */
 export interface MetadadosAuditoria {
   /**
-   * Ano-base utilizado na consolidacao estatistica do registro.
+   * Ano-base da fonte estatistica usada no registro.
+   *
+   * Exemplos esperados: `2026` para Comex e `2024` para PIA/RAIS.
    */
   reference_year: number;
 
   /**
-   * Nivel qualitativo de confianca atribuido pela camada de inteligencia.
+   * Nivel qualitativo de confianca atribuido pela camada metodologica.
+   *
+   * Use este campo como escala ordinal para comunicacao visual, sem converter para score numerico
+   * a menos que uma regra metodologica explicita seja definida.
    */
   confidence_level: 'alta' | 'media' | 'baixa';
 
   /**
-   * Indica se o codigo NCM representa uma categoria generica, residual ou ampla.
+   * Indica se o codigo NCM e generico, residual ou amplo.
+   *
+   * A API marca como `true` quando o codigo termina em 9, 90 ou 99.
    */
   is_ncm_generica: boolean;
 
   /**
-   * Indica se ha restricao de sigilo estatistico nos dados industriais da PIA.
+   * Indica se o IBGE aplicou sigilo estatistico aos dados industriais da PIA.
+   *
+   * Quando `true`, interfaces devem evitar sugerir precisao excessiva nos valores industriais.
    */
   has_sigilo_pia: boolean;
 
   /**
-   * Versao da metodologia aplicada na geracao dos indicadores.
+   * Versao da metodologia responsavel pela geracao do registro.
+   *
+   * Exemplo esperado: `"1.0.0-rc.1"`.
    */
   metodologia_versao: string;
 }
 
 /**
- * Indicadores de fluxo comercial internacional associados ao produto.
+ * Indicadores de comercio exterior associados a um produto conceitual.
  *
- * Use este bloco para graficos de importacao, exportacao, deficit,
- * concentracao de origem e exposicao externa.
+ * Este bloco alimenta graficos de importacao, exportacao, saldo/deficit comercial,
+ * concentracao de origem e exposicao a fornecedores internacionais.
  */
 export interface FluxoComercial {
   /**
-   * Valor FOB total importado no ano de referencia.
+   * Valor FOB importado, em dolares dos Estados Unidos (USD).
    */
   importacao_valor_fob: number;
 
   /**
-   * Peso liquido total importado no ano de referencia.
+   * Peso liquido importado, em quilogramas (kg).
    */
   importacao_peso_liquido: number;
 
   /**
-   * Valor FOB total exportado no ano de referencia.
+   * Valor FOB exportado, em dolares dos Estados Unidos (USD).
    */
   exportacao_valor_fob: number;
 
   /**
-   * Peso liquido total exportado no ano de referencia.
+   * Peso liquido exportado, em quilogramas (kg).
    */
   exportacao_peso_liquido: number;
 
   /**
-   * Importacao menos exportacao em valor FOB.
+   * Diferenca entre importacao e exportacao FOB, em dolares dos Estados Unidos (USD).
    *
-   * Pode ser negativo quando o produto apresenta superavit comercial.
+   * Formula de referencia: `importacao_valor_fob - exportacao_valor_fob`.
+   * Valores negativos indicam superavit comercial.
    */
   deficit_comercial: number;
 
   /**
-   * Pais com maior participacao na origem das importacoes.
+   * Principal pais de origem das importacoes do produto.
    */
   principal_pais_origem: string;
 
   /**
    * Participacao do principal pais de origem no total importado.
    *
-   * Deve ser interpretado como fracao, nao percentual formatado.
+   * A escala e fracionaria de 0 a 1. Exemplo: `0.724` representa 72,40%.
    */
   principal_pais_participacao: number;
 
   /**
-   * Indice Herfindahl-Hirschman global de concentracao das origens comerciais.
+   * Indice Herfindahl-Hirschman global para concentracao das origens comerciais.
+   *
+   * A escala esperada vai de 0 a 10000, em que valores maiores indicam maior concentracao.
    */
   hhi_global: number;
 }
 
 /**
- * Indicadores da estrutura produtiva domestica vinculada ao produto.
+ * Indicadores da estrutura produtiva domestica vinculada ao produto conceitual.
  *
- * Use este bloco para analises de producao nacional, consumo aparente, emprego
- * formal e dependencia externa.
+ * Este bloco apoia leituras de producao nacional, consumo aparente, dependencia externa,
+ * emprego formal e massa salarial no elo exposto a TSB.
  */
 export interface EstruturaDomestica {
   /**
-   * Codigo CNAE da atividade economica associada ao produto.
+   * Codigo CNAE associado ao elo produtivo domestico.
+   *
+   * Deve ser tratado como string para preservar zeros a esquerda. Formato esperado: 4 digitos.
    */
   cnae_codigo: string;
 
   /**
-   * Codigo PRODLIST usado para vincular o produto a producao industrial.
+   * Codigo PRODLIST associado ao produto industrial.
+   *
+   * Deve ser tratado como string para preservar zeros a esquerda. Formato esperado: 8 digitos.
    */
   prodlist_codigo: string;
 
   /**
-   * Valor da producao industrial observado ou estimado pela PIA.
+   * Valor da producao industrial segundo PIA, em reais (R$).
    */
   valor_producao_pia: number;
 
   /**
-   * Consumo aparente calculado para o mercado domestico.
+   * Consumo aparente do produto no mercado domestico, em equivalentes USD.
    */
   consumo_aparente: number;
 
   /**
-   * Fracao do consumo aparente atendida por importacoes.
+   * Parcela do consumo aparente atendida por importacoes.
+   *
+   * A escala e fracionaria de 0 a 1. Formula de referencia: importacao / consumo aparente.
    */
   dependencia_externa_fracao: number;
 
   /**
-   * Quantidade de vinculos formais RAIS associados ao recorte produtivo.
+   * Quantidade de vinculos formais RAIS no elo exposto a TSB.
    */
   qtde_vinculos_rais: number;
 
   /**
-   * Massa salarial RAIS associada aos vinculos formais do recorte produtivo.
+   * Massa salarial total RAIS no elo exposto a TSB, em reais (R$).
    */
   massa_salarial_rais: number;
 }
 
 /**
- * Produto conceitual consolidado pela plataforma Border Value.
+ * Unidade analitica principal da API Published para os produtos da Border Value.
  *
- * Esta e a unidade central para alimentar dashboards, cards estrategicos,
- * rankings setoriais e visualizacoes de cadeia produtiva.
+ * Use esta interface como contrato estrutural para dashboards, rankings, comparativos,
+ * cards estrategicos e visualizacoes de cadeia produtiva. Os nomes dos campos seguem
+ * rigorosamente o `snake_case` da API e nao devem ser convertidos para `camelCase`
+ * na camada de tipagem.
  */
 export interface ProdutoConceitual {
   /**
@@ -155,6 +177,9 @@ export interface ProdutoConceitual {
 
   /**
    * Codigo NCM principal usado no mapeamento comercial do produto.
+   *
+   * Deve ser tratado como string para preservar zeros a esquerda e evitar operacoes numericas
+   * indevidas sobre codigos classificatorios.
    */
   ncm_codigo: string;
 
@@ -174,7 +199,7 @@ export interface ProdutoConceitual {
   auditoria: MetadadosAuditoria;
 
   /**
-   * Parametros usados quando o backend aplica fator de proporcionalidade.
+   * Parametros usados quando a API aplica fator de proporcionalidade ao produto conceitual.
    */
   fator_proporcionalidade: {
     /**
@@ -183,12 +208,16 @@ export interface ProdutoConceitual {
     aplicado: boolean;
 
     /**
-     * Valor do fator alpha usado para ajustar o indicador proporcionalmente.
+     * Coeficiente de corte usado no rateio proporcional.
+     *
+     * Exemplo esperado: `0.284`.
      */
     fator_alpha: number;
 
     /**
      * Fonte, proxy ou criterio usado para estimar o fator de proporcionalidade.
+     *
+     * Exemplo esperado: `"RenovaCalc-E1GM / Neomille"`.
      */
     fonte_proxy: string;
   };

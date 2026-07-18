@@ -1,6 +1,5 @@
 "use client";
 
-import type { ReactNode } from "react";
 import type { ProdutoConceitual } from "../types/border-value";
 import {
   CartesianGrid,
@@ -23,8 +22,14 @@ type NIBMatrixChartProps = {
 
 type MatrixDatum = ProdutoConceitual & {
   matrixSize: number;
-  matrixState: string;
+  matrixState: QuadrantLabel;
 };
+
+type QuadrantLabel =
+  | "Modernizar / Expandir"
+  | "Atrair Investimento / Planta Nova"
+  | "Zona Segura / Competitiva"
+  | "Atenção Estratégica";
 
 type MatrixPointProps = {
   cx?: number;
@@ -56,7 +61,7 @@ const etanolSafMock: ProdutoConceitual[] = [
     },
     industria: {
       cnae_codigo: "1931",
-      prodlist_codigo: "1931.2010",
+      prodlist_codigo: "19312010",
       valor_producao_pia: 34500000000,
       consumo_aparente: 33265000000,
       dependencia_externa_fracao: 0,
@@ -94,7 +99,7 @@ const etanolSafMock: ProdutoConceitual[] = [
     },
     industria: {
       cnae_codigo: "1932",
-      prodlist_codigo: "sigilo/planta-nova",
+      prodlist_codigo: "00000000",
       valor_producao_pia: 0,
       consumo_aparente: 195000000,
       dependencia_externa_fracao: 1,
@@ -132,7 +137,7 @@ const etanolSafMock: ProdutoConceitual[] = [
     },
     industria: {
       cnae_codigo: "2123",
-      prodlist_codigo: "2123.2040",
+      prodlist_codigo: "21232040",
       valor_producao_pia: 31000000,
       consumo_aparente: 306800000,
       dependencia_externa_fracao: 0.9,
@@ -155,15 +160,15 @@ const etanolSafMock: ProdutoConceitual[] = [
 ];
 
 const glass =
-  "border border-white/[0.08] bg-slate-950/90 shadow-2xl shadow-slate-950/60 backdrop-blur-xl";
+  "border border-zinc-800/50 bg-zinc-950/80 shadow-2xl shadow-black/50 backdrop-blur-xl";
 
 const axisTick = {
-  fill: "#cbd5e1",
+  fill: "#a1a1aa",
   fontSize: 12,
 };
 
 const quadrantLabel = {
-  fill: "#e2e8f0",
+  fill: "#d4d4d8",
   fontSize: 11,
   fontWeight: 700,
 };
@@ -186,8 +191,8 @@ export function NIBMatrixChart({
   );
 
   return (
-    <section className={`${glass} overflow-hidden rounded-lg text-slate-100 ${className}`}>
-      <header className="border-b border-white/[0.08] px-4 py-5 sm:px-6">
+    <section className={`${glass} overflow-hidden rounded-lg text-zinc-100 ${className}`}>
+      <header className="border-b border-zinc-800/50 bg-white/[0.025] px-4 py-5 sm:px-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300">
@@ -199,16 +204,16 @@ export function NIBMatrixChart({
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-xs sm:min-w-[22rem]">
-            <MetricPill label="Corte capacidade" value={formatMoney(capacidadeThreshold)} />
-            <MetricPill label="Corte déficit" value={formatMoney(deficitThreshold)} />
+            <MetricPill label="Corte capacidade" value={formatCurrencyLong(capacidadeThreshold, "BRL")} />
+            <MetricPill label="Corte déficit" value={formatCurrencyLong(deficitThreshold, "USD")} />
           </div>
         </div>
       </header>
 
       <div className="h-[460px] min-h-[340px] w-full px-2 py-5 sm:px-4">
         <ResponsiveContainer width="100%" height="100%">
-          <ScatterChart margin={{ top: 24, right: 36, bottom: 38, left: 12 }}>
-            <CartesianGrid stroke="rgba(226,232,240,0.08)" strokeDasharray="3 3" />
+          <ScatterChart margin={{ top: 28, right: 42, bottom: 42, left: 16 }}>
+            <CartesianGrid stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
 
             <ReferenceArea
               x1={0}
@@ -217,7 +222,7 @@ export function NIBMatrixChart({
               y2={yMax}
               fill="#f59e0b"
               fillOpacity={0.02}
-              stroke="rgba(245,158,11,0.24)"
+              stroke="#27272a"
               strokeDasharray="4 4"
               label={{ value: "Atrair Investimento / Planta Nova", position: "insideTopLeft", ...quadrantLabel }}
             />
@@ -226,9 +231,9 @@ export function NIBMatrixChart({
               x2={xMax}
               y1={deficitThreshold}
               y2={yMax}
-              fill="#38bdf8"
+              fill="#22d3ee"
               fillOpacity={0.02}
-              stroke="rgba(56,189,248,0.22)"
+              stroke="#27272a"
               strokeDasharray="4 4"
               label={{ value: "Modernizar / Expandir", position: "insideTopRight", ...quadrantLabel }}
             />
@@ -239,9 +244,9 @@ export function NIBMatrixChart({
               y2={deficitThreshold}
               fill="#a78bfa"
               fillOpacity={0.02}
-              stroke="rgba(167,139,250,0.2)"
+              stroke="#27272a"
               strokeDasharray="4 4"
-              label={{ value: "Atenção Estratégica", position: "insideBottomLeft", ...quadrantLabel }}
+              label={{ value: "Atenção Estratégica", position: "insideTopLeft", ...quadrantLabel }}
             />
             <ReferenceArea
               x1={capacidadeThreshold}
@@ -250,9 +255,9 @@ export function NIBMatrixChart({
               y2={deficitThreshold}
               fill="#22c55e"
               fillOpacity={0.02}
-              stroke="rgba(34,197,94,0.22)"
+              stroke="#27272a"
               strokeDasharray="4 4"
-              label={{ value: "Zona Segura / Competitiva", position: "insideBottomRight", ...quadrantLabel }}
+              label={{ value: "Zona Segura / Competitiva", position: "insideTopRight", ...quadrantLabel }}
             />
 
             <XAxis
@@ -262,13 +267,13 @@ export function NIBMatrixChart({
               domain={[0, xMax]}
               tick={axisTick}
               tickLine={false}
-              axisLine={{ stroke: "rgba(203,213,225,0.28)" }}
-              tickFormatter={formatMoneyCompact}
+              axisLine={{ stroke: "rgba(161,161,170,0.36)" }}
+              tickFormatter={(value) => formatCurrencyCompact(Number(value), "BRL")}
               label={{
                 value: "Capacidade Doméstica (valor de produção PIA)",
                 position: "insideBottom",
-                offset: -24,
-                fill: "#e2e8f0",
+                offset: -28,
+                fill: "#d4d4d8",
                 fontSize: 12,
               }}
             />
@@ -279,18 +284,18 @@ export function NIBMatrixChart({
               domain={[yMin, yMax]}
               tick={axisTick}
               tickLine={false}
-              axisLine={{ stroke: "rgba(203,213,225,0.28)" }}
-              tickFormatter={formatMoneyCompact}
+              axisLine={{ stroke: "rgba(161,161,170,0.36)" }}
+              tickFormatter={(value) => formatCurrencyCompact(Number(value), "USD")}
               label={{
-                value: "Saldo Comercial: déficit (+) / superávit (-)",
+                value: "Saldo comercial em USD: déficit (+) / superávit (-)",
                 angle: -90,
                 position: "insideLeft",
-                fill: "#e2e8f0",
+                fill: "#d4d4d8",
                 fontSize: 12,
               }}
             />
             <ZAxis type="number" dataKey="matrixSize" range={[90, 320]} name="Magnitude estratégica" />
-            <Tooltip cursor={{ stroke: "#94a3b8", strokeDasharray: "3 3" }} content={<NIBTooltip />} />
+            <Tooltip cursor={{ stroke: "#71717a", strokeDasharray: "3 3" }} content={<NIBTooltip />} />
             <Scatter data={matrixData} name="Produtos Etanol/SAF" fill="#22d3ee" shape={<MatrixPoint />} />
           </ScatterChart>
         </ResponsiveContainer>
@@ -301,11 +306,11 @@ export function NIBMatrixChart({
 
 function MetricPill({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2">
-      <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+    <div className="rounded-lg border border-zinc-800/60 bg-white/[0.04] px-3 py-2">
+      <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
         {label}
       </span>
-      <strong className="mt-1 block truncate text-sm font-semibold text-slate-100">{value}</strong>
+      <strong className="mt-1 block truncate text-sm font-semibold text-zinc-100">{value}</strong>
     </div>
   );
 }
@@ -313,17 +318,16 @@ function MetricPill({ label, value }: { label: string; value: string }) {
 function MatrixPoint({ cx = 0, cy = 0, payload }: MatrixPointProps) {
   if (!payload) return null;
 
-  const isExporter = payload.comercio.deficit_comercial < 0;
-  const pointColor = isExporter ? "#34d399" : payload.industria.valor_producao_pia === 0 ? "#fbbf24" : "#38bdf8";
+  const pointColor = getPointColor(payload);
 
   return (
     <g>
-      <circle cx={cx} cy={cy} r={13} fill={pointColor} fillOpacity={0.13} />
-      <circle cx={cx} cy={cy} r={7} fill={pointColor} stroke="#f8fafc" strokeOpacity={0.84} strokeWidth={1.4} />
-      <text x={cx + 13} y={cy - 10} fill="#f8fafc" fontSize={11} fontWeight={700}>
+      <circle cx={cx} cy={cy} r={15} fill={pointColor} fillOpacity={0.12} />
+      <circle cx={cx} cy={cy} r={7} fill={pointColor} stroke="#fafafa" strokeOpacity={0.86} strokeWidth={1.4} />
+      <text x={cx + 13} y={cy - 10} fill="#fafafa" fontSize={11} fontWeight={700}>
         {payload.produto_nome}
       </text>
-      <text x={cx + 13} y={cy + 6} fill="#94a3b8" fontSize={10}>
+      <text x={cx + 13} y={cy + 6} fill="#a1a1aa" fontSize={10}>
         {payload.matrixState}
       </text>
     </g>
@@ -337,22 +341,33 @@ function NIBTooltip({ active, payload }: NIBTooltipProps) {
   const saldoLabel = product.comercio.deficit_comercial < 0 ? "Superávit comercial" : "Déficit comercial";
 
   return (
-    <div className="min-w-72 rounded-lg border border-white/[0.1] bg-slate-950/95 p-4 text-xs text-slate-100 shadow-2xl backdrop-blur-xl">
+    <div className="min-w-72 rounded-lg border border-zinc-800/70 bg-zinc-950/95 p-4 text-xs text-zinc-100 shadow-2xl backdrop-blur-xl">
       <p className="text-sm font-bold tracking-tight text-white">{product.produto_nome}</p>
       <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.16em] text-cyan-300">
         {product.matrixState}
       </p>
 
       <div className="mt-3 space-y-2.5">
-        <TooltipRow label="Capacidade doméstica" value={formatMoney(product.industria.valor_producao_pia)} tone="cyan" />
-        <TooltipRow label={saldoLabel} value={formatMoney(product.comercio.deficit_comercial)} tone={product.comercio.deficit_comercial < 0 ? "emerald" : "amber"} />
-        <TooltipRow label="Importacoes FOB" value={formatMoney(product.comercio.importacao_valor_fob)} tone="slate" />
-        <TooltipRow label="Exportacoes FOB" value={formatMoney(product.comercio.exportacao_valor_fob)} tone="slate" />
-      </div>
-
-      <div className="mt-3 border-t border-white/[0.08] pt-3">
-        <TechnicalCode>NCM {product.ncm_codigo}</TechnicalCode>
-        {product.auditoria.has_sigilo_pia ? <TechnicalCode>PIA com sigilo</TechnicalCode> : null}
+        <TooltipRow
+          label="Capacidade doméstica"
+          value={formatCurrencyLong(product.industria.valor_producao_pia, "BRL")}
+          tone="cyan"
+        />
+        <TooltipRow
+          label={saldoLabel}
+          value={formatCurrencyLong(product.comercio.deficit_comercial, "USD")}
+          tone={product.comercio.deficit_comercial < 0 ? "emerald" : "amber"}
+        />
+        <TooltipRow
+          label="Importações FOB"
+          value={formatCurrencyLong(product.comercio.importacao_valor_fob, "USD")}
+          tone="zinc"
+        />
+        <TooltipRow
+          label="Exportações FOB"
+          value={formatCurrencyLong(product.comercio.exportacao_valor_fob, "USD")}
+          tone="zinc"
+        />
       </div>
     </div>
   );
@@ -365,28 +380,20 @@ function TooltipRow({
 }: {
   label: string;
   value: string;
-  tone: "cyan" | "emerald" | "amber" | "slate";
+  tone: "cyan" | "emerald" | "amber" | "zinc";
 }) {
   const tones = {
     cyan: "text-cyan-200",
     emerald: "text-emerald-200",
     amber: "text-amber-200",
-    slate: "text-slate-100",
+    zinc: "text-zinc-100",
   };
 
   return (
     <div className="flex items-center justify-between gap-5">
-      <span className="text-slate-500">{label}</span>
+      <span className="text-zinc-500">{label}</span>
       <strong className={`text-right font-semibold ${tones[tone]}`}>{value}</strong>
     </div>
-  );
-}
-
-function TechnicalCode({ children }: { children: ReactNode }) {
-  return (
-    <span className="mr-1.5 inline-flex rounded border border-white/[0.06] bg-white/[0.03] px-1.5 py-0.5 text-[10px] text-slate-600">
-      {children}
-    </span>
   );
 }
 
@@ -410,7 +417,7 @@ function getMatrixState(
   product: ProdutoConceitual,
   capacidadeThreshold: number,
   deficitThreshold: number,
-) {
+): QuadrantLabel {
   const highCapacity = product.industria.valor_producao_pia >= capacidadeThreshold;
   const highDeficit = product.comercio.deficit_comercial >= deficitThreshold;
 
@@ -418,6 +425,12 @@ function getMatrixState(
   if (highDeficit && !highCapacity) return "Atrair Investimento / Planta Nova";
   if (!highDeficit && highCapacity) return "Zona Segura / Competitiva";
   return "Atenção Estratégica";
+}
+
+function getPointColor(product: MatrixDatum) {
+  if (product.comercio.deficit_comercial < 0) return "#34d399";
+  if (product.industria.valor_producao_pia === 0) return "#fbbf24";
+  return "#38bdf8";
 }
 
 function paddedMax(value: number) {
@@ -439,23 +452,25 @@ function scaleStep(value: number) {
   return 10000000;
 }
 
-function formatMoney(value: number) {
+function formatCurrencyLong(value: number, currency: "BRL" | "USD") {
   const abs = Math.abs(value);
   const sign = value < 0 ? "-" : "";
+  const prefix = currency === "BRL" ? "R$" : "US$";
 
-  if (abs >= 1000000000) return `${sign}R$ ${formatDecimal(abs / 1000000000)} Bilhões`;
-  if (abs >= 1000000) return `${sign}R$ ${formatDecimal(abs / 1000000)} Milhões`;
-  if (abs >= 1000) return `${sign}R$ ${formatDecimal(abs / 1000)} Mil`;
-  return `${sign}R$ ${formatDecimal(abs)}`;
+  if (abs >= 1000000000) return `${sign}${prefix} ${formatDecimal(abs / 1000000000)} Bilhões`;
+  if (abs >= 1000000) return `${sign}${prefix} ${formatDecimal(abs / 1000000)} Milhões`;
+  if (abs >= 1000) return `${sign}${prefix} ${formatDecimal(abs / 1000)} Mil`;
+  return `${sign}${prefix} ${formatDecimal(abs)}`;
 }
 
-function formatMoneyCompact(value: number) {
+function formatCurrencyCompact(value: number, currency: "BRL" | "USD") {
   const abs = Math.abs(value);
   const sign = value < 0 ? "-" : "";
+  const prefix = currency === "BRL" ? "R$" : "US$";
 
-  if (abs >= 1000000000) return `${sign}R$ ${formatDecimal(abs / 1000000000)} bi`;
-  if (abs >= 1000000) return `${sign}R$ ${formatDecimal(abs / 1000000)} mi`;
-  return `${sign}R$ ${formatDecimal(abs)}`;
+  if (abs >= 1000000000) return `${sign}${prefix} ${formatDecimal(abs / 1000000000)} bi`;
+  if (abs >= 1000000) return `${sign}${prefix} ${formatDecimal(abs / 1000000)} mi`;
+  return `${sign}${prefix} ${formatDecimal(abs)}`;
 }
 
 function formatDecimal(value: number) {
