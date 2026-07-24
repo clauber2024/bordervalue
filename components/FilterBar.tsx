@@ -21,11 +21,14 @@ export type FilterState = {
   product: string;
   indicator: string;
   period: string;
+  flow: string;
   territory: string;
   hs: string;
   ncm: string;
   cnae: string;
   prodlist: string;
+  country: string;
+  mapping_status: string;
   confidence: string;
 };
 
@@ -42,11 +45,14 @@ const DEFAULT_FILTERS: FilterState = {
   product: "all",
   indicator: "externalDependency",
   period: "2026-H1",
+  flow: "all",
   territory: "all",
   hs: "",
   ncm: "",
   cnae: "",
   prodlist: "",
+  country: "",
+  mapping_status: "all",
   confidence: "all",
 };
 
@@ -63,7 +69,7 @@ const mainFilters = [
   },
   {
     key: "product",
-    label: "Produto/etapa",
+    label: "Produto conceitual",
     icon: Package,
     options: productOptionsForChain("all"),
     multi: false,
@@ -83,8 +89,19 @@ const mainFilters = [
     multi: false,
   },
   {
+    key: "flow",
+    label: "Fluxo",
+    icon: Filter,
+    options: [
+      ["all", "Todos"],
+      ["IMP", "Importacoes"],
+      ["EXP", "Exportacoes"],
+    ],
+    multi: false,
+  },
+  {
     key: "territory",
-    label: "Territorio",
+    label: "Pais/parceiro",
     icon: Globe2,
     options: territories,
     multi: true,
@@ -92,10 +109,23 @@ const mainFilters = [
 ] as const;
 
 const technicalFields = [
-  { key: "hs", label: "HS", placeholder: "Ex: 310210" },
   { key: "ncm", label: "NCM", placeholder: "Ex: 31021010" },
   { key: "cnae", label: "CNAE", placeholder: "Ex: 2013" },
   { key: "prodlist", label: "PRODLIST", placeholder: "Ex: 2052.2010" },
+  { key: "country", label: "Pais/parceiro", placeholder: "Ex: Canada" },
+] as const;
+
+const flowOptions = [
+  ["all", "Todos"],
+  ["IMP", "Importacoes"],
+  ["EXP", "Exportacoes"],
+] as const;
+
+const mappingStatusOptions = [
+  ["all", "Todos"],
+  ["mapeado", "Mapeado"],
+  ["ncm_generica", "NCM generica"],
+  ["auditoria_sigilo_pia", "Auditoria: sigilo PIA"],
 ] as const;
 
 const confidenceOptions = [
@@ -180,13 +210,15 @@ export function FilterBar({ filters, isLoading = false }: FilterBarProps) {
       <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-zinc-950/82 px-4 py-3 text-zinc-100 backdrop-blur-xl sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Explorar cadeia</p>
-            <h1 className="mt-1 text-lg font-bold tracking-tight text-white">Produtos conceituais</h1>
+            <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">
+              Painel Analítico Border Value
+            </p>
+            <h1 className="mt-1 text-lg font-bold tracking-tight text-white">Explorar cadeias e produtos</h1>
           </div>
 
           <div className="flex flex-1 flex-col gap-3 xl:max-w-5xl">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-              <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-6">
                 {mainFilters.map((item) =>
                   item.multi ? (
                     <MultiSelectControl
@@ -317,7 +349,22 @@ export function FilterBar({ filters, isLoading = false }: FilterBarProps) {
                 ))}
 
                 <label className="block">
-                  <span className="text-sm font-medium text-zinc-300">Nivel de confianca</span>
+                  <span className="text-sm font-medium text-zinc-300">Status de mapeamento</span>
+                  <select
+                    value={currentFilters.mapping_status}
+                    onChange={(event) => replaceUrl({ mapping_status: event.target.value })}
+                    className="mt-2 h-11 w-full appearance-none rounded-lg border border-white/[0.1] bg-zinc-950/60 px-3 text-sm text-zinc-100 outline-none transition focus:border-cyan-300/70 focus:ring-2 focus:ring-cyan-300/20"
+                  >
+                    {mappingStatusOptions.map(([value, label]) => (
+                      <option key={value} value={value} className="bg-zinc-950 text-zinc-100">
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="text-sm font-medium text-zinc-300">Nivel de confianca/auditoria</span>
                   <select
                     value={currentFilters.confidence}
                     onChange={(event) => replaceUrl({ confidence: event.target.value })}
@@ -340,6 +387,8 @@ export function FilterBar({ filters, isLoading = false }: FilterBarProps) {
                         ncm: "",
                         cnae: "",
                         prodlist: "",
+                        country: "",
+                        mapping_status: "all",
                         confidence: "all",
                       })
                     }
@@ -537,7 +586,9 @@ function chipLabel(key: FilterKey, value: string, productOptions: readonly (read
     product: productOptions,
     indicator: indicators,
     period: periods,
+    flow: flowOptions,
     territory: territories,
+    mapping_status: mappingStatusOptions,
     confidence: confidenceOptions,
   };
 
@@ -547,6 +598,7 @@ function chipLabel(key: FilterKey, value: string, productOptions: readonly (read
     ncm: "NCM",
     cnae: "CNAE",
     prodlist: "PRODLIST",
+    country: "Parceiro",
   };
 
   return prefixes[key] ? `${prefixes[key]}: ${label}` : label;

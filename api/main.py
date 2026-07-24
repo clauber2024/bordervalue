@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -47,6 +47,21 @@ class ConfidenceLevelEnum(str, Enum):
     ALTA = "alta"
     MEDIA = "media"
     BAIXA = "baixa"
+
+
+class NodeTypeEnum(str, Enum):
+    PAIS_ORIGEM = "pais_origem"
+    INSUMO_NCM = "insumo_ncm"
+    ELO_INDUSTRIAL_CNAE = "elo_industrial_cnae"
+    PRODUTO_FINAL = "produto_final"
+    USO_FINAL_SETOR = "uso_final_setor"
+
+
+class EdgeTypeEnum(str, Enum):
+    IMPORTACAO_FOB = "importacao_fob"
+    COEFICIENTE_TECNICO = "coeficiente_tecnico"
+    PRODUCAO_NACIONAL = "producao_nacional"
+    SUPRIMENTO_LOGISTICO = "suprimento_logistico"
 
 
 class MetadadosAuditoria(BaseModel):
@@ -214,6 +229,99 @@ class ApiResponseQuery(BaseModel):
     data: List[ProdutoConceitual]
 
 
+class GraphNode(BaseModel):
+    id: str = Field(..., description="ID unico do no (slug ou codigo estrutural).")
+    label: str = Field(
+        ...,
+        description="Nome de exibicao institucional legivel por decisores politicos.",
+    )
+    tipo: NodeTypeEnum = Field(
+        ...,
+        description="Classificacao funcional do no na rede AIPNET.",
+    )
+    grupo_cadeia: str = Field(
+        ...,
+        description="Cadeia prioritaria de vinculacao.",
+    )
+    metadados_no: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Metadados especificos para tooltips avancados no front-end.",
+    )
+
+
+class GraphEdge(BaseModel):
+    id_aresta: str = Field(..., description="Identificador unico da aresta.")
+    source: str = Field(..., description="ID do no de origem da dependencia.")
+    target: str = Field(..., description="ID do no de destino do fluxo.")
+    tipo_fluxo: EdgeTypeEnum = Field(
+        ...,
+        description="Natureza economica ou fisica do relacionamento.",
+    )
+    peso_financeiro_usd: float = Field(
+        ...,
+        ge=0,
+        description="Valor monetario associado ao arco em USD.",
+    )
+    peso_fisico_kg: Optional[float] = Field(
+        None,
+        ge=0,
+        description="Volume fisico associado ao arco em kg.",
+    )
+    fator_corte_aplicado: float = Field(
+        default=1.0,
+        ge=0,
+        le=1,
+        description="Coeficiente de proporcionalidade aplicado sobre o fluxo bruto.",
+    )
+    fonte_auditoria: str = Field(
+        ...,
+        description="Origem metodologica de validacao da aresta.",
+    )
+
+
+class SovereigntyGraphResponse(BaseModel):
+    chain_id: str
+    topology_version: str = Field(
+        APP_VERSION,
+        description="Versao do mapeamento tecnico de rede.",
+    )
+    nodes: List[GraphNode]
+    edges: List[GraphEdge]
+
+    @model_validator(mode="after")
+    def validar_topologia(self) -> "SovereigntyGraphResponse":
+        node_ids = [node.id for node in self.nodes]
+        edge_ids = [edge.id_aresta for edge in self.edges]
+
+        if len(node_ids) != len(set(node_ids)):
+            raise ValueError("IDs de nos duplicados na topologia.")
+
+        if len(edge_ids) != len(set(edge_ids)):
+            raise ValueError("IDs de arestas duplicados na topologia.")
+
+        node_id_set = set(node_ids)
+        for edge in self.edges:
+            if edge.source == edge.target:
+                raise ValueError(
+                    f"Anomalia topologica na aresta {edge.id_aresta}: "
+                    "o no de origem nao pode ser identico ao destino."
+                )
+
+            if edge.source not in node_id_set:
+                raise ValueError(
+                    f"Aresta {edge.id_aresta} referencia source inexistente: "
+                    f"{edge.source}"
+                )
+
+            if edge.target not in node_id_set:
+                raise ValueError(
+                    f"Aresta {edge.id_aresta} referencia target inexistente: "
+                    f"{edge.target}"
+                )
+
+        return self
+
+
 DATABASE_MOCK: list[dict] = [
     {
         "conceptual_product_id": "prod_cloreto_potassio",
@@ -342,3 +450,9 @@ def health_check() -> dict:
         "engine_version": APP_VERSION,
         "layer": "analytical_published",
     }
+
+
+from routers.api import router as published_router
+
+
+app.include_router(published_router)

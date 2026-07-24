@@ -1316,5 +1316,5 @@ function escapeHtml(value) {
 }
 
 init().catch((error) => {
-  document.body.innerHTML = `<main><p class="empty">Erro ao carregar dashboard: ${escapeHtml(error.message)}</p></main>`;
+  document.body.innerHTML = `<main><p class="empty">Erro ao carregar painel tecnico legado: ${escapeHtml(error.message)}</p></main>`;
 });

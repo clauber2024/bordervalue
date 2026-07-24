@@ -8,9 +8,9 @@ Status: candidata tecnica para homologacao. Este registro nao caracteriza public
 
 - Consolida o pipeline operacional 2026 com comercio exterior, PIA-Produto, camada opcional RAIS, PIB territorial e controles de qualidade.
 - Atualiza os modulos finais de analise: indicadores por CNAE/Prodlist, comparacao de periodos, rankings, sensibilidade de rateio, produtos relacionados a transicao e cadeias minerais estrategicas.
-- Atualiza o dashboard oficial em `dashboard/`, incluindo leitura territorial RAIS, mapa municipal, mapa mundial de parceiros comerciais, escopo Border Value e recortes de produtos relacionados a transicao.
+- Atualiza o painel tecnico legado/auditoria em `dashboard/`, incluindo leitura territorial RAIS, mapa municipal, mapa mundial de parceiros comerciais, escopo Border Value e recortes de produtos relacionados a transicao.
 - Inclui recorte complementar de crescimento por parceiro comercial, com top 5 paises no comercio de janeiro a junho de 2026 e produtos com maior crescimento frente a janeiro-junho de 2025.
-- Registra testes Python e testes de interface do dashboard para apoiar a homologacao.
+- Registra testes Python e testes de interface do painel tecnico legado para apoiar a homologacao.
 - Regenera o pacote tecnico com inventario, checksums SHA-256, dicionario de dados, arquivos de reproducao e arquivos compactados.
 
 ## Escopo da candidata
@@ -25,7 +25,7 @@ Status: candidata tecnica para homologacao. Este registro nao caracteriza public
 ## Criterios de aceite tecnico
 
 - Testes automatizados Python executados sem falha.
-- Teste de interface do dashboard executado sem falha.
+- Teste de interface do painel tecnico legado executado sem falha.
 - Pacote de homologacao regenerado em `outputs/publicacao_border_value_2026`.
 - Arquivo completo regenerado em `outputs/publicacao_border_value_2026_completo.zip`.
 - Inventario e checksums atualizados em `outputs/publicacao_border_value_2026/metadados`.

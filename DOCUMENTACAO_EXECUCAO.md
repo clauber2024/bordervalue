@@ -66,8 +66,8 @@ python -m unittest -v
 python operational_pipeline.py config.official.2026.json
 ```
 
-Comando lógico da execução completa com RAIS, recortes finais, dashboard,
-workbook e pacote publicável:
+Comando lógico da execução completa com RAIS, recortes finais, painel técnico
+legado/auditoria, workbook e pacote publicável:
 
 ```powershell
 python -m unittest -v
@@ -86,7 +86,7 @@ python prepare_publication_package.py
 python dashboard/server.py 8765
 ```
 
-O último comando mantém o dashboard local ativo em `http://localhost:8765`.
+O último comando mantém o painel técnico legado ativo em `http://localhost:8765`.
 A carga RAIS completa usa sete pacotes `.7z` oficiais, baixa cerca de 3,6 GB
 compactados e requer `py7zr` no ambiente Python ou `7z` disponível no PATH.
 
@@ -167,10 +167,10 @@ auditoria qualitativa dos códigos genéricos.
 Os módulos finais publicam em `outputs/final_border_value_2026` indicadores por
 CNAE e Prodlist, rankings, comparação 2024 H1 versus 2026 H1, cenários de
 sensibilidade de rateio, cadeias minerais estratégicas, recortes de combustíveis
-da transição, workbook executivo e relatórios técnicos. O dashboard consome esses
-arquivos junto com `outputs/official_2026_rais` para exibir fluxos mundiais,
-território RAIS, escopo Border Value e hidrogênio/amônia/combustíveis da
-transição.
+da transição, workbook executivo e relatórios técnicos. O painel técnico legado
+consome esses arquivos junto com `outputs/official_2026_rais` para exibir fluxos
+mundiais, território RAIS, escopo Border Value e hidrogênio/amônia/combustíveis
+da transição.
 
 A camada NIB, publicada em `outputs/nib_territorializacao_2026`, cruza uma
 ponte editavel CNAE-cadeia NIB com a RAIS municipal e os indicadores Border
@@ -236,7 +236,7 @@ Eles não devem aparecer na pauta de desenvolvimento inicial de novas atividades
 6. Execute `python -m unittest -v`; todos os testes devem passar.
 7. Execute a carga operacional e, quando aplicável, a carga RAIS com todos os
    parâmetros declarados em configuração versionada.
-8. Reprocesse módulos finais, dashboard, workbook e pacote de publicação.
+8. Reprocesse módulos finais, painel técnico legado, workbook e pacote de publicação.
 9. Calcule e registre os hashes SHA-256 das novas fontes em cache.
 10. Compare `manifest.json`, `quality_summary.csv` e artefatos finais com a
     execução anterior.

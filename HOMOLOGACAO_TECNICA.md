@@ -29,17 +29,17 @@ node build_final_border_value_workbook.mjs
 python prepare_publication_package.py
 ```
 
-3. Servir o dashboard local de homologacao:
+3. Servir o painel tecnico legado de homologacao:
 
 ```powershell
-npm run homolog:dashboard
+npm run homolog:auditoria
 ```
 
 Endereco local: `http://localhost:8765`.
 
 ## Conferencias minimas
 
-- Abrir o dashboard e confirmar carregamento de indicadores, filtros, mapas e tabelas.
+- Abrir o painel tecnico legado e confirmar carregamento de indicadores, filtros, mapas e tabelas.
 - Conferir `outputs/publicacao_border_value_2026/metadados/inventario_arquivos.csv`.
 - Conferir `outputs/publicacao_border_value_2026/metadados/checksums_sha256.csv`.
 - Confirmar a presenca do recorte `bases/top_partner_growth_2026_h1_vs_2025_h1` no pacote.

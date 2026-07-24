@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { FilterBar, type FilterState } from "../../components/FilterBar";
 import { ConceptualProductCard, type ConceptualProduct } from "../../components/ConceptualProductCard";
+import { apiRoutes } from "../../lib/apiRoutes";
 
 type ViewState = "loading" | "ready" | "error" | "empty";
 
@@ -38,6 +39,18 @@ type ApiResponse = {
   trade: Array<{ period: string; imports: number; exports: number }>;
   production: Array<{ stage: string; value: number; chain?: string }>;
   map: Array<{ territory: string; name: string; value: number; coordinates: [number, number] }>;
+  kpis?: {
+    totalImports: number;
+    totalExports: number;
+    avgDependency: number;
+    maxHhi: number;
+    totalProducts: number;
+  };
+  metadata?: {
+    source: "dashboard_data" | "published" | "local_fallback";
+    warning?: string;
+    pilotFlags?: string[];
+  };
 };
 
 const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
@@ -56,92 +69,15 @@ const DEFAULT_FILTERS: FilterState = {
   product: "all",
   indicator: "externalDependency",
   period: "2026-H1",
+  flow: "all",
   territory: "all",
   hs: "",
   ncm: "",
   cnae: "",
   prodlist: "",
+  country: "",
+  mapping_status: "all",
   confidence: "all",
-};
-
-const MOCK_RESPONSE: ApiResponse = {
-  products: [
-    {
-      id: "urea",
-      name: "Ureia fertilizante",
-      shortDescription: "Insumo nitrogenado critico para a produtividade agricola brasileira.",
-      chain: "Fertilizantes",
-      productionStage: "Insumo primario",
-      metrics: {
-        imports: 2450000000,
-        exports: 78000000,
-        externalDependency: 86,
-        hhi: 3180,
-        mainSupplier: { country: "Russia", share: 31 },
-        confidenceLevel: "high",
-      },
-      technicalCodes: {
-        hs: ["310210"],
-        ncm: ["31021010", "31021090"],
-        cnae: ["2013", "4683"],
-        prodlist: ["2052.2010"],
-      },
-      sources: ["Comex Stat 2026 H1", "PIA-Produto 2024", "RAIS 2024"],
-      methodology:
-        "Agregacao conceitual por NCM e PRODLIST com rateio CNAE ponderado por valor de producao PIA quando disponivel.",
-    },
-    {
-      id: "green-ammonia",
-      name: "Amonia e derivados",
-      shortDescription: "Base quimica para fertilizantes, hidrogenio e combustiveis de transicao.",
-      chain: "Hidrogenio e amonia",
-      productionStage: "Intermediario industrial",
-      metrics: {
-        imports: 1120000000,
-        exports: 185000000,
-        externalDependency: 68,
-        hhi: 2410,
-        mainSupplier: { country: "Trinidad and Tobago", share: 24 },
-        confidenceLevel: "medium",
-      },
-      technicalCodes: {
-        hs: ["281410"],
-        ncm: ["28141000"],
-        cnae: ["2011"],
-        prodlist: ["2011.2050"],
-      },
-      sources: ["Comex Stat 2026 H1", "PIA-Produto 2024"],
-      methodology:
-        "Recorte exploratorio; a NCM identifica produto relacionado a transicao, nao a rota de emissao.",
-    },
-  ],
-  dependency: [
-    { product: "Ureia", territory: "RU", value: 86, id: "urea" },
-    { product: "Amonia", territory: "TT", value: 68, id: "green-ammonia" },
-    { product: "Metanol", territory: "CL", value: 54, id: "methanol" },
-  ],
-  vulnerability: [
-    { product: "Ureia", hhi: 3180, dependency: 86, id: "urea" },
-    { product: "Amonia", hhi: 2410, dependency: 68, id: "green-ammonia" },
-    { product: "Metanol", hhi: 1720, dependency: 54, id: "methanol" },
-  ],
-  trade: [
-    { period: "2025-Q3", imports: 850000000, exports: 110000000 },
-    { period: "2025-Q4", imports: 920000000, exports: 125000000 },
-    { period: "2026-Q1", imports: 1080000000, exports: 118000000 },
-    { period: "2026-Q2", imports: 1370000000, exports: 145000000 },
-  ],
-  production: [
-    { stage: "Materia-prima", value: 38 },
-    { stage: "Insumo", value: 64 },
-    { stage: "Transformacao", value: 47 },
-    { stage: "Uso final", value: 72 },
-  ],
-  map: [
-    { territory: "RU", name: "Russia", value: 31, coordinates: [96, 61.5] },
-    { territory: "TT", name: "Trinidad and Tobago", value: 24, coordinates: [-61.2, 10.5] },
-    { territory: "CL", name: "Chile", value: 16, coordinates: [-71.5, -35.7] },
-  ],
 };
 
 const money = new Intl.NumberFormat("pt-BR", {
@@ -197,7 +133,7 @@ function ChainExplorerClient() {
     setStatus("loading");
     setError("");
     try {
-      const response = await fetch(`/api/conceptual-products?${new URLSearchParams(filters).toString()}`, {
+      const response = await fetch(apiRoutes.conceptualProducts(filters), {
         cache: "no-store",
       });
       if (!response.ok) throw new Error("Nao foi possivel carregar os indicadores da cadeia.");
@@ -205,11 +141,6 @@ function ChainExplorerClient() {
       setData(payload);
       setStatus(payload.products.length ? "ready" : "empty");
     } catch (err) {
-      if (process.env.NODE_ENV === "development") {
-        setData(MOCK_RESPONSE);
-        setStatus("ready");
-        return;
-      }
       setError(err instanceof Error ? err.message : "Erro inesperado ao carregar dados.");
       setStatus("error");
     }
@@ -220,12 +151,12 @@ function ChainExplorerClient() {
   }, [loadData]);
 
   const topProduct = data.products[0];
-  const totalImports = data.products.reduce((acc, item) => acc + item.metrics.imports, 0);
-  const totalExports = data.products.reduce((acc, item) => acc + item.metrics.exports, 0);
-  const avgDependency = data.products.length
+  const totalImports = data.kpis?.totalImports ?? data.products.reduce((acc, item) => acc + item.metrics.imports, 0);
+  const totalExports = data.kpis?.totalExports ?? data.products.reduce((acc, item) => acc + item.metrics.exports, 0);
+  const avgDependency = data.kpis?.avgDependency ?? (data.products.length
     ? data.products.reduce((acc, item) => acc + item.metrics.externalDependency, 0) / data.products.length
-    : 0;
-  const maxHhi = Math.max(...data.products.map((item) => item.metrics.hhi), 0);
+    : 0);
+  const maxHhi = data.kpis?.maxHhi ?? Math.max(...data.products.map((item) => item.metrics.hhi), 0);
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100 [--accent:#22c55e] [--neutral:#22d3ee] [--surface:rgba(24,24,27,0.4)]">
@@ -234,7 +165,9 @@ function ChainExplorerClient() {
       <div className="mx-auto max-w-7xl space-y-16 px-4 py-10 sm:px-6 lg:px-8">
         <section className={`${glass} overflow-hidden rounded-2xl p-6 sm:p-8`}>
           <div className="max-w-4xl">
-            <p className="text-sm font-medium uppercase tracking-[0.22em] text-cyan-300">Border Value</p>
+            <p className="text-sm font-medium uppercase tracking-[0.22em] text-cyan-300">
+              Painel Analítico Border Value
+            </p>
             <h1 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-5xl">
               Onde a cadeia brasileira esta mais exposta?
             </h1>
@@ -252,6 +185,7 @@ function ChainExplorerClient() {
               title="Quais sinais executivos merecem atencao imediata?"
               subtitle="Indicadores agregados dos produtos conceituais filtrados, sem expor codigos tecnicos na primeira leitura."
             />
+            {data.metadata?.warning ? <DataNotice metadata={data.metadata} /> : null}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
               <KpiCard icon={ArrowDownRight} label="Importacoes" value={money.format(totalImports)} tone="cyan" />
               <KpiCard icon={ArrowUpRight} label="Exportacoes" value={money.format(totalExports)} tone="emerald" />
@@ -429,6 +363,20 @@ function Question({ title, subtitle }: { title: string; subtitle: string }) {
     <div>
       <h2 className="text-2xl font-bold tracking-tight text-white">{title}</h2>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">{subtitle}</p>
+    </div>
+  );
+}
+
+function DataNotice({ metadata }: { metadata: NonNullable<ApiResponse["metadata"]> }) {
+  const sourceLabel = metadata.source === "dashboard_data"
+    ? "Dados oficiais do pipeline"
+    : metadata.source === "published"
+      ? "Camada Published"
+      : "Fallback local";
+
+  return (
+    <div className="rounded-lg border border-amber-300/25 bg-amber-400/10 px-4 py-3 text-sm leading-6 text-amber-100">
+      <strong className="font-semibold">{sourceLabel}.</strong> {metadata.warning}
     </div>
   );
 }

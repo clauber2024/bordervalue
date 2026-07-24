@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Border Value | Produtos conceituais",
-  description: "Experiencia premium para explorar dependencia externa, concentracao e producao nacional por cadeia.",
+  title: "Painel Analítico Border Value",
+  description: "Produto principal para explorar dependencia externa, concentracao e producao nacional por cadeia.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

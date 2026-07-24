@@ -13,7 +13,8 @@
     "verify:auditoria": "node verify_auditoria.mjs",
     "lint": "eslint .",
     "test:ui": "node --test tests/dashboard-ui.test.mjs",
-    "homolog:dashboard": "python dashboard/server.py 8765"
+    "homolog:dashboard": "python dashboard/server.py 8765",
+    "homolog:auditoria": "python dashboard/server.py 8765"
   },
   "dependencies": {
     "@oai/artifact-tool": "file:C:/Users/Rosana Santos/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/@oai/artifact-tool",
@@ -23,7 +24,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-simple-maps": "^3.0.0",
-    "recharts": "^2.15.0"
+    "recharts": "^2.15.0",
+    "swr": "^2.4.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

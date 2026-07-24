@@ -11,20 +11,47 @@ PRODLIST-Indústria, classe CNAE e produção doméstica da PIA-Produto.
 - Empregos: camada opcional RAIS por classe CNAE, ano, UF e município, com
   vínculos formais, massa salarial e salário médio.
 - PIB: camada territorial opcional por ano, UF e município, preparada para
-  leitura conjunta com emprego e renda no dashboard.
+  leitura conjunta com emprego e renda no painel analítico.
 - Rateio analítico: pesos por valor da produção PIA-Produto entre classes CNAE
   associadas à NCM, com fallback igualitário quando a base econômica não é
   completa e positiva.
 - Auditoria: NCMs terminadas em 9/90/99, NCMs sem ponte e CNAEs domésticas não alcançadas.
 
-## Produto oficial
+## Produto principal
 
-O dashboard oficial do projeto é a interface em `dashboard/`.
+O produto principal é o **Painel Analítico Border Value**, acessado pela
+experiência Next em `/`.
 
-Essa interface concentra os módulos já concluídos: indicadores Border Value,
-RAIS e cartografia municipal, mapa mundial de parceiros comerciais, hidrogênio,
-amônia e produtos relacionados à transição. A antiga interface experimental em `src/`
-foi removida para evitar dois produtos e dois contratos de dados concorrentes.
+As rotas públicas da experiência ficam assim:
+
+- `/`: painel analítico principal, com leitura executiva e sinais agregados.
+- `/explorar`: exploração por cadeia, produto, território e códigos técnicos.
+- `/tour-soberania`: modo guiado/onboarding para soberania produtiva.
+
+O BI estático em `dashboard/` fica rebaixado a **painel técnico legado/auditoria**:
+ele serve homologação, rastreabilidade e conferência de cargas, mas não é a
+identidade oficial do produto. Ele também pode ser servido temporariamente em
+`http://localhost:8765`.
+
+O desenho completo está em `ARQUITETURA_ROTAS.md`. As telas Next consomem APIs
+centralizadas em `app/api`, com montagem de URLs concentrada em `lib/apiRoutes.ts`.
+
+## Mapa do estado atual
+
+O inventário completo do que já existe está em `MAPEAMENTO_EXISTENTE.md`.
+Ele separa o projeto em duas camadas:
+
+- **Base confiável atual:** pipeline oficial, outputs em `outputs/official_2026`,
+  `outputs/official_2026_rais`, `outputs/final_border_value_2026`, camadas TSB/NIB
+  derivadas e painel técnico legado em `dashboard/`.
+- **Protótipo visual:** experiência Next em `/explorar`, rota
+  `/api/conceptual-products`, `/tour-soberania` e componentes NIB, HHI,
+  RenovaCalc, Sankey AIPNET e radar quando usados com dados default, mocks ou
+  catálogo TypeScript local.
+
+Enquanto a experiência Next não consumir a camada Published ou os CSV/Parquet
+finais, os dados exibidos nela devem ser lidos como demonstração visual e não
+como base oficial reconciliada.
 
 ## Execução
 
@@ -39,8 +66,8 @@ As saídas são gravadas em `outputs/official_2026`. Cada tabela é publicada em
 CSV e, quando o mecanismo Parquet estiver disponível, também em Parquet. O
 `manifest.json` registra fontes, versões, períodos, colunas e quantidade de linhas.
 
-Para a execução completa com RAIS, módulos analíticos finais, dashboard, workbook
-e pacote de publicação, use a sequência oficial:
+Para a execução completa com RAIS, módulos analíticos finais, painel técnico de
+auditoria, workbook e pacote de publicação, use a sequência oficial:
 
 ```text
 python -m unittest -v
@@ -61,10 +88,11 @@ python dashboard/server.py 8765
 ```
 
 A carga RAIS completa baixa cerca de 3,6 GB compactados e pode demorar conforme
-rede, disco e biblioteca de extração `.7z`. O dashboard local fica disponível em
-`http://localhost:8765` enquanto `dashboard/server.py` estiver em execução.
+rede, disco e biblioteca de extração `.7z`. O painel técnico legado fica
+disponível em `http://localhost:8765` enquanto `dashboard/server.py` estiver em
+execução.
 O Node.js permanece necessário apenas para os scripts executivos em `.mjs`, como
-`build_final_border_value_workbook.mjs`; a interface oficial não usa Next.js.
+`build_final_border_value_workbook.mjs`; o painel técnico legado não usa Next.js.
 
 ## Módulos principais
 
@@ -88,7 +116,7 @@ O Node.js permanece necessário apenas para os scripts executivos em `.mjs`, com
   etanol, combustíveis de aviação e combustíveis marítimos em camadas
   analíticas, drivers NCM e fontes complementares necessárias.
 - `dashboard/build_dashboard_data.py` e `dashboard/server.py`: preparam os dados
-  do painel e servem a interface local com fluxos mundiais, território RAIS,
+  do painel técnico legado e servem a interface local com fluxos mundiais, território RAIS,
   escopo Border Value e produtos relacionados à transição.
 - `build_final_border_value_workbook.mjs`: gera a planilha executiva final em
   `outputs/final_border_value_2026`.
@@ -223,16 +251,16 @@ grava as saídas em `outputs/official_2026_rais`. A carga completa baixa cerca d
 3,6 GB compactados antes da extração; para smoke test foi validado o pacote
 pequeno `RAIS_VINC_PUB_NI.7z`.
 
-Para exibição territorial no dashboard, os códigos municipais da RAIS são
+Para exibição territorial no painel técnico legado, os códigos municipais da RAIS são
 enriquecidos pela dimensão oficial de municípios do IBGE, cacheada em
 `dados/cache/dim_municipio_ibge.csv`. A chave de integração usa os seis
 primeiros dígitos do código IBGE, compatíveis com o campo municipal da RAIS. O
 código especial `999999` é mantido e rotulado como `Município não informado`.
-Além do parquet usado pela interface, o build do dashboard publica CSVs
+Além do parquet usado pela interface, o build do painel técnico legado publica CSVs
 analíticos em `outputs/official_2026_rais`: `employment_territory_cnae.csv`,
 `employment_platform_cnae.csv` e `employment_scope_summary.csv`.
 
-No dashboard, a RAIS é classificada por escopo:
+No painel técnico legado, a RAIS é classificada por escopo:
 
 - `platform_priority`: CNAEs classificados como `1 - priorizar` nos indicadores finais.
 - `platform_scope`: CNAEs industriais presentes nos indicadores da plataforma, mas sem prioridade 1.
@@ -283,7 +311,7 @@ Exemplo de bloco de configuração:
 Use `value_multiplier: 1000` quando a fonte publicar PIB em mil reais; omita ou
 use `1` quando o arquivo já estiver em reais.
 
-Quando disponível, o build do dashboard publica `gdp_territory.csv` em
+Quando disponível, o build do painel técnico legado publica `gdp_territory.csv` em
 `outputs/official_2026_rais` e mostra `PIB territorial` na aba
 `Emprego, renda e PIB`, filtrável por UF e município.
 
@@ -397,7 +425,7 @@ ao produto oficial.
 6. Executar os testes, a base oficial e a base RAIS, conferindo `manifest.json` e
    `quality_summary.csv`.
 7. Regerar as camadas finais, recortes setoriais, produtos relacionados à transição,
-   dashboard, workbook e pacote de publicação.
+   painel técnico legado, workbook e pacote de publicação.
 8. Registrar hashes, ambiente, data de execução, diferenças de cobertura e
    auditorias manuais relevantes.
 

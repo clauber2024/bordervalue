@@ -5,6 +5,9 @@ import {
   supplierCoordinates,
   supplierTerritory,
 } from "../../../lib/conceptualCatalog";
+import { loadDashboardCatalog } from "../../../lib/dashboardData";
+import { fetchPublishedChains, publishedChains } from "../../../lib/publishedApi";
+import { toConceptualProduct } from "../../../lib/publishedCatalog";
 import type { ConceptualProduct } from "../../../components/ConceptualProductCard";
 
 type ApiResponse = {
@@ -14,10 +17,31 @@ type ApiResponse = {
   trade: Array<{ period: string; imports: number; exports: number }>;
   production: Array<{ stage: string; value: number; chain?: string }>;
   map: Array<{ territory: string; name: string; value: number; coordinates: [number, number] }>;
+  kpis?: {
+    totalImports: number;
+    totalExports: number;
+    avgDependency: number;
+    maxHhi: number;
+    totalProducts: number;
+  };
+  metadata: {
+    source: "dashboard_data" | "published" | "local_fallback";
+    warning?: string;
+    generatedFrom?: Record<string, string>;
+    pilotFlags?: string[];
+  };
 };
 
-export function GET(request: NextRequest) {
+export const dynamic = "force-dynamic";
+
+export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
+  const dashboardCatalog = loadDashboardCatalog(params);
+
+  if (dashboardCatalog) {
+    return NextResponse.json(dashboardCatalog);
+  }
+
   const chain = params.get("chain") ?? "all";
   const product = params.get("product") ?? "all";
   const territory = params.get("territory") ?? "all";
@@ -27,9 +51,10 @@ export function GET(request: NextRequest) {
   const ncm = clean(params.get("ncm"));
   const cnae = clean(params.get("cnae"));
   const prodlist = clean(params.get("prodlist"));
+  const catalog = await loadCatalog(chain, params);
 
-  const visibleProducts = products.filter((item) => {
-    if (chain !== "all" && item.chain !== (chainAliases[chain] ?? chain)) return false;
+  const visibleProducts = catalog.source === "published" ? catalog.products : catalog.products.filter((item) => {
+    if (catalog.source === "local_fallback" && chain !== "all" && item.chain !== (chainAliases[chain] ?? chain)) return false;
     if (product !== "all" && item.id !== product) return false;
     if (confidence !== "all" && item.metrics.confidenceLevel !== confidence) return false;
     if (territory !== "all" && !selectedTerritories.includes(supplierTerritory(item.metrics.mainSupplier.country))) return false;
@@ -62,9 +87,106 @@ export function GET(request: NextRequest) {
       value: item.metrics.mainSupplier.share,
       coordinates: supplierCoordinates(item.metrics.mainSupplier.country),
     })),
+    metadata: {
+      source: catalog.source,
+      warning: catalog.warning,
+    },
   };
 
   return NextResponse.json(response);
+}
+
+async function loadCatalog(chain: string, params: URLSearchParams): Promise<{
+  products: ConceptualProduct[];
+  source: ApiResponse["metadata"]["source"];
+  warning?: string;
+}> {
+  const chains = publishedChainsFor(chain);
+
+  if (!chains.length) {
+    return {
+      products,
+      source: "local_fallback",
+      warning: "Cadeia ainda sem equivalente Published publicado para esta experiencia.",
+    };
+  }
+
+  try {
+    const publishedProducts = await fetchPublishedChains(chains, buildPublishedParams(params));
+
+    if (!publishedProducts.length) {
+      return {
+        products: [],
+        source: "published",
+      };
+    }
+
+    return {
+      products: publishedProducts.map(toConceptualProduct),
+      source: "published",
+    };
+  } catch {
+    return {
+      products,
+      source: "local_fallback",
+      warning: "API Published indisponivel; usando catalogo local de contingencia.",
+    };
+  }
+}
+
+function publishedChainsFor(chain: string): readonly string[] {
+  const mapping: Record<string, readonly string[]> = {
+    all: publishedChains,
+    fertilizers: ["fertilizantes"],
+    "transition-fuels": ["combustiveis_transicao"],
+    "critical-minerals": ["aco", "silicio"],
+  };
+
+  return mapping[chain] ?? [];
+}
+
+function buildPublishedParams(params: URLSearchParams) {
+  const publishedParams = new URLSearchParams();
+  [
+    "period",
+    "flow",
+    "product",
+    "ncm",
+    "cnae",
+    "prodlist",
+    "country",
+    "mapping_status",
+    "status",
+    "confidence",
+    "audit_confidence",
+  ].forEach((key) => {
+    const value = params.get(key);
+    if (value && value !== "all") publishedParams.set(key, value);
+  });
+
+  const territory = params.get("territory");
+  const partner = territory && territory !== "all" ? countryNameForTerritory(territory) : "";
+  if (partner) publishedParams.set("partner", partner);
+  return publishedParams;
+}
+
+function countryNameForTerritory(value: string) {
+  const territories = value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (territories.length !== 1) return "";
+
+  const territoryToCountry: Record<string, string> = {
+    RU: "Russia",
+    TT: "Trinidad and Tobago",
+    CL: "Chile",
+    CN: "China",
+    BR: "Brazil",
+    CA: "Canada",
+    US: "United States",
+  };
+  return territoryToCountry[territories[0]] ?? "";
 }
 
 function buildTradeSeries(visibleProducts: ConceptualProduct[]) {

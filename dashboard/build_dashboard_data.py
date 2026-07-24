@@ -322,7 +322,7 @@ def build_etl_metadata() -> dict:
             {
                 "activity": "Cartografia municipal",
                 "phase": "Consolidacao, documentacao e testes",
-                "note": "Malhas e dimensoes territoriais devem ser revisadas como suporte ao dashboard, nao como desenvolvimento inicial.",
+                "note": "Malhas e dimensoes territoriais devem ser revisadas como suporte ao painel tecnico legado, nao como desenvolvimento inicial.",
             },
             {
                 "activity": "Mapa mundial",

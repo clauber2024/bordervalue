@@ -103,7 +103,7 @@ export function ConceptualProductCard({ product, isLoading = false, error, onRet
         <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <Metric icon={TrendingDown} label="Importacoes" value={money.format(product.metrics.imports)} tone="cyan" />
           <Metric icon={TrendingUp} label="Exportacoes" value={money.format(product.metrics.exports)} tone="emerald" />
-          <Metric icon={Globe2} label="Dependencia externa" value={`${product.metrics.externalDependency}%`} tone="amber" />
+          <Metric icon={Globe2} label="Dependência externa" value={`${product.metrics.externalDependency}%`} tone="amber" />
           <Metric icon={BarChart3} label="HHI" value={product.metrics.hhi.toLocaleString("pt-BR")} tone="rose" />
           <Metric icon={Shield} label="Principal fornecedor" value={product.metrics.mainSupplier.country} tone="cyan" />
           <Metric icon={CircleAlert} label="Participacao" value={`${product.metrics.mainSupplier.share}%`} tone="amber" />
@@ -120,7 +120,7 @@ export function ConceptualProductCard({ product, isLoading = false, error, onRet
         >
           <span className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-cyan-300" strokeWidth={1.5} />
-            Conteudo tecnico e metodologia
+            Conteúdo técnico e metodologia
           </span>
           <ChevronDown className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`} strokeWidth={1.5} />
         </button>
@@ -136,11 +136,6 @@ export function ConceptualProductCard({ product, isLoading = false, error, onRet
               className="overflow-hidden"
             >
               <div className="space-y-5 px-5 pb-6 sm:px-6">
-                <CodeGroup title="Codigos HS" values={product.technicalCodes.hs} />
-                <CodeGroup title="Codigos NCM" values={product.technicalCodes.ncm} />
-                <CodeGroup title="Classes CNAE" values={product.technicalCodes.cnae} />
-                <CodeGroup title="PRODLIST" values={product.technicalCodes.prodlist ?? []} empty="Sem PRODLIST associado" />
-
                 <div>
                   <h4 className="text-sm font-medium text-zinc-300">Fontes</h4>
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -158,6 +153,10 @@ export function ConceptualProductCard({ product, isLoading = false, error, onRet
                     <p className="mt-2 text-sm leading-6 text-zinc-400">{product.methodology}</p>
                   </div>
                 ) : null}
+
+                <p className="rounded-lg border border-cyan-300/15 bg-cyan-400/10 px-3 py-2 text-xs leading-5 text-cyan-50/85">
+                  Códigos técnicos e chaves brutas ficam concentrados na gaveta de rastreabilidade.
+                </p>
               </div>
             </motion.div>
           ) : null}
@@ -193,25 +192,6 @@ function Metric({
         {label}
       </p>
       <strong className="mt-3 block truncate text-lg font-bold tracking-tight text-white">{value}</strong>
-    </div>
-  );
-}
-
-function CodeGroup({ title, values, empty = "Sem codigos informados" }: { title: string; values: string[]; empty?: string }) {
-  return (
-    <div>
-      <h4 className="text-sm font-medium text-zinc-300">{title}</h4>
-      <div className="mt-2 flex flex-wrap gap-2">
-        {values.length ? (
-          values.map((value) => (
-            <code key={value} className="rounded-md border border-white/[0.08] bg-zinc-950/70 px-2 py-1 font-mono text-xs text-cyan-200">
-              {value}
-            </code>
-          ))
-        ) : (
-          <span className="text-xs text-zinc-500">{empty}</span>
-        )}
-      </div>
     </div>
   );
 }
@@ -258,7 +238,7 @@ export function ConceptualProductCardEmpty() {
     <article className={`${glass} rounded-2xl p-6 text-center`}>
       <Package className="mx-auto h-9 w-9 text-cyan-300" strokeWidth={1.5} />
       <h3 className="mt-4 text-lg font-bold tracking-tight text-white">Nenhum produto neste recorte</h3>
-      <p className="mt-2 text-sm text-zinc-400">Tente ampliar o periodo ou remover um filtro tecnico.</p>
+      <p className="mt-2 text-sm text-zinc-400">Tente ampliar o período ou remover um filtro técnico.</p>
     </article>
   );
 }

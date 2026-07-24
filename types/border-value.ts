@@ -149,7 +149,7 @@ export interface EstruturaDomestica {
 /**
  * Unidade analitica principal da API Published para os produtos da Border Value.
  *
- * Use esta interface como contrato estrutural para dashboards, rankings, comparativos,
+ * Use esta interface como contrato estrutural para paineis analiticos, rankings, comparativos,
  * cards estrategicos e visualizacoes de cadeia produtiva. Os nomes dos campos seguem
  * rigorosamente o `snake_case` da API e nao devem ser convertidos para `camelCase`
  * na camada de tipagem.

@@ -14,6 +14,8 @@ from urllib.parse import parse_qs, urlparse
 
 import pandas as pd
 
+from filter_engine import filter_trade
+
 
 DASHBOARD = Path(__file__).resolve().parent
 ROOT = DASHBOARD.parent
@@ -349,7 +351,7 @@ def run_update(source: str) -> None:
             status="success",
             finished_at=datetime.now(timezone.utc).isoformat(),
             returncode=0,
-            message="Atualizacao concluida e dashboard regenerado.",
+            message="Atualizacao concluida e painel tecnico legado regenerado.",
             log="\n\n".join(logs)[-8000:],
         )
     except Exception as exc:
@@ -472,35 +474,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         self.write_json(payload)
 
     def filtered_trade(self, params: dict[str, str]) -> pd.DataFrame:
-        df = self.trade
-        mask = pd.Series(True, index=df.index)
-        exact = {
-            "period": "period",
-            "flow": "flow",
-            "cnae": "cnae_class",
-            "prodlist": "prodlist_code",
-            "status": "mapping_status",
-        }
-        for param, column in exact.items():
-            value = params.get(param, "all")
-            if value and value != "all":
-                mask &= df[column] == value
-        if params.get("ncm"):
-            mask &= df["ncm"].astype(str).str.contains(params["ncm"], regex=False)
-        if params.get("country"):
-            country_term = params["country"].strip()
-            country_code_term = country_term.split(" - ", 1)[0].strip()
-            country_lower = country_term.casefold()
-            code_mask = df["country_code"].astype(str).str.contains(country_code_term, regex=False)
-            matched_codes = {
-                code
-                for code, name in self.country_labels.items()
-                if country_lower in name.casefold() or country_code_term == code
-            }
-            if matched_codes:
-                code_mask |= df["country_code"].astype(str).isin(matched_codes)
-            mask &= code_mask
-        return df.loc[mask]
+        return filter_trade(self.trade, params, country_labels=self.country_labels)
 
     def handle_fuels(self, query: str) -> None:
         params = {k: v[0] for k, v in parse_qs(query).items()}
@@ -828,7 +802,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 def main() -> None:
     port = int(sys.argv[1] if len(sys.argv) > 1 else os.environ.get("BORDER_VALUE_DASHBOARD_PORT", "8765"))
     server = ThreadingHTTPServer(("127.0.0.1", port), DashboardHandler)
-    print(f"Dashboard em http://127.0.0.1:{port}")
+    print(f"Painel tecnico legado em http://127.0.0.1:{port}")
     server.serve_forever()
 
 if __name__ == "__main__":
