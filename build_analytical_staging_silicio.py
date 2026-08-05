@@ -8,10 +8,10 @@ the AIPNET network endpoint). Nothing in the repo reshapes that data into the
 flat `analytical_comex_staging` / `analytical_industry_and_employment` tables
 that `sql/mv_published_indicators.sql` and `sql/mv_published_hhi_risk.sql`
 need -- so the FastAPI "/api/chain/silicio" endpoint has never had real data
-to serve. This script closes that gap for the silicio chain only; the other
-3 chains (fertilizantes, combustiveis_transicao, aco) still have no
-conceptual-product catalog with matching NCM baskets and are intentionally
-left out of scope here.
+to serve. This script closes that gap for the silicio chain only. The other
+3 chains (fertilizantes, combustiveis_transicao, aco) get the same
+treatment in `build_analytical_staging_sectors.py`, which reuses this
+module's helpers instead of duplicating them.
 
 Two modelling decisions this script makes explicit (there was no prior art
 for either in the codebase):
