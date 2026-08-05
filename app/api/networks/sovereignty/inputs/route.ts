@@ -1,35 +1,52 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
-import type { SolarSovereigntyResponse } from "../../../../../types/solar-sovereignty";
+
+// Was reading a local JSON file from outputs/ (gitignored -- never
+// deployed to Vercel, so this route always 503'd in production and
+// SovereigntySankeyChart/GreenJobsTSBPanel silently fell back to their
+// simplified single-product mode). The real published data now lives in
+// Postgres, served by the FastAPI backend's own
+// /api/networks/sovereignty/inputs route -- proxy to that instead,
+// matching the pattern already used by lib/publishedApi.ts for
+// /api/chain/*.
+
+const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000";
+const SUPPORTED_CHAINS = new Set(["silicio", "combustiveis_transicao", "fertilizantes", "aco"]);
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const chain = request.nextUrl.searchParams.get("chain")?.trim().toLowerCase();
-  const sources: Record<string, string[]> = {
-    silicio: ["solar_sovereignty_2026", "solar_input_metrics.json"],
-    combustiveis_transicao: ["sector_sovereignty_combustiveis_transicao_2026", "sector_input_metrics.json"],
-    fertilizantes: ["sector_sovereignty_fertilizantes_2026", "sector_input_metrics.json"],
-    aco: ["sector_sovereignty_aco_2026", "sector_input_metrics.json"],
-  };
-  const sourceParts = chain ? sources[chain] : undefined;
-  if (!sourceParts) {
+  if (!chain || !SUPPORTED_CHAINS.has(chain)) {
     return NextResponse.json({ detail: `Cadeia AIPNET não suportada: ${chain ?? ""}` }, { status: 404 });
   }
 
   try {
-    const source = path.join(
-      process.cwd(),
-      "outputs",
-      ...sourceParts,
+    const response = await fetch(
+      `${apiBaseUrl()}/api/networks/sovereignty/inputs?chain=${encodeURIComponent(chain)}`,
+      { cache: "no-store", headers: { Accept: "application/json" } },
     );
-    const payload = JSON.parse(await readFile(source, "utf8")) as SolarSovereigntyResponse;
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { detail: `Métricas de soberania da cadeia ${chain} ainda não foram publicadas.` },
+        { status: response.status },
+      );
+    }
+
+    const payload = await response.json();
     return NextResponse.json(payload);
   } catch {
     return NextResponse.json(
-      { detail: `Métricas de soberania da cadeia ${chain} ainda não foram publicadas.` },
+      { detail: `Não foi possível conectar à API Published para a cadeia ${chain}.` },
       { status: 503 },
     );
   }
+}
+
+function apiBaseUrl() {
+  return (
+    process.env.BORDER_VALUE_API_BASE_URL ??
+    process.env.NEXT_PUBLIC_BORDER_VALUE_API_BASE_URL ??
+    DEFAULT_API_BASE_URL
+  ).replace(/\/$/, "");
 }
