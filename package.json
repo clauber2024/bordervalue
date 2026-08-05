@@ -17,7 +17,6 @@
     "homolog:auditoria": "python dashboard/server.py 8765"
   },
   "dependencies": {
-    "@oai/artifact-tool": "file:C:/Users/Rosana Santos/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/@oai/artifact-tool",
     "framer-motion": "^12.23.6",
     "lucide-react": "^0.468.0",
     "next": "^14.2.30",

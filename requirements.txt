@@ -1,7 +1,7 @@
 pandas
 py7zr
 fastapi
-httpx2
+httpx
 uvicorn[standard]
 pytest
 psycopg2-binary
