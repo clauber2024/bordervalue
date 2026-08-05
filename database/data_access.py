@@ -134,12 +134,30 @@ def get_solar_sovereignty_metrics(chain: str) -> dict:
             "WHEN 'refinamento' THEN 3 WHEN 'componentes_avancados' THEN 4 ELSE 5 END, input_id"
         )
         inputs = [dict(row["metrics"]) for row in cur.fetchall()]
-        return {
+
+        green_jobs = None
+        try:
+            cur.execute(
+                "SELECT green_jobs FROM aipnet_solar_green_jobs WHERE chain_name = %s",
+                ("silicio",),
+            )
+            green_jobs_row = cur.fetchone()
+            if green_jobs_row is not None:
+                green_jobs = dict(green_jobs_row["green_jobs"])
+        except psycopg2.errors.UndefinedTable:
+            # Table not loaded yet in this environment -- degrade to no
+            # green_jobs rather than failing the whole solar response.
+            conn.rollback()
+
+        result = {
             "chain_name": "silicio",
             "reference_period": inputs[0]["reference_period"] if inputs else "2026-H1",
             "methodology_version": "1.1.0-aipnet-solar",
             "inputs": inputs,
         }
+        if green_jobs is not None:
+            result["green_jobs"] = green_jobs
+        return result
     except psycopg2.OperationalError as exc:
         raise DataAccessUnavailableError(DATA_UNAVAILABLE_MESSAGE) from exc
     finally:

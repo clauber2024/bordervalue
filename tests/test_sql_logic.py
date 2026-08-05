@@ -78,6 +78,10 @@ def create_base_tables(cur) -> None:
         """
         CREATE TABLE analytical_industry_and_employment (
             conceptual_product_id text NOT NULL,
+            produto_nome text,
+            ncm_codigo text,
+            cnae_codigo text,
+            prodlist_codigo text,
             valor_producao_pia numeric NOT NULL DEFAULT 0,
             proportion_factor numeric NOT NULL DEFAULT 1,
             qtde_vinculos_rais numeric NOT NULL DEFAULT 0,

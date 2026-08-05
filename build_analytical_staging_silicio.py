@@ -45,7 +45,10 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
+import csv
+
 from build_solar_sovereignty_metrics import (
+    BRIDGE_PATH,
     SOLAR_INPUTS,
     aggregate_trade,
     load_countries,
@@ -70,9 +73,10 @@ def main() -> None:
     trade_rows = aggregate_trade(definitions_by_ncm)
     production = load_domestic_production(definitions_by_ncm)
     green_jobs = load_green_jobs()
+    prodlist_cnae = load_prodlist_cnae_codes(definitions_by_ncm)
 
     comex_rows = build_comex_staging_rows(trade_rows, countries)
-    industry_rows = build_industry_rows(production, green_jobs)
+    industry_rows = build_industry_rows(production, green_jobs, prodlist_cnae)
 
     write_sql(comex_rows, industry_rows)
 
@@ -127,9 +131,31 @@ def build_comex_staging_rows(
     return rows
 
 
+def load_prodlist_cnae_codes(
+    definitions_by_ncm: dict[str, object],
+) -> dict[str, dict[str, str]]:
+    """First PRODLIST/CNAE code found in the official bridge for each
+    input's NCM basket -- a conceptual product can span several NCMs (and
+    the bridge is itself N:1 in places), so this is a representative code
+    for display purposes (Rastreabilidade drawer), not an exhaustive list."""
+
+    result: dict[str, dict[str, str]] = {}
+    with BRIDGE_PATH.open("r", encoding="utf-8-sig", newline="") as handle:
+        for row in csv.DictReader(handle):
+            definition = definitions_by_ncm.get(str(row.get("ncm", "")).zfill(8))
+            if definition is None or definition.input_id in result:
+                continue
+            result[definition.input_id] = {
+                "prodlist_codigo": str(row.get("prodlist_code", "")).zfill(8)[:8],
+                "cnae_codigo": str(row.get("cnae_class", "")).zfill(4)[:4],
+            }
+    return result
+
+
 def build_industry_rows(
     production: dict[str, dict[str, object]],
     green_jobs: dict[str, object],
+    prodlist_cnae: dict[str, dict[str, str]],
 ) -> list[dict[str, object]]:
     jobs_by_input: dict[str, float] = defaultdict(float)
     wages_by_input: dict[str, float] = defaultdict(float)
@@ -148,9 +174,14 @@ def build_industry_rows(
     for definition in SOLAR_INPUTS:
         production_record = production.get(definition.input_id, {})
         value_brl = production_record.get("value_brl") or 0.0
+        codes = prodlist_cnae.get(definition.input_id, {})
         rows.append(
             {
                 "conceptual_product_id": definition.input_id,
+                "produto_nome": definition.label,
+                "ncm_codigo": definition.ncm_codes[0],
+                "cnae_codigo": codes.get("cnae_codigo", ""),
+                "prodlist_codigo": codes.get("prodlist_codigo", ""),
                 "valor_producao_pia": value_brl,
                 "proportion_factor": 1.0,
                 "qtde_vinculos_rais": jobs_by_input.get(definition.input_id, 0.0),
@@ -176,7 +207,9 @@ def write_sql(
         "  exportacao_valor_fob numeric NOT NULL DEFAULT 0",
         ");",
         "CREATE TABLE IF NOT EXISTS analytical_industry_and_employment (",
-        "  conceptual_product_id text NOT NULL, valor_producao_pia numeric NOT NULL DEFAULT 0,",
+        "  conceptual_product_id text NOT NULL, produto_nome text, ncm_codigo text,",
+        "  cnae_codigo text, prodlist_codigo text,",
+        "  valor_producao_pia numeric NOT NULL DEFAULT 0,",
         "  proportion_factor numeric NOT NULL DEFAULT 1,",
         "  qtde_vinculos_rais numeric NOT NULL DEFAULT 0,",
         "  massa_salarial_rais numeric NOT NULL DEFAULT 0",
@@ -205,9 +238,13 @@ def write_sql(
     for row in industry_rows:
         statements.append(
             "INSERT INTO analytical_industry_and_employment "
-            "(conceptual_product_id, valor_producao_pia, proportion_factor, "
-            "qtde_vinculos_rais, massa_salarial_rais) VALUES ("
+            "(conceptual_product_id, produto_nome, ncm_codigo, cnae_codigo, prodlist_codigo, "
+            "valor_producao_pia, proportion_factor, qtde_vinculos_rais, massa_salarial_rais) VALUES ("
             f"'{sql_text(row['conceptual_product_id'])}', "
+            f"'{sql_text(row['produto_nome'])}', "
+            f"'{sql_text(row['ncm_codigo'])}', "
+            f"'{sql_text(row['cnae_codigo'])}', "
+            f"'{sql_text(row['prodlist_codigo'])}', "
             f"{sql_number(row['valor_producao_pia'])}, "
             f"{sql_number(row['proportion_factor'])}, "
             f"{sql_number(row['qtde_vinculos_rais'])}, "

@@ -22,6 +22,15 @@ CREATE TABLE IF NOT EXISTS analytical_comex_staging (
 
 CREATE TABLE IF NOT EXISTS analytical_industry_and_employment (
     conceptual_product_id text NOT NULL,
+    -- produto_nome/ncm_codigo/cnae_codigo/prodlist_codigo: sem isso, a API
+    -- (database/data_access.py::_map_published_row) cai no fallback de
+    -- exibir o conceptual_product_id cru (ex.: "eletrodos_carbono") como
+    -- nome e "00000000"/"0000" como codigo em toda a UI (Sankey, grafico de
+    -- dependencia, matriz NIB, gaveta de rastreabilidade).
+    produto_nome text,
+    ncm_codigo text,
+    cnae_codigo text,
+    prodlist_codigo text,
     valor_producao_pia numeric NOT NULL DEFAULT 0,
     proportion_factor numeric NOT NULL DEFAULT 1,
     qtde_vinculos_rais numeric NOT NULL DEFAULT 0,

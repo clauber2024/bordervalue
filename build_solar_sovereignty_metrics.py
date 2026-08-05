@@ -182,6 +182,7 @@ def main() -> None:
     write_country_csv(payload)
     write_monthly_csv(payload)
     write_sql(payload)
+    write_green_jobs_sql(payload)
 
     print(
         json.dumps(
@@ -603,6 +604,28 @@ def write_sql(payload: dict[str, object]) -> None:
             "reference_period=EXCLUDED.reference_period, metrics=EXCLUDED.metrics, updated_at=now();"
         )
     (OUTPUT_DIR / "load_aipnet_solar_metrics.sql").write_text("\n".join(statements) + "\n", encoding="utf-8")
+
+
+def write_green_jobs_sql(payload: dict[str, object]) -> None:
+    # payload["green_jobs"] (from load_green_jobs()) was always computed
+    # here but never persisted -- write_sql() above only stores
+    # payload["inputs"] row by row. Without this table,
+    # database/data_access.py::get_solar_sovereignty_metrics() has no
+    # green_jobs to return, so components/GreenJobsTSBPanel.tsx never
+    # renders in production even when aipnet_solar_input_metrics is loaded.
+    serialized = json.dumps(payload["green_jobs"], ensure_ascii=False).replace("'", "''")
+    statements = [
+        "CREATE TABLE IF NOT EXISTS aipnet_solar_green_jobs (",
+        "  chain_name text PRIMARY KEY, green_jobs jsonb NOT NULL,",
+        "  updated_at timestamptz NOT NULL DEFAULT now()",
+        ");",
+        "INSERT INTO aipnet_solar_green_jobs (chain_name, green_jobs) "
+        f"VALUES ('{payload['chain_name']}', '{serialized}'::jsonb) "
+        "ON CONFLICT (chain_name) DO UPDATE SET green_jobs=EXCLUDED.green_jobs, updated_at=now();",
+    ]
+    (OUTPUT_DIR / "load_aipnet_solar_green_jobs.sql").write_text(
+        "\n".join(statements) + "\n", encoding="utf-8"
+    )
 
 
 def number(value: object, default: float = 0.0) -> float:

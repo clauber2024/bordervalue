@@ -20,6 +20,12 @@ aggregated_industry AS (
     -- Consolidacao da PIA e RAIS com o fator de rateio 1:N aplicado.
     SELECT
         conceptual_product_id,
+        -- constantes por produto (mesmo padrao de MAX(cadeia_prioritaria)
+        -- acima) -- ver comentario em 000_analytical_base_tables.sql.
+        MAX(produto_nome) AS produto_nome,
+        MAX(ncm_codigo) AS ncm_codigo,
+        MAX(cnae_codigo) AS cnae_codigo,
+        MAX(prodlist_codigo) AS prodlist_codigo,
         SUM(valor_producao_pia * proportion_factor) AS production_weighted,
         SUM(qtde_vinculos_rais * proportion_factor) AS employment_weighted,
         SUM(massa_salarial_rais * proportion_factor) AS salary_mass_weighted
@@ -29,6 +35,10 @@ aggregated_industry AS (
 SELECT
     t.conceptual_product_id,
     t.cadeia_prioritaria,
+    i.produto_nome,
+    i.ncm_codigo,
+    i.cnae_codigo,
+    i.prodlist_codigo,
     t.total_import_fob,
     t.total_import_kg,
     t.total_export_fob,
