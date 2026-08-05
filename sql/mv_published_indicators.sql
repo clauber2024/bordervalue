@@ -6,6 +6,9 @@ WITH aggregated_trade AS (
     -- Consolidacao dos dados comerciais por produto conceitual.
     SELECT
         conceptual_product_id,
+        -- cadeia_prioritaria e constante por produto (mesma cadeia em todas
+        -- as linhas de pais); MAX so para poder participar do GROUP BY.
+        MAX(cadeia_prioritaria) AS cadeia_prioritaria,
         SUM(importacao_valor_fob) AS total_import_fob,
         SUM(importacao_peso_liquido) AS total_import_kg,
         SUM(exportacao_valor_fob) AS total_export_fob,
@@ -25,6 +28,7 @@ aggregated_industry AS (
 )
 SELECT
     t.conceptual_product_id,
+    t.cadeia_prioritaria,
     t.total_import_fob,
     t.total_import_kg,
     t.total_export_fob,

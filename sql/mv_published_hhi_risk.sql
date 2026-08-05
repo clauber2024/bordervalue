@@ -16,13 +16,32 @@ WITH country_shares AS (
             ) AS share
     FROM analytical_comex_staging
     GROUP BY conceptual_product_id, principal_pais_origem
+),
+-- Ranking do pais com maior share por produto, para expor
+-- principal_pais_origem/principal_pais_participacao (colunas que
+-- database/data_access.py::_map_published_row ja espera, mas que esta
+-- view nunca calculou ate agora).
+ranked_country_shares AS (
+    SELECT
+        conceptual_product_id,
+        principal_pais_origem,
+        share,
+        ROW_NUMBER() OVER (
+            PARTITION BY conceptual_product_id ORDER BY share DESC NULLS LAST
+        ) AS rank_share
+    FROM country_shares
 )
 SELECT
-    conceptual_product_id,
+    cs.conceptual_product_id,
     -- HHI = soma dos quadrados dos shares * 10000, na escala 0-10000.
-    SUM(POWER(share, 2)) * 10000 AS hhi_global
-FROM country_shares
-GROUP BY conceptual_product_id;
+    SUM(POWER(cs.share, 2)) * 10000 AS hhi_global,
+    top.principal_pais_origem,
+    top.share AS principal_pais_participacao
+FROM country_shares AS cs
+LEFT JOIN ranked_country_shares AS top
+    ON top.conceptual_product_id = cs.conceptual_product_id
+    AND top.rank_share = 1
+GROUP BY cs.conceptual_product_id, top.principal_pais_origem, top.share;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_published_hhi_risk_product_id
     ON mv_published_hhi_risk(conceptual_product_id);

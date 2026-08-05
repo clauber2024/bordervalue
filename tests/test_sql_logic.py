@@ -66,6 +66,7 @@ def create_base_tables(cur) -> None:
         """
         CREATE TABLE analytical_comex_staging (
             conceptual_product_id text NOT NULL,
+            cadeia_prioritaria text,
             principal_pais_origem text,
             importacao_valor_fob numeric NOT NULL DEFAULT 0,
             importacao_peso_liquido numeric NOT NULL DEFAULT 0,
