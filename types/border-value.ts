@@ -40,6 +40,15 @@ export interface MetadadosAuditoria {
    * Exemplo esperado: `"1.0.0-rc.1"`.
    */
   metodologia_versao: string;
+
+  /** Estado de homologacao da cesta NCM usada pelo produto conceitual. */
+  ncm_mapping_status?: 'validada' | 'proxy' | 'pendente';
+
+  /** Versao e vigencia do cruzamento tecnico aplicado. */
+  ncm_mapping_version?: string;
+
+  /** Limitacao metodologica especifica da cesta, quando aplicavel. */
+  ncm_mapping_note?: string;
 }
 
 /**
@@ -118,6 +127,9 @@ export interface EstruturaDomestica {
    */
   prodlist_codigo: string;
 
+  /** Conjunto de codigos PRODLIST ligados a cesta NCM, quando homologado. */
+  prodlist_codigos?: string[];
+
   /**
    * Valor da producao industrial segundo PIA, em reais (R$).
    */
@@ -182,6 +194,9 @@ export interface ProdutoConceitual {
    * indevidas sobre codigos classificatorios.
    */
   ncm_codigo: string;
+
+  /** Cesta completa de NCMs que compoe o produto conceitual. */
+  ncm_codigos?: string[];
 
   /**
    * Indicadores de comercio exterior vinculados ao produto.

@@ -83,7 +83,7 @@ const mainFilters = [
   },
   {
     key: "period",
-    label: "Periodo",
+    label: "Período",
     icon: Calendar,
     options: periods,
     multi: false,
@@ -94,14 +94,14 @@ const mainFilters = [
     icon: Filter,
     options: [
       ["all", "Todos"],
-      ["IMP", "Importacoes"],
-      ["EXP", "Exportacoes"],
+      ["IMP", "Importações"],
+      ["EXP", "Exportações"],
     ],
     multi: false,
   },
   {
     key: "territory",
-    label: "Pais/parceiro",
+    label: "País/parceiro",
     icon: Globe2,
     options: territories,
     multi: true,
@@ -112,26 +112,26 @@ const technicalFields = [
   { key: "ncm", label: "NCM", placeholder: "Ex: 31021010" },
   { key: "cnae", label: "CNAE", placeholder: "Ex: 2013" },
   { key: "prodlist", label: "PRODLIST", placeholder: "Ex: 2052.2010" },
-  { key: "country", label: "Pais/parceiro", placeholder: "Ex: Canada" },
+  { key: "country", label: "País/parceiro", placeholder: "Ex: Canadá" },
 ] as const;
 
 const flowOptions = [
   ["all", "Todos"],
-  ["IMP", "Importacoes"],
-  ["EXP", "Exportacoes"],
+  ["IMP", "Importações"],
+  ["EXP", "Exportações"],
 ] as const;
 
 const mappingStatusOptions = [
   ["all", "Todos"],
   ["mapeado", "Mapeado"],
-  ["ncm_generica", "NCM generica"],
+  ["ncm_generica", "NCM genérica"],
   ["auditoria_sigilo_pia", "Auditoria: sigilo PIA"],
 ] as const;
 
 const confidenceOptions = [
   ["all", "Todos"],
   ["high", "Alto"],
-  ["medium", "Medio"],
+  ["medium", "Médio"],
   ["low", "Baixo"],
 ] as const;
 
@@ -261,7 +261,7 @@ export function FilterBar({ filters, isLoading = false }: FilterBarProps) {
                   aria-controls={drawerId}
                 >
                   <SlidersHorizontal className="h-4 w-4" strokeWidth={1.5} />
-                  Filtros avancados
+                  Filtros avançados
                 </button>
                 <button
                   type="button"
@@ -300,7 +300,7 @@ export function FilterBar({ filters, isLoading = false }: FilterBarProps) {
           <motion.div id={drawerId} className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby={drawerTitleId}>
             <motion.button
               type="button"
-              aria-label="Fechar filtros avancados"
+              aria-label="Fechar filtros avançados"
               className="absolute inset-0 cursor-default bg-black/60"
               onClick={() => setOpen(false)}
               initial={{ opacity: 0 }}
@@ -318,10 +318,10 @@ export function FilterBar({ filters, isLoading = false }: FilterBarProps) {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h2 id={drawerTitleId} className="text-xl font-bold tracking-tight text-white">
-                    Filtros avancados
+                    Filtros avançados
                   </h2>
                   <p className="mt-1 text-sm leading-6 text-zinc-400">
-                    Use codigos e criterios tecnicos apenas quando precisar auditar ou reproduzir um recorte.
+                    Use códigos e critérios técnicos apenas quando precisar auditar ou reproduzir um recorte.
                   </p>
                 </div>
                 <button
@@ -364,7 +364,7 @@ export function FilterBar({ filters, isLoading = false }: FilterBarProps) {
                 </label>
 
                 <label className="block">
-                  <span className="text-sm font-medium text-zinc-300">Nivel de confianca/auditoria</span>
+                  <span className="text-sm font-medium text-zinc-300">Nível de confiança/auditoria</span>
                   <select
                     value={currentFilters.confidence}
                     onChange={(event) => replaceUrl({ confidence: event.target.value })}
@@ -394,7 +394,7 @@ export function FilterBar({ filters, isLoading = false }: FilterBarProps) {
                     }
                     className="flex-1 rounded-lg border border-white/[0.1] bg-white/[0.04] px-4 py-2 text-sm font-medium text-zinc-100 outline-none transition hover:bg-white/[0.08] focus-visible:ring-2 focus-visible:ring-cyan-300"
                   >
-                    Limpar tecnicos
+                    Limpar técnicos
                   </button>
                   <button
                     type="button"

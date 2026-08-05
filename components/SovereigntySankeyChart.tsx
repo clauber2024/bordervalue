@@ -1,17 +1,24 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { ResponsiveContainer, Sankey, Tooltip } from "recharts";
 import type { ProdutoConceitual } from "../types/border-value";
+import type { SolarInputMetric } from "../types/solar-sovereignty";
+import { transitionFuelDestination } from "../lib/transitionFuelTopology";
 
 type SankeyNodeDatum = {
   id: string;
   name: string;
-  kind: "supplier" | "product";
+  kind: "supplier" | "input" | "stage" | "product";
   value?: number;
+  rawValue?: number;
+  share?: number;
 };
 
 type SankeyLinkDatum = {
+  id: string;
+  highlightId: string;
   source: number;
   target: number;
   value: number;
@@ -20,6 +27,11 @@ type SankeyLinkDatum = {
   alphaApplied: boolean;
   supplierName: string;
   productName: string;
+  exportsValue?: number;
+  balance?: number;
+  color?: string;
+  flowLabel?: string;
+  share?: number;
 };
 
 type SankeyChartData = {
@@ -69,6 +81,8 @@ export type SovereigntySankeyChartProps = {
   className?: string;
   height?: number;
   title?: string;
+  solarInputs?: SolarInputMetric[];
+  chainName?: string;
 };
 
 const shell =
@@ -98,7 +112,12 @@ export function SovereigntySankeyChart({
   className = "",
   height = 460,
   title = "Fluxo comercial por produto conceitual",
+  solarInputs = [],
+  chainName,
 }: SovereigntySankeyChartProps) {
+  const [colorMode, setColorMode] = useState<"balance" | "imports" | "exports">("balance");
+  const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
+  const [hoveredFlowId, setHoveredFlowId] = useState<string | null>(null);
   const products = useMemo(() => (dado ? [dado] : data ?? []), [data, dado]);
 
   const sankeyData = useMemo<SankeyChartData>(() => {
@@ -116,6 +135,129 @@ export function SovereigntySankeyChart({
       return nextIndex;
     }
 
+    if (solarInputs.length) {
+      const solarImportTotal = solarInputs.reduce((sum, input) => sum + input.imports_value_usd, 0);
+      const stageTotals = new Map<string, { index: number; value: number; raw: number; exports: number }>();
+      const supplierTotals = new Map<string, number>();
+
+      solarInputs.forEach((input) => {
+        const supplierName = input.top_supplier?.country_name ?? "Origem não informada";
+        supplierTotals.set(supplierName, (supplierTotals.get(supplierName) ?? 0) + Math.max(input.imports_value_usd, 0));
+      });
+
+      const orderedSolarInputs = [...solarInputs].sort((left, right) =>
+        (supplierTotals.get(right.top_supplier?.country_name ?? "Origem não informada") ?? 0)
+        - (supplierTotals.get(left.top_supplier?.country_name ?? "Origem não informada") ?? 0)
+        || right.imports_value_usd - left.imports_value_usd
+        || left.label.localeCompare(right.label, "pt-BR"),
+      );
+
+      orderedSolarInputs.forEach((input) => {
+        const supplierName = input.top_supplier?.country_name ?? "Origem não informada";
+        const rawValue = Math.max(input.imports_value_usd, 0);
+        const exportsValue = Math.max(input.exports_value_usd, 0);
+        const balance = exportsValue - rawValue;
+        const value = visualFlowValue(rawValue);
+        const source = ensureNode(`supplier:${supplierName}`, supplierName, "supplier");
+        const inputNode = ensureNode(`input:${input.input_id}`, input.label, "input");
+        const stageName = executiveStageLabel(input.stage);
+        const stageNode = ensureNode(`stage:${input.stage}`, stageName, "stage");
+        const color = flowColor(colorMode, rawValue, exportsValue, balance);
+        const share = rawValue / Math.max(solarImportTotal, 1);
+
+        [source, inputNode, stageNode].forEach((index) => {
+          nodes[index].rawValue = (nodes[index].rawValue ?? 0) + rawValue;
+          nodes[index].share = (nodes[index].rawValue ?? 0) / Math.max(solarImportTotal, 1);
+        });
+
+        links.push({
+          id: `supplier-input:${input.input_id}`, highlightId: input.input_id,
+          source, target: inputNode, value, rawValue, exportsValue, balance, color,
+          alpha: 1, alphaApplied: false, supplierName, productName: input.label,
+          flowLabel: `${supplierName} → ${input.label}`, share,
+        });
+        links.push({
+          id: `input-stage:${input.input_id}`, highlightId: input.input_id,
+          source: inputNode, target: stageNode, value, rawValue, exportsValue, balance, color,
+          alpha: 1, alphaApplied: false, supplierName, productName: input.label,
+          flowLabel: `${input.label} → ${stageName}`, share,
+        });
+        const total = stageTotals.get(input.stage) ?? { index: stageNode, value: 0, raw: 0, exports: 0 };
+        total.value += value;
+        total.raw += rawValue;
+        total.exports += exportsValue;
+        stageTotals.set(input.stage, total);
+      });
+
+      // Create the terminal node after every upstream layer so Recharts lays
+      // it out as the rightmost destination instead of a visual source.
+      const isFertilizerChain = /fertiliz/i.test(chainName ?? "");
+      const isTransitionFuelChain = /combustíveis de transição|combustiveis de transicao/i.test(chainName ?? "");
+      const finalSystemName = isFertilizerChain
+        ? "Oferta nacional de fertilizantes"
+        : isTransitionFuelChain
+          ? "Usos finais dos combustíveis de transição"
+          : chainName ?? "Sistema solar fotovoltaico";
+      const finalIndex = ensureNode("product:chain-system", finalSystemName, "product");
+      nodes[finalIndex].rawValue = solarImportTotal;
+      nodes[finalIndex].share = 1;
+      const integrationIndex = isFertilizerChain
+        ? ensureNode("integration:fertilizer-production", "Produção e formulação de fertilizantes", "stage")
+        : finalIndex;
+      if (isFertilizerChain) {
+        nodes[integrationIndex].rawValue = solarImportTotal;
+        nodes[integrationIndex].share = 1;
+      }
+      stageTotals.forEach((total, stage) => {
+        const balance = total.exports - total.raw;
+        const destinationName = isTransitionFuelChain ? transitionFuelDestination(stage) : null;
+        const destinationIndex = destinationName
+          ? ensureNode(`destination:${stage}`, destinationName, "stage")
+          : integrationIndex;
+        if (destinationName) {
+          nodes[destinationIndex].rawValue = total.raw;
+          nodes[destinationIndex].share = total.raw / Math.max(solarImportTotal, 1);
+        }
+        links.push({
+          id: `stage-final:${stage}`, highlightId: `stage:${stage}`,
+          source: total.index, target: destinationIndex, value: total.value, rawValue: total.raw,
+          exportsValue: total.exports, balance, color: flowColor(colorMode, total.raw, total.exports, balance),
+          alpha: 1, alphaApplied: false, supplierName: "Múltiplas origens",
+          productName: isFertilizerChain ? "Produção e formulação de fertilizantes" : destinationName ?? finalSystemName,
+          flowLabel: `${executiveStageLabel(stage)} → ${isFertilizerChain ? "Produção e formulação" : destinationName ?? finalSystemName}`,
+          share: total.raw / Math.max(solarImportTotal, 1),
+        });
+        if (destinationName) {
+          links.push({
+            id: `destination-final:${stage}`, highlightId: `destination:${stage}`,
+            source: destinationIndex, target: finalIndex, value: total.value, rawValue: total.raw,
+            exportsValue: total.exports, balance, color: flowColor(colorMode, total.raw, total.exports, balance),
+            alpha: 1, alphaApplied: false, supplierName: "Múltiplas origens",
+            productName: finalSystemName, flowLabel: `${destinationName} → ${finalSystemName}`,
+            share: total.raw / Math.max(solarImportTotal, 1),
+          });
+        }
+      });
+      if (isFertilizerChain) {
+        const totalExports = solarInputs.reduce((sum, input) => sum + Math.max(input.exports_value_usd, 0), 0);
+        const totalBalance = totalExports - solarImportTotal;
+        links.push({
+          id: "integration-final:fertilizers", highlightId: "integration:fertilizers",
+          source: integrationIndex, target: finalIndex, value: stageTotals.size
+            ? Array.from(stageTotals.values()).reduce((sum, total) => sum + total.value, 0)
+            : visualFlowValue(solarImportTotal),
+          rawValue: solarImportTotal, exportsValue: totalExports, balance: totalBalance,
+          color: flowColor(colorMode, solarImportTotal, totalExports, totalBalance),
+          alpha: 1, alphaApplied: false, supplierName: "Múltiplas origens",
+          productName: finalSystemName,
+          flowLabel: `Produção e formulação → ${finalSystemName}`,
+          share: 1,
+        });
+      }
+
+      return { nodes, links };
+    }
+
     products.forEach((product) => {
       const supplierName = executiveLabel(product.comercio.principal_pais_origem, "Origem não informada");
       const productName = executiveLabel(product.produto_nome, "Produto não informado");
@@ -128,6 +270,8 @@ export function SovereigntySankeyChart({
       const target = ensureNode(`product:${product.conceptual_product_id}`, productName, "product");
 
       links.push({
+        id: `supplier-product:${product.conceptual_product_id}`,
+        highlightId: product.conceptual_product_id,
         source,
         target,
         value,
@@ -140,11 +284,14 @@ export function SovereigntySankeyChart({
     });
 
     return { nodes, links };
-  }, [products]);
+  }, [chainName, colorMode, products, solarInputs]);
 
-  const totalVisible = sankeyData.links.reduce((sum, link) => sum + link.value, 0);
-  const totalRaw = sankeyData.links.reduce((sum, link) => sum + link.rawValue, 0);
+  const totalVisible = solarInputs.length ? solarInputs.reduce((sum, item) => sum + item.imports_value_usd, 0) : sankeyData.links.reduce((sum, link) => sum + link.value, 0);
+  const totalRaw = solarInputs.length ? solarInputs.reduce((sum, item) => sum + item.exports_value_usd, 0) : sankeyData.links.reduce((sum, link) => sum + link.rawValue, 0);
   const alphaLinks = sankeyData.links.filter((link) => link.alphaApplied && link.alpha < 1).length;
+  const activeFlowId = selectedFlowId ?? hoveredFlowId;
+  const focusContext = useMemo(() => buildFocusContext(activeFlowId, sankeyData), [activeFlowId, sankeyData]);
+  const effectiveHeight = solarInputs.length ? Math.max(height, solarInputs.length * 58 + 180) : height;
 
   if (!sankeyData.nodes.length || !sankeyData.links.length) {
     return (
@@ -168,27 +315,53 @@ export function SovereigntySankeyChart({
           </div>
 
           <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-3 lg:min-w-[34rem]">
-            <MetricPill label="Fluxo exibido" value={usdCompact.format(totalVisible)} />
-            <MetricPill label="Fluxo bruto" value={usdCompact.format(totalRaw)} />
-            <MetricPill label="Fluxos com Alpha" value={String(alphaLinks)} />
+            <MetricPill label={solarInputs.length ? "Importações" : "Fluxo exibido"} value={usdCompact.format(totalVisible)} />
+            <MetricPill label={solarInputs.length ? "Exportações" : "Fluxo bruto"} value={usdCompact.format(totalRaw)} />
+            <MetricPill label={solarInputs.length ? "Insumos mapeados" : "Fluxos com Alpha"} value={String(solarInputs.length || alphaLinks)} />
           </div>
         </div>
       </header>
 
       <div className="px-2 py-5 sm:px-4">
-        <div className="w-full" style={{ height }}>
+        {solarInputs.length ? (
+          <div className="mb-4 flex flex-col gap-3 rounded-xl border border-white/[0.07] bg-white/[0.025] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Colorir fluxos por</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <FlowModeButton active={colorMode === "balance"} onClick={() => setColorMode("balance")} description="Compara exportações e importações. Vermelho indica déficit, âmbar indica equilíbrio relativo e verde indica superávit.">Saldo comercial</FlowModeButton>
+                <FlowModeButton active={colorMode === "imports"} onClick={() => setColorMode("imports")} description="Destaca em vermelho os caminhos com importações observadas. A largura continua representando o peso visual do valor FOB importado.">Importações</FlowModeButton>
+                <FlowModeButton active={colorMode === "exports"} onClick={() => setColorMode("exports")} description="Destaca em verde os caminhos com exportações observadas. Fluxos sem exportação no período permanecem em cinza.">Exportações</FlowModeButton>
+                {selectedFlowId ? <button type="button" onClick={() => setSelectedFlowId(null)} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-400 transition hover:text-white">Limpar destaque</button> : null}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-[10px] text-zinc-500"><span className="h-2 w-12 rounded-full bg-gradient-to-r from-red-500 via-amber-400 to-emerald-500" /> déficit → superávit</div>
+          </div>
+        ) : null}
+        <div className="w-full transition-[height] duration-500" style={{ height: effectiveHeight }}>
           <ResponsiveContainer width="100%" height="100%">
             <Sankey
               data={sankeyData}
               dataKey="value"
               nameKey="name"
-              node={renderNode}
-              link={renderLink}
-              nodePadding={26}
-              nodeWidth={18}
+              node={(props: SankeyNodeRenderProps) => renderNode(
+                props,
+                activeFlowId,
+                focusContext.nodeIds,
+                (id) => setSelectedFlowId((current) => current === id ? null : id),
+                (id) => setHoveredFlowId(id),
+              )}
+              link={(props: SankeyLinkRenderProps) => renderLink(
+                props,
+                activeFlowId,
+                focusContext.highlightIds,
+                (id) => setSelectedFlowId((current) => current === id ? null : id),
+                (id) => setHoveredFlowId(id),
+              )}
+              nodePadding={solarInputs.length ? 24 : 26}
+              nodeWidth={solarInputs.length ? 16 : 18}
               linkCurvature={0.55}
               iterations={48}
-              margin={{ top: 28, right: 156, bottom: 28, left: 24 }}
+              margin={{ top: 20, right: 150, bottom: 20, left: 20 }}
               sort={false}
             >
               <Tooltip content={<FlowTooltip />} />
@@ -196,53 +369,89 @@ export function SovereigntySankeyChart({
           </ResponsiveContainer>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-3 px-1 text-xs lg:grid-cols-3">
+        <div className="mt-4 grid grid-cols-1 gap-3 px-1 text-xs md:grid-cols-2 xl:grid-cols-4">
           <ReadingPill
             label="Direção"
-            value="O fluxo vai do principal fornecedor internacional ao produto conceitual analisado."
+            value={solarInputs.length ? "A rede conecta origens, insumos, etapas produtivas e o sistema fotovoltaico final." : "O fluxo vai do principal fornecedor internacional ao produto conceitual analisado."}
           />
           <ReadingPill
             label="Espessura"
-            value="A largura da banda representa o valor FOB importado. Quando o Alpha está aplicado, a banda encolhe proporcionalmente."
+            value={solarInputs.length ? "A largura usa transformação logarítmica do valor FOB importado para tornar fluxos menores visíveis; não deve ser interpretada como proporção linear. O valor real está no tooltip." : "A largura da banda representa o valor FOB importado. Quando o Alpha está aplicado, a banda encolhe proporcionalmente."}
           />
           <ReadingPill
-            label="Leitura executiva"
-            value="Códigos técnicos foram removidos desta visualização; eles permanecem apenas na gaveta de rastreabilidade."
+            label="Cor"
+            value={solarInputs.length ? "A cor segue o modo ativo. No saldo comercial, vermelho indica déficit, âmbar indica equilíbrio relativo e verde indica superávit." : "A cor diferencia os fluxos exibidos e a aplicação do fator de proporcionalidade."}
+          />
+          <ReadingPill
+            label="Interação"
+            value="Passe o mouse para ver valores e participação. Clique em uma banda ou barra para destacar o caminho; clique novamente ou use Limpar destaque para restaurar a rede."
           />
         </div>
+        <p className="mt-3 px-1 text-[10px] leading-4 text-zinc-600">Códigos técnicos permanecem restritos à gaveta de rastreabilidade.</p>
       </div>
     </section>
   );
 }
 
-function renderNode({ x, y, width, height, payload }: SankeyNodeRenderProps) {
-  const isSupplier = payload.kind === "supplier";
-  const fill = isSupplier ? "#38bdf8" : "#34d399";
+function renderNode(
+  { x, y, width, height, payload }: SankeyNodeRenderProps,
+  activeFlowId: string | null,
+  focusedNodeIds: Set<string>,
+  onSelect: (id: string) => void,
+  onHover: (id: string | null) => void,
+) {
+  const fill = payload.kind === "supplier" ? "#38bdf8" : payload.kind === "input" ? "#f59e0b" : payload.kind === "stage" ? "#a78bfa" : "#34d399";
+  const flagPalette = payload.kind === "supplier" ? countryFlagPalette(payload.name) : null;
+  const gradientId = `country-${safeSvgId(payload.id)}`;
   const labelX = x + width + 10;
   const labelY = y + Math.max(height / 2, 8);
+  const selectionId = `node:${payload.id}`;
+  const isSelected = activeFlowId === selectionId;
+  const isDimmed = activeFlowId !== null && !focusedNodeIds.has(payload.id);
 
   return (
-    <g>
+    <motion.g
+      className="cursor-pointer"
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: isDimmed ? 0.18 : 1, scale: isSelected ? 1.025 : 1 }}
+      transition={{ duration: 0.24 }}
+      onMouseEnter={() => onHover(selectionId)}
+      onMouseLeave={() => onHover(null)}
+      onClick={(event) => {
+        event.stopPropagation();
+        onSelect(selectionId);
+      }}
+    >
+      {flagPalette ? (
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={flagPalette[0]} />
+            <stop offset="52%" stopColor={flagPalette[1]} />
+            <stop offset="100%" stopColor={flagPalette[2]} />
+          </linearGradient>
+        </defs>
+      ) : null}
       <rect
         x={x}
         y={y}
         width={width}
         height={Math.max(height, 8)}
         rx={5}
-        fill={fill}
-        fillOpacity={0.3}
+        fill={flagPalette ? `url(#${gradientId})` : fill}
+        fillOpacity={0.92}
         stroke={fill}
-        strokeOpacity={0.66}
-        strokeWidth={1.2}
+        strokeOpacity={1}
+        strokeWidth={isSelected ? 2.8 : 1.6}
         filter="drop-shadow(0 8px 18px rgba(0,0,0,0.36))"
       />
       <text x={labelX} y={labelY - 5} fill="#fafafa" fontSize={12} fontWeight={700} dominantBaseline="middle">
         {compactLabel(payload.name)}
       </text>
       <text x={labelX} y={labelY + 11} fill="#a1a1aa" fontSize={10} fontWeight={500} dominantBaseline="middle">
-        {isSupplier ? "Principal fornecedor" : "Produto conceitual"}
+        {payload.kind === "supplier" ? "Origem principal" : payload.kind === "input" ? "Insumo" : payload.kind === "stage" ? "Etapa produtiva" : "Sistema final"}
+        {payload.share !== undefined ? ` · ${percent.format(payload.share)}` : ""}
       </text>
-    </g>
+    </motion.g>
   );
 }
 
@@ -255,40 +464,145 @@ function renderLink({
   targetY,
   linkWidth,
   payload,
-}: SankeyLinkRenderProps) {
+}: SankeyLinkRenderProps,
+  activeFlowId: string | null,
+  focusedHighlightIds: Set<string>,
+  onSelect: (id: string) => void,
+  onHover: (id: string | null) => void,
+) {
   const strokeWidth = Math.max(linkWidth, 1.4);
   const path = `M${sourceX},${sourceY} C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}`;
   const opacity = payload.alphaApplied && payload.alpha < 1 ? 0.38 : 0.5;
+  const selectedNodeId = activeFlowId?.startsWith("node:") ? activeFlowId.slice(5) : null;
+  const selectedLinkId = activeFlowId?.startsWith("flow:") ? activeFlowId.slice(5) : null;
+  const isSelected = selectedNodeId
+    ? payload.source.id === selectedNodeId || payload.target.id === selectedNodeId || focusedHighlightIds.has(payload.highlightId)
+    : selectedLinkId === payload.highlightId || focusedHighlightIds.has(payload.highlightId);
+  const isDimmed = activeFlowId !== null && !isSelected;
 
   return (
     <g>
-      <path
+      <motion.path
         d={path}
         fill="none"
-        stroke="#22d3ee"
-        strokeWidth={strokeWidth}
-        strokeOpacity={0.15}
-        strokeLinecap="round"
+        stroke={payload.color ?? "#22d3ee"}
+        strokeWidth={isSelected ? strokeWidth * 1.18 : strokeWidth}
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: isSelected ? 0.52 : isDimmed ? 0.025 : 0.15 }}
+        transition={{ pathLength: { duration: 0.9, ease: "easeInOut" }, opacity: { duration: 0.2 } }}
+        strokeLinecap="butt"
         pointerEvents="none"
       />
-      <path
+      <motion.path
         d={path}
         fill="none"
-        stroke={payload.alphaApplied && payload.alpha < 1 ? "#a7f3d0" : "#67e8f9"}
-        strokeWidth={Math.max(strokeWidth * 0.55, 1)}
-        strokeOpacity={opacity}
-        strokeLinecap="round"
+        stroke={payload.color ?? (payload.alphaApplied && payload.alpha < 1 ? "#a7f3d0" : "#67e8f9")}
+        strokeWidth={Math.max(strokeWidth * (isSelected ? 0.78 : 0.55), isSelected ? 2.4 : 1)}
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{
+          pathLength: 1,
+          opacity: isSelected ? 0.95 : isDimmed ? 0.06 : opacity,
+          strokeWidth: Math.max(strokeWidth * (isSelected ? 0.78 : 0.55), isSelected ? 2.4 : 1),
+        }}
+        transition={{ pathLength: { duration: 1.05, ease: "easeInOut" }, opacity: { duration: 0.2 }, strokeWidth: { duration: 0.2 } }}
+        strokeLinecap="butt"
         pointerEvents="stroke"
+        className="cursor-pointer transition-opacity duration-200"
+        onMouseEnter={() => onHover(`flow:${payload.highlightId}`)}
+        onMouseLeave={() => onHover(null)}
+        onClick={(event) => {
+          event.stopPropagation();
+          onSelect(`flow:${payload.highlightId}`);
+        }}
       />
     </g>
   );
+}
+
+function buildFocusContext(activeFlowId: string | null, data: SankeyChartData) {
+  const nodeIds = new Set<string>();
+  const highlightIds = new Set<string>();
+  if (!activeFlowId) return { nodeIds, highlightIds };
+
+  if (activeFlowId.startsWith("flow:")) {
+    highlightIds.add(activeFlowId.slice(5));
+  } else if (activeFlowId.startsWith("node:")) {
+    const focusedNodeId = activeFlowId.slice(5);
+    nodeIds.add(focusedNodeId);
+    data.links.forEach((link) => {
+      const sourceId = data.nodes[link.source]?.id;
+      const targetId = data.nodes[link.target]?.id;
+      if (sourceId === focusedNodeId || targetId === focusedNodeId) highlightIds.add(link.highlightId);
+    });
+  }
+
+  data.links.forEach((link) => {
+    if (!highlightIds.has(link.highlightId)) return;
+    const sourceId = data.nodes[link.source]?.id;
+    const targetId = data.nodes[link.target]?.id;
+    if (sourceId) nodeIds.add(sourceId);
+    if (targetId) nodeIds.add(targetId);
+  });
+
+  // Complete the selected route through the productive stage to the final system.
+  const activeStageIds = new Set(Array.from(nodeIds).filter((id) => id.startsWith("stage:")));
+  data.links.forEach((link) => {
+    const sourceId = data.nodes[link.source]?.id;
+    if (!sourceId || !activeStageIds.has(sourceId)) return;
+    highlightIds.add(link.highlightId);
+    nodeIds.add(sourceId);
+    const targetId = data.nodes[link.target]?.id;
+    if (targetId) nodeIds.add(targetId);
+  });
+
+  return { nodeIds, highlightIds };
+}
+
+function safeSvgId(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_-]/g, "-");
+}
+
+function countryFlagPalette(countryName: string): [string, string, string] {
+  const country = countryName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+  if (country.includes("china")) return ["#de2910", "#ffde00", "#de2910"];
+  if (country.includes("estados unidos") || country.includes("united states")) return ["#3c3b6e", "#ffffff", "#b22234"];
+  if (country.includes("alemanha") || country.includes("germany")) return ["#18181b", "#dd0000", "#ffce00"];
+  if (country.includes("espanha") || country.includes("spain")) return ["#aa151b", "#f1bf00", "#aa151b"];
+  if (country.includes("taiwan")) return ["#000095", "#ffffff", "#fe0000"];
+  if (country.includes("argentina")) return ["#74acdf", "#ffffff", "#74acdf"];
+  if (country.includes("brasil") || country.includes("brazil")) return ["#009b3a", "#ffdf00", "#002776"];
+  if (country.includes("japao") || country.includes("japan")) return ["#ffffff", "#bc002d", "#ffffff"];
+  if (country.includes("coreia") || country.includes("korea")) return ["#ffffff", "#cd2e3a", "#0047a0"];
+  if (country.includes("italia") || country.includes("italy")) return ["#009246", "#ffffff", "#ce2b37"];
+  if (country.includes("franca") || country.includes("france")) return ["#0055a4", "#ffffff", "#ef4135"];
+  if (country.includes("canada")) return ["#d80621", "#ffffff", "#d80621"];
+  if (country.includes("marrocos") || country.includes("morocco")) return ["#c1272d", "#006233", "#c1272d"];
+  if (country.includes("russia")) return ["#ffffff", "#0039a6", "#d52b1e"];
+  if (country.includes("nigeria")) return ["#008751", "#ffffff", "#008751"];
+  if (country.includes("bolivia")) return ["#d52b1e", "#f9e300", "#007934"];
+  if (country.includes("trinidad") || country.includes("tobago")) return ["#da1a35", "#ffffff", "#000000"];
+  if (country.includes("peru")) return ["#d91023", "#ffffff", "#d91023"];
+  return ["#0e7490", "#67e8f9", "#155e75"];
 }
 
 function FlowTooltip({ active, payload }: SankeyTooltipProps) {
   if (!active || !payload?.length) return null;
 
   const activePayload = payload[0]?.payload;
-  if (!activePayload || !("sourceX" in activePayload)) return null;
+  if (!activePayload) return null;
+
+  if (!("sourceX" in activePayload)) {
+    const node = activePayload.payload;
+    if (!node) return null;
+    return (
+      <div className="max-w-72 rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-100 shadow-xl">
+        <p className="font-semibold text-white">{node.name}</p>
+        <p className="mt-1 text-zinc-500">{node.kind === "supplier" ? "Origem" : node.kind === "input" ? "Insumo" : node.kind === "stage" ? "Etapa produtiva" : "Sistema final"}</p>
+        {node.rawValue !== undefined ? <div className="mt-3"><TooltipRow label="Importações" value={usdLong.format(node.rawValue)} tone="cyan" /></div> : null}
+        {node.share !== undefined ? <div className="mt-2"><TooltipRow label="Participação" value={percent.format(node.share)} tone="emerald" /></div> : null}
+      </div>
+    );
+  }
 
   const link = activePayload.payload;
   const reductionCopy = link.alphaApplied
@@ -297,11 +611,13 @@ function FlowTooltip({ active, payload }: SankeyTooltipProps) {
 
   return (
     <div className="max-w-80 rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-100 shadow-xl">
-      <p className="font-semibold text-white">{link.productName}</p>
-      <p className="mt-1 text-zinc-400">Origem principal: {link.supplierName}</p>
+      <p className="font-semibold text-white">{link.flowLabel ?? link.productName}</p>
+      <p className="mt-1 text-zinc-400">Origem: {link.supplierName}</p>
       <div className="mt-3 space-y-2">
-        <TooltipRow label="Fluxo exibido" value={usdLong.format(link.value)} tone="emerald" />
-        <TooltipRow label="Fluxo bruto" value={usdLong.format(link.rawValue)} tone="cyan" />
+        <TooltipRow label="Importações" value={usdLong.format(link.rawValue)} tone="cyan" />
+        <TooltipRow label="Exportações" value={usdLong.format(link.exportsValue ?? 0)} tone="emerald" />
+        {link.balance !== undefined ? <TooltipRow label="Saldo" value={signedUsd(link.balance)} tone={link.balance >= 0 ? "emerald" : "red"} /> : null}
+        {link.share !== undefined ? <TooltipRow label="Participação" value={percent.format(link.share)} tone="emerald" /> : null}
         <p className="rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-2 leading-5 text-zinc-300">
           {reductionCopy}
         </p>
@@ -330,6 +646,18 @@ function ReadingPill({ label, value }: { label: string; value: string }) {
   );
 }
 
+function FlowModeButton({ active, onClick, children, description }: { active: boolean; onClick: () => void; children: string; description: string }) {
+  return (
+    <span className="group/mode relative">
+      <button type="button" onClick={onClick} aria-label={`${children}. ${description}`} className={`rounded-lg border px-3 py-1.5 text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${active ? "border-cyan-300/30 bg-cyan-400/10 text-cyan-100" : "border-white/10 bg-zinc-950/50 text-zinc-400 hover:text-white"}`}>{children}</button>
+      <span role="tooltip" className="pointer-events-none absolute left-0 top-[calc(100%+0.5rem)] z-50 hidden w-72 rounded-xl border border-white/10 bg-zinc-950/95 p-3 text-[11px] font-normal leading-5 text-zinc-300 shadow-2xl backdrop-blur-xl group-hover/mode:block group-focus-within/mode:block">
+        <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-cyan-300">{children}</span>
+        {description}
+      </span>
+    </span>
+  );
+}
+
 function TooltipRow({
   label,
   value,
@@ -337,9 +665,9 @@ function TooltipRow({
 }: {
   label: string;
   value: string;
-  tone: "cyan" | "emerald";
+  tone: "cyan" | "emerald" | "red";
 }) {
-  const toneClass = tone === "cyan" ? "text-cyan-200" : "text-emerald-200";
+  const toneClass = tone === "cyan" ? "text-cyan-200" : tone === "red" ? "text-red-300" : "text-emerald-200";
 
   return (
     <div className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3">
@@ -362,6 +690,48 @@ function compactLabel(value: string) {
 
 function clampShare(value: number) {
   return Math.min(Math.max(value, 0), 1);
+}
+
+function visualFlowValue(value: number) {
+  return Math.max(Math.pow(Math.log10(value + 10), 3), 1);
+}
+
+function executiveStageLabel(stage: string) {
+  return ({
+    extracao: "Base mineral",
+    processamento: "Silício metalúrgico",
+    refinamento: "Refino solar",
+    componentes_avancados: "Componentes avançados",
+    produto_final: "Células e módulos",
+    molecula_principal: "Moléculas energéticas",
+    derivados: "Derivados de baixo carbono",
+    aplicacoes_finais: "Combustíveis finais",
+    insumos: "Matérias-primas energéticas",
+    insumos_tecnologicos: "Insumos tecnológicos",
+    equipamentos: "Produção de hidrogênio renovável",
+    materias_primas: "Matérias-primas",
+    intermediarios: "Intermediários",
+    nitrogenados: "Fertilizantes nitrogenados",
+    fosfatados: "Fertilizantes fosfatados",
+    potassicos: "Fertilizantes potássicos",
+    formulacao: "Formulação",
+    base_mineral: "Base mineral",
+    reducao: "Redução",
+    aciaria: "Aciaria e ligas",
+    transformacao: "Transformação siderúrgica",
+    bens_transicao: "Bens da transição",
+  } as Record<string, string>)[stage] ?? stage;
+}
+
+function flowColor(mode: "balance" | "imports" | "exports", imports: number, exports: number, balance: number) {
+  if (mode === "imports") return imports > 0 ? "#f87171" : "#52525b";
+  if (mode === "exports") return exports > 0 ? "#34d399" : "#52525b";
+  const ratio = balance / Math.max(imports + exports, 1);
+  return ratio < -0.25 ? "#ef4444" : ratio > 0.25 ? "#22c55e" : "#f59e0b";
+}
+
+function signedUsd(value: number) {
+  return `${value >= 0 ? "+" : "-"}${usdLong.format(Math.abs(value))}`;
 }
 
 export default SovereigntySankeyChart;

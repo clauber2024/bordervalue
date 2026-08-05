@@ -5,24 +5,24 @@ export type SelectOption = readonly [string, string];
 export const chains: readonly SelectOption[] = [
   ["all", "Todas"],
   ["fertilizers", "Fertilizantes"],
-  ["hydrogen-ammonia", "Hidrogenio e amonia"],
-  ["critical-minerals", "Minerais criticos"],
-  ["transition-fuels", "Combustiveis de transicao"],
+  ["hydrogen-ammonia", "Hidrogênio e amônia"],
+  ["critical-minerals", "Minerais críticos"],
+  ["transition-fuels", "Combustíveis de transição"],
 ];
 
 export const chainAliases: Record<string, string> = {
   fertilizers: "Fertilizantes",
-  "hydrogen-ammonia": "Hidrogenio e amonia",
-  "critical-minerals": "Minerais criticos",
-  "transition-fuels": "Combustiveis de transicao",
+  "hydrogen-ammonia": "Hidrogênio e amônia",
+  "critical-minerals": "Minerais críticos",
+  "transition-fuels": "Combustíveis de transição",
 };
 
 export const indicators: readonly SelectOption[] = [
-  ["externalDependency", "Dependencia externa"],
-  ["hhi", "Concentracao HHI"],
-  ["imports", "Importacoes"],
-  ["exports", "Exportacoes"],
-  ["production", "Producao nacional"],
+  ["externalDependency", "Dependência externa"],
+  ["hhi", "Concentração HHI"],
+  ["imports", "Importações"],
+  ["exports", "Exportações"],
+  ["production", "Produção nacional"],
   ["supplierShare", "Fornecedor principal"],
 ];
 
@@ -56,7 +56,7 @@ export const products: ConceptualProduct[] = [
     },
     sources: ["Comex Stat 2026 H1", "PIA-Produto 2024", "RAIS 2024"],
     methodology:
-      "Agregacao conceitual por NCM e PRODLIST com rateio CNAE ponderado por valor de producao PIA quando disponivel.",
+      "Agregação conceitual por NCM e PRODLIST com rateio CNAE ponderado por valor de produção PIA quando disponível.",
   },
   {
     id: "green-ammonia",
@@ -246,7 +246,7 @@ export const products: ConceptualProduct[] = [
     },
     sources: ["Comex Stat 2026 H1", "PIA-Produto 2024", "ANM/AMB complementar"],
     methodology:
-      "Recorte analitico transversal de minerais criticos; a camada ANM/AMB qualifica materialidade, sem substituir PIA-Produto.",
+      "Recorte analítico transversal de minerais críticos; a camada ANM/AMB qualifica materialidade, sem substituir PIA-Produto.",
   },
   {
     id: "rare-earth-magnets",
@@ -322,8 +322,8 @@ export const products: ConceptualProduct[] = [
   },
   {
     id: "niobium-advanced-materials",
-    name: "Niobio e materiais avancados",
-    shortDescription: "Especialidade brasileira para ligas, acos avancados, baterias com niobio e supercondutores.",
+    name: "Nióbio e materiais avançados",
+    shortDescription: "Especialidade brasileira para ligas, aços avançados, baterias com nióbio e supercondutores.",
     chain: "Minerais criticos",
     productionStage: "Liga e material avancado",
     metrics: {
@@ -366,7 +366,7 @@ export const products: ConceptualProduct[] = [
     },
     sources: ["Comex Stat 2026 H1", "Cadeias minerais estrategicas"],
     methodology:
-      "Alta dependencia importadora em fertilizantes; entra tanto em minerais estrategicos quanto em seguranca produtiva da bioeconomia.",
+      "Alta dependência importadora em fertilizantes; entra tanto em minerais estratégicos quanto em segurança produtiva da bioeconomia.",
   },
   {
     id: "silicon-solar-semiconductors",
@@ -443,7 +443,7 @@ export const products: ConceptualProduct[] = [
   {
     id: "graphite-batteries",
     name: "Grafite para baterias",
-    shortDescription: "Material de anodos, armazenamento estacionario, refratarios e materiais avancados.",
+    shortDescription: "Material de anodos, armazenamento estacionário, refratários e materiais avançados.",
     chain: "Minerais criticos",
     productionStage: "Material processado",
     metrics: {
@@ -486,7 +486,7 @@ export const products: ConceptualProduct[] = [
     },
     sources: ["Comex Stat 2026 H1", "Cadeias minerais estrategicas"],
     methodology:
-      "Comercio brasileiro observado e baixo, mas a criticidade global justifica monitoramento de refino, sais e reciclagem.",
+      "Comércio brasileiro observado é baixo, mas a criticidade global justifica monitoramento de refino, sais e reciclagem.",
   },
   {
     id: "manganese-batteries-steel",

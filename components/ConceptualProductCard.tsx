@@ -57,9 +57,9 @@ const money = new Intl.NumberFormat("pt-BR", {
 const glass = "backdrop-blur-xl bg-zinc-900/40 border border-white/[0.08] shadow-2xl";
 
 const confidenceCopy = {
-  high: { label: "Alta confianca", className: "bg-emerald-400/10 text-emerald-300 border-emerald-300/20" },
-  medium: { label: "Media confianca", className: "bg-amber-400/10 text-amber-300 border-amber-300/20" },
-  low: { label: "Baixa confianca", className: "bg-rose-400/10 text-rose-300 border-rose-300/20" },
+  high: { label: "Alta confiança", className: "bg-emerald-400/10 text-emerald-300 border-emerald-300/20" },
+  medium: { label: "Média confiança", className: "bg-amber-400/10 text-amber-300 border-amber-300/20" },
+  low: { label: "Baixa confiança", className: "bg-rose-400/10 text-rose-300 border-rose-300/20" },
 };
 
 export function ConceptualProductCard({ product, isLoading = false, error, onRetry }: ConceptualProductCardProps) {
@@ -101,8 +101,8 @@ export function ConceptualProductCard({ product, isLoading = false, error, onRet
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <Metric icon={TrendingDown} label="Importacoes" value={money.format(product.metrics.imports)} tone="cyan" />
-          <Metric icon={TrendingUp} label="Exportacoes" value={money.format(product.metrics.exports)} tone="emerald" />
+          <Metric icon={TrendingDown} label="Importações" value={money.format(product.metrics.imports)} tone="cyan" />
+          <Metric icon={TrendingUp} label="Exportações" value={money.format(product.metrics.exports)} tone="emerald" />
           <Metric icon={Globe2} label="Dependência externa" value={`${product.metrics.externalDependency}%`} tone="amber" />
           <Metric icon={BarChart3} label="HHI" value={product.metrics.hhi.toLocaleString("pt-BR")} tone="rose" />
           <Metric icon={Shield} label="Principal fornecedor" value={product.metrics.mainSupplier.country} tone="cyan" />
@@ -218,7 +218,7 @@ export function ConceptualProductCardError({ error, onRetry }: { error: string; 
   return (
     <article className={`${glass} rounded-2xl p-6 text-center`}>
       <CircleAlert className="mx-auto h-9 w-9 text-amber-300" strokeWidth={1.5} />
-      <h3 className="mt-4 text-lg font-bold tracking-tight text-white">Produto indisponivel</h3>
+      <h3 className="mt-4 text-lg font-bold tracking-tight text-white">Produto indisponível</h3>
       <p className="mt-2 text-sm text-zinc-400">{error}</p>
       {onRetry ? (
         <button

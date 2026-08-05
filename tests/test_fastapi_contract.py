@@ -67,6 +67,40 @@ class FastApiContractTest(unittest.TestCase):
         self.assertEqual(response["json"]["nodes"][0]["tipo"], "pais_origem")
         self.assertEqual(response["json"]["edges"][0]["tipo_fluxo"], "importacao_fob")
 
+    def test_aipnet_silicon_sovereignty_network(self) -> None:
+        response = asgi_get(
+            self.app,
+            "/api/networks/sovereignty",
+            "chain=silicio",
+        )
+
+        self.assertEqual(response["status"], 200)
+        payload = response["json"]
+        self.assertEqual(payload["chain_name"], "silicio")
+        self.assertEqual(len(payload["nodes"]), 5)
+        self.assertEqual(len(payload["edges"]), 4)
+        self.assertEqual(
+            [edge["source"] for edge in payload["edges"]],
+            [node["id"] for node in payload["nodes"][:-1]],
+        )
+        self.assertEqual(
+            [edge["target"] for edge in payload["edges"]],
+            [node["id"] for node in payload["nodes"][1:]],
+        )
+        self.assertTrue(payload["nodes"][2]["is_critical"])
+        self.assertTrue(payload["nodes"][3]["is_critical"])
+        self.assertIn("Alerta HHI Extremo", payload["edges"][2]["alert_message"])
+        self.assertIn("Estrangulamento de Soberania", payload["edges"][3]["alert_message"])
+
+    def test_aipnet_rejects_unsupported_chain(self) -> None:
+        response = asgi_get(
+            self.app,
+            "/api/networks/sovereignty",
+            "chain=aco",
+        )
+
+        self.assertEqual(response["status"], 404)
+
     def test_published_graph_builder_derives_topology_from_products(self) -> None:
         from api.main import DATABASE_MOCK
         from database.data_access import build_sovereignty_graph

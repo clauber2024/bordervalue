@@ -107,7 +107,7 @@ async function loadCatalog(chain: string, params: URLSearchParams): Promise<{
     return {
       products,
       source: "local_fallback",
-      warning: "Cadeia ainda sem equivalente Published publicado para esta experiencia.",
+      warning: "Cadeia ainda sem equivalente Published publicado para esta experiência.",
     };
   }
 
@@ -129,7 +129,7 @@ async function loadCatalog(chain: string, params: URLSearchParams): Promise<{
     return {
       products,
       source: "local_fallback",
-      warning: "API Published indisponivel; usando catalogo local de contingencia.",
+      warning: "API Published indisponível; usando catálogo local de contingência.",
     };
   }
 }
@@ -140,6 +140,10 @@ function publishedChainsFor(chain: string): readonly string[] {
     fertilizers: ["fertilizantes"],
     "transition-fuels": ["combustiveis_transicao"],
     "critical-minerals": ["aco", "silicio"],
+    fertilizantes: ["fertilizantes"],
+    combustiveis_transicao: ["combustiveis_transicao"],
+    aco: ["aco"],
+    silicio: ["silicio"],
   };
 
   return mapping[chain] ?? [];
@@ -208,9 +212,9 @@ function buildProductionSeries(visibleProducts: ConceptualProduct[]) {
   const baseCoverage = Math.max(12, 100 - dependency);
 
   return [
-    { stage: "Materia-prima", value: Math.round(baseCoverage * 0.75) },
+    { stage: "Matéria-prima", value: Math.round(baseCoverage * 0.75) },
     { stage: "Insumo", value: Math.round(baseCoverage * 0.92) },
-    { stage: "Transformacao", value: Math.round(baseCoverage * 1.12) },
+    { stage: "Transformação", value: Math.round(baseCoverage * 1.12) },
     { stage: "Uso final", value: Math.round(baseCoverage * 0.86) },
   ];
 }

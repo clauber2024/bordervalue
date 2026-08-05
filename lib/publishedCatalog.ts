@@ -3,9 +3,9 @@ import type { ProdutoConceitual } from "../types/border-value";
 
 const chainLabels: Record<ProdutoConceitual["cadeia_prioritaria"], string> = {
   fertilizantes: "Fertilizantes",
-  combustiveis_transicao: "Combustiveis de transicao",
-  aco: "Minerais criticos",
-  silicio: "Minerais criticos",
+  combustiveis_transicao: "Combustíveis de transição",
+  aco: "Minerais críticos",
+  silicio: "Minerais críticos",
 };
 
 const stageLabels: Record<ProdutoConceitual["chain_stage"], string> = {
@@ -60,9 +60,9 @@ export function toConceptualProduct(product: ProdutoConceitual): ConceptualProdu
 
 function buildDescription(product: ProdutoConceitual) {
   const dependency = toPercent(product.industria.dependencia_externa_fracao);
-  const supplier = product.comercio.principal_pais_origem.trim() || "fornecedor nao informado";
+  const supplier = product.comercio.principal_pais_origem.trim() || "fornecedor não informado";
 
-  return `${stageLabels[product.chain_stage]} com ${dependency}% de dependencia externa e principal origem em ${supplier}.`;
+  return `${stageLabels[product.chain_stage]} com ${dependency}% de dependência externa e principal origem em ${supplier}.`;
 }
 
 function toPercent(value: number) {

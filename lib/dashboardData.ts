@@ -108,13 +108,13 @@ export function loadDashboardCatalog(params: URLSearchParams): DashboardCatalog 
   const kpis = buildKpis(filteredRows);
 
   const pilotFlags = [
-    "Fornecedor principal, mapa mundial e HHI de fornecedores continuam piloto nesta experiencia Next porque o JSON oficial publicado nao traz a granularidade por pais.",
+    "Fornecedor principal, mapa mundial e HHI de fornecedores continuam em homologação porque a base consolidada ainda não publica a granularidade por país.",
   ];
   if (unsupportedFilters.length) {
-    pilotFlags.push(`Filtros ${unsupportedFilters.join(", ")} exigem a API tecnica/parquet para granularidade completa.`);
+    pilotFlags.push(`Filtros ${unsupportedFilters.join(", ")} exigem a API técnica/parquet para granularidade completa.`);
   }
   if (rankedRows.length > PRODUCT_LIMIT) {
-    pilotFlags.push(`Cards limitados aos ${PRODUCT_LIMIT} maiores itens do recorte; KPIs e graficos agregados usam todos os ${rankedRows.length} registros filtrados.`);
+    pilotFlags.push(`Cards limitados aos ${PRODUCT_LIMIT} maiores itens do recorte; KPIs e gráficos agregados usam todos os ${rankedRows.length} registros filtrados.`);
   }
 
   return {
@@ -170,7 +170,7 @@ export function loadDashboardPublishedProducts(chainName: string, params: URLSea
         exportacao_valor_fob: exportValue,
         exportacao_peso_liquido: 0,
         deficit_comercial: importValue - exportValue,
-        principal_pais_origem: hasPilotFields ? "Nao publicado no JSON" : product.metrics.mainSupplier.country,
+        principal_pais_origem: hasPilotFields ? "Origem em homologação" : product.metrics.mainSupplier.country,
         principal_pais_participacao: product.metrics.mainSupplier.share / 100,
         hhi_global: product.metrics.hhi,
       },
@@ -188,12 +188,12 @@ export function loadDashboardPublishedProducts(chainName: string, params: URLSea
         confidence_level: confidencePt(product.metrics.confidenceLevel),
         is_ncm_generica: true,
         has_sigilo_pia: false,
-        metodologia_versao: product.methodology ?? "dashboard/data.json",
+        metodologia_versao: product.methodology ?? "Camada operacional publicada",
       },
       fator_proporcionalidade: {
         aplicado: false,
         fator_alpha: 1,
-        fonte_proxy: "Conector local dashboard/data.json",
+        fonte_proxy: "Camada operacional publicada",
       },
     };
   });
@@ -236,21 +236,21 @@ function toConceptualProduct(row: DashboardProdlistRow, params: URLSearchParams)
   const dependency = ratioToPercent(row.product_external_dependency_ratio ?? row.external_dependency_ratio);
   const cnae = text(row.cnae_class, "NAO_MAPEADO");
   const prodlist = text(row.prodlist_code, "NCM_SEM_PONTE");
-  const productName = text(row.prodlist_name, row.cnae_name || `PRODLIST ${prodlist}`);
+  const productName = executiveProductName(row, prodlist);
 
   return {
     id: productId(row),
     name: productName,
-    shortDescription: `${stageForCnae(cnae)} com ${dependency}% de dependencia externa no recorte oficial disponivel.`,
+    shortDescription: `${stageForCnae(cnae)} com ${dependency}% de dependência externa no recorte oficial disponível.`,
     chain: chainLabelForRow(row),
     productionStage: stageForCnae(cnae),
-    metrics: {
-      imports,
-      exports,
-      externalDependency: dependency,
-      hhi: proxyHhi(row),
-      mainSupplier: {
-        country: "Piloto: pais nao publicado no JSON",
+      metrics: {
+        imports,
+        exports,
+        externalDependency: dependency,
+        hhi: proxyHhi(row),
+        mainSupplier: {
+        country: "Piloto: país não publicado na base consolidada",
         share: 0,
       },
       confidenceLevel: confidenceForRow(row),
@@ -262,11 +262,11 @@ function toConceptualProduct(row: DashboardProdlistRow, params: URLSearchParams)
       prodlist: prodlist === "NCM_SEM_PONTE" ? [] : [prodlist],
     },
     sources: [
-      "dashboard/data.json",
+      "Camada operacional publicada",
       "outputs/final_border_value_2026",
       "Comex Stat / PIA-Produto / RAIS",
     ],
-    methodology: `Pipeline oficial ${text(readDashboardPayload().etl?.version, "sem versao informada")}. Campos territoriais finos permanecem piloto nesta experiencia Next.`,
+    methodology: `Pipeline oficial ${text(readDashboardPayload().etl?.version, "sem versão informada")}. Campos territoriais finos permanecem em homologação nesta experiência executiva.`,
   };
 }
 
@@ -321,18 +321,52 @@ function matchesChain(row: DashboardProdlistRow, chain: string) {
   if (!chain || chain === "all") return true;
   if (chain === "fertilizantes") return matchesChain(row, "fertilizers");
   if (chain === "combustiveis_transicao") return matchesChain(row, "transition-fuels");
-  if (chain === "aco" || chain === "silicio") return matchesChain(row, "critical-minerals");
-  const haystack = `${row.prodlist_name ?? ""} ${row.cnae_name ?? ""}`.toLowerCase();
+  const haystack = searchableText(`${row.prodlist_name ?? ""} ${row.cnae_name ?? ""}`);
+  const productName = searchableText(row.prodlist_name);
   const cnae = text(row.cnae_class);
 
-  if (chain === "transition-fuels") return row.transition_relevance === true;
+  if (chain === "silicio") {
+    if (/exceto\s+celulas?\s+fotovoltaicas?/.test(productName)) return false;
+    return (
+      /\bquartzo\b|\bquartzitos?\b|\bpolissilicio\b|\bwafers? fotovoltaicos?\b/.test(productName) ||
+      /\bcelulas? fotovoltaicas?\b|\bmodulos? fotovoltaicos?\b|\bpaineis? fotovoltaicos?\b/.test(productName) ||
+      /^silicio(?:\s|$)/.test(productName)
+    );
+  }
+  if (chain === "aco") {
+    return /\bacos?\b|sider|ferro-gusa|ferroliga|ferroniquel|ferroniobio|ferrossilicio|bobina|chapa de aco|tubo.*(?:ferro|aco)|vergalh|arame.*aco|parafuso.*(?:ferro|aco)/.test(productName);
+  }
+  if (chain === "transition-fuels") {
+    return /\betanol\b|\bmetanol\b|\bbiometano\b|\bbiogas\b|\bbiodiesel\b|combustivel sustentavel de aviacao|\bsaf\b|querosene.*aviacao|combustivel.*maritimo|amoniaco|amonia|hidrogenio/.test(productName);
+  }
   if (chain === "fertilizers") {
+    return /fertiliz|adubo|ureia|amonia|fosfat|potass|superfosfat|cloreto de potassio|sulfato de amonio/.test(productName);
+  }
+  if (chain === "aco_legacy_unreachable") {
+    return /a[cÃ§]o|aco|sider|ferro-gusa|ferroliga|ferron[iÃ­]quel|ferron[iÃ³]bio|ferrossil[iÃ­]cio|bobina|chapa de a[cÃ§]o|tubo.*(?:ferro|a[cÃ§]o)|vergalh|arame.*a[cÃ§]o/.test(haystack);
+  }
+
+  if (chain === "transition-fuels_legacy_unreachable") return row.transition_relevance === true;
+  if (chain === "fertilizers_legacy_unreachable") {
     return cnae.startsWith("201") || /fertiliz|adubo|ureia|am[oô]nia|fosfat|pot[aá]ss/.test(haystack);
   }
   if (chain === "critical-minerals") {
     return /min[eé]rio|mineral|a[cç]o|alum[ií]nio|sil[ií]cio|mangan[eê]s|cobre|l[ií]tio|n[ií]quel/.test(haystack) || /^0[789]/.test(cnae) || /^24/.test(cnae);
   }
   return true;
+}
+
+function searchableText(value: unknown) {
+  return text(value)
+    .replace(/Ã¡|Ã£|Ã¢/g, "a")
+    .replace(/Ã©|Ãª/g, "e")
+    .replace(/Ã­/g, "i")
+    .replace(/Ã³|Ã´|Ãµ/g, "o")
+    .replace(/Ãº/g, "u")
+    .replace(/Ã§/g, "c")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 }
 
 function matchesProduct(row: DashboardProdlistRow, product: string) {
@@ -393,17 +427,17 @@ function productId(row: DashboardProdlistRow) {
 
 function chainLabelForRow(row: DashboardProdlistRow) {
   if (matchesChain(row, "fertilizers")) return "Fertilizantes";
-  if (matchesChain(row, "critical-minerals")) return "Minerais criticos";
-  if (row.transition_relevance) return "Transicao energetica";
+  if (matchesChain(row, "critical-minerals")) return "Minerais críticos";
+  if (row.transition_relevance) return "Transição energética";
   return "Base industrial";
 }
 
 function stageForCnae(cnae: string) {
   const prefix = Number(cnae.slice(0, 2));
-  if (Number.isNaN(prefix)) return "Nao mapeado";
-  if (prefix <= 9) return "Materia-prima";
+  if (Number.isNaN(prefix)) return "Não mapeado";
+  if (prefix <= 9) return "Matéria-prima";
   if (prefix <= 20) return "Insumo";
-  if (prefix <= 28) return "Transformacao";
+  if (prefix <= 28) return "Transformação";
   return "Equipamento e uso final";
 }
 
@@ -421,10 +455,31 @@ function publishedChainForProduct(chainName: string): ProdutoConceitual["cadeia_
 }
 
 function chainStageForProduct(stage: string): ProdutoConceitual["chain_stage"] {
-  if (stage === "Materia-prima") return "insumo";
+  if (stage === "Matéria-prima" || stage === "Materia-prima") return "insumo";
   if (stage === "Insumo") return "insumo";
-  if (stage === "Transformacao") return "processamento";
+  if (stage === "Transformação" || stage === "Transformacao") return "processamento";
   return "produto_final";
+}
+
+function executiveProductName(row: DashboardProdlistRow, prodlist: string) {
+  const prodlistName = text(row.prodlist_name);
+  if (isExecutiveSentinel(prodlistName) || /^PRODLIST\s+NCM_SEM_PONTE$/i.test(prodlistName)) {
+    return executiveFallbackName(row);
+  }
+
+  if (prodlistName) return prodlistName;
+  if (prodlist === "NCM_SEM_PONTE") return executiveFallbackName(row);
+  return `Produto industrial ${prodlist}`;
+}
+
+function executiveFallbackName(row: DashboardProdlistRow) {
+  const cnaeName = text(row.cnae_name);
+  if (cnaeName && !isExecutiveSentinel(cnaeName)) return cnaeName;
+  return "Produto não mapeado";
+}
+
+function isExecutiveSentinel(value: string) {
+  return ["NCM_SEM_PONTE", "NAO_MAPEADO", "00000000"].includes(value.trim().toUpperCase());
 }
 
 function confidencePt(confidence: ConceptualProduct["metrics"]["confidenceLevel"]): ProdutoConceitual["auditoria"]["confidence_level"] {

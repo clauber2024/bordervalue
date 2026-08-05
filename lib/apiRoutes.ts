@@ -3,6 +3,10 @@ type QueryValue = string | number | boolean | null | undefined;
 export type QueryParams = Record<string, QueryValue>;
 
 export const apiRoutes = {
+  chains() {
+    return "/api/chains";
+  },
+
   conceptualProducts(params?: QueryParams | URLSearchParams) {
     return withQuery("/api/conceptual-products", params);
   },

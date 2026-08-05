@@ -117,6 +117,40 @@ def get_sovereignty_graph(chain: str, filters: PublishedFilters | None = None) -
     return build_sovereignty_graph(chain, get_conceptual_products(chain, filters))
 
 
+def get_solar_sovereignty_metrics(chain: str) -> dict:
+    """Read the published AIPNET solar-input metrics from PostgreSQL."""
+
+    if _normalize_chain(chain) != "silicio":
+        return {}
+
+    conn: Optional[PgConnection] = None
+    cur: Optional[PgCursor] = None
+    try:
+        conn = psycopg2.connect(_database_dsn())
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute(
+            "SELECT metrics FROM aipnet_solar_input_metrics ORDER BY "
+            "CASE stage WHEN 'extracao' THEN 1 WHEN 'processamento' THEN 2 "
+            "WHEN 'refinamento' THEN 3 WHEN 'componentes_avancados' THEN 4 ELSE 5 END, input_id"
+        )
+        inputs = [dict(row["metrics"]) for row in cur.fetchall()]
+        return {
+            "chain_name": "silicio",
+            "reference_period": inputs[0]["reference_period"] if inputs else "2026-H1",
+            "methodology_version": "1.1.0-aipnet-solar",
+            "inputs": inputs,
+        }
+    except psycopg2.OperationalError as exc:
+        raise DataAccessUnavailableError(DATA_UNAVAILABLE_MESSAGE) from exc
+    finally:
+        if cur is not None:
+            with suppress(Exception):
+                cur.close()
+        if conn is not None:
+            with suppress(Exception):
+                conn.close()
+
+
 def filter_published_products(
     products: List[Mapping[str, Any]],
     filters: PublishedFilters,

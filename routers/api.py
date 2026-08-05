@@ -12,11 +12,56 @@ from database.data_access import (
     DataAccessUnavailableError,
     PublishedFilters,
     get_conceptual_products,
+    get_solar_sovereignty_metrics,
     get_sovereignty_graph,
 )
+from schemas.network import GraphResponse, SolarSovereigntyResponse
+from services.network_service import build_sovereignty_network
 
 
 router = APIRouter(prefix="/api", tags=["Analytical Camada Published"])
+
+
+@router.get(
+    "/networks/sovereignty",
+    response_model=GraphResponse,
+    status_code=status.HTTP_200_OK,
+    tags=["AIPNET"],
+)
+async def read_sovereignty_network(
+    chain: str = Query(..., min_length=1),
+) -> GraphResponse:
+    try:
+        return build_sovereignty_network(chain)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Cadeia AIPNET não suportada: {chain}",
+        ) from exc
+
+
+@router.get(
+    "/networks/sovereignty/inputs",
+    response_model=SolarSovereigntyResponse,
+    status_code=status.HTTP_200_OK,
+    tags=["AIPNET"],
+)
+async def read_solar_sovereignty_inputs(
+    chain: str = Query(..., min_length=1),
+) -> SolarSovereigntyResponse:
+    try:
+        payload = await run_in_threadpool(get_solar_sovereignty_metrics, chain)
+    except DataAccessUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Métricas AIPNET indisponíveis no banco Published.",
+        ) from exc
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Cadeia AIPNET não suportada: {chain}",
+        )
+    return SolarSovereigntyResponse.model_validate(payload)
 
 
 class MetadataApi(BaseModel):

@@ -20,12 +20,12 @@ NCM_JSON = BASE_DIR / "dados" / "cache" / "ncm_vigente.json"
 
 ANM_AMB_SOURCES = {
     "bruta": {
-        "url": "https://app.anm.gov.br/dadosabertos/AMB/Producao_Bruta.csv",
+        "url": "https://dadosabertos.anm.gov.br/AMB/Producao_Bruta.csv",
         "path": INPUT_DIR / "anm_amb_producao_bruta.csv",
         "description": "ANM AMB Producao_Bruta.csv",
     },
     "beneficiada": {
-        "url": "https://app.anm.gov.br/dadosabertos/AMB/Producao_Beneficiada.csv",
+        "url": "https://dadosabertos.anm.gov.br/AMB/Producao_Beneficiada.csv",
         "path": INPUT_DIR / "anm_amb_producao_beneficiada.csv",
         "description": "ANM AMB Producao_Beneficiada.csv",
     },
@@ -64,8 +64,10 @@ ANM_COLUMN_ALIASES = {
         "producao beneficiada",
         "producao_bruta",
         "producao_beneficiada",
+        "quantidade producao",
+        "quantidade producao minerio rom (t)",
     ],
-    "unit": ["unidade", "unidade medida", "unidade_medida", "medida"],
+    "unit": ["unidade", "unidade medida", "unidade_medida", "medida", "unidade de medida producao"],
     "production_value_brl": [
         "valor",
         "valor r$",
@@ -74,6 +76,7 @@ ANM_COLUMN_ALIASES = {
         "valor da producao",
         "valor comercializado",
         "valor da producao comercializada",
+        "valor venda (r$)",
     ],
 }
 

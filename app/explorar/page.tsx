@@ -136,7 +136,7 @@ function ChainExplorerClient() {
       const response = await fetch(apiRoutes.conceptualProducts(filters), {
         cache: "no-store",
       });
-      if (!response.ok) throw new Error("Nao foi possivel carregar os indicadores da cadeia.");
+      if (!response.ok) throw new Error("Não foi possível carregar os indicadores da cadeia.");
       const payload = (await response.json()) as ApiResponse;
       setData(payload);
       setStatus(payload.products.length ? "ready" : "empty");
@@ -169,12 +169,12 @@ function ChainExplorerClient() {
               Painel Analítico Border Value
             </p>
             <h1 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-5xl">
-              Onde a cadeia brasileira esta mais exposta?
+              Onde a cadeia brasileira está mais exposta?
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-6 text-zinc-400 sm:text-base">
               {topProduct
-                ? `${topProduct.name} concentra a principal leitura de dependencia: ${topProduct.metrics.externalDependency}% de dependencia externa, com ${topProduct.metrics.mainSupplier.country} respondendo por ${topProduct.metrics.mainSupplier.share}% do fornecimento.`
-                : "Escolha uma cadeia, produto ou territorio para revelar dependencia, concentracao e capacidade produtiva nacional."}
+                ? `${topProduct.name} concentra a principal leitura de dependência: ${topProduct.metrics.externalDependency}% de dependência externa, com ${topProduct.metrics.mainSupplier.country} respondendo por ${topProduct.metrics.mainSupplier.share}% do fornecimento.`
+                : "Escolha uma cadeia, produto ou território para revelar dependência, concentração e capacidade produtiva nacional."}
             </p>
           </div>
         </section>
@@ -182,22 +182,22 @@ function ChainExplorerClient() {
         <StateShell status={status} error={error} onRetry={loadData}>
           <section className="space-y-6">
             <Question
-              title="Quais sinais executivos merecem atencao imediata?"
-              subtitle="Indicadores agregados dos produtos conceituais filtrados, sem expor codigos tecnicos na primeira leitura."
+              title="Quais sinais executivos merecem atenção imediata?"
+              subtitle="Indicadores agregados dos produtos conceituais filtrados, sem expor códigos técnicos na primeira leitura."
             />
             {data.metadata?.warning ? <DataNotice metadata={data.metadata} /> : null}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <KpiCard icon={ArrowDownRight} label="Importacoes" value={money.format(totalImports)} tone="cyan" />
-              <KpiCard icon={ArrowUpRight} label="Exportacoes" value={money.format(totalExports)} tone="emerald" />
-              <KpiCard icon={Activity} label="Dependencia media" value={`${number.format(avgDependency)}%`} tone="amber" />
-              <KpiCard icon={ShieldCheck} label="HHI maximo" value={number.format(maxHhi)} tone="rose" />
+              <KpiCard icon={ArrowDownRight} label="Importações" value={money.format(totalImports)} tone="cyan" />
+              <KpiCard icon={ArrowUpRight} label="Exportações" value={money.format(totalExports)} tone="emerald" />
+              <KpiCard icon={Activity} label="Dependência média" value={`${number.format(avgDependency)}%`} tone="amber" />
+              <KpiCard icon={ShieldCheck} label="HHI máximo" value={number.format(maxHhi)} tone="rose" />
             </div>
           </section>
 
           <section className="space-y-6">
             <Question
               title="Quais produtos explicam o risco da cadeia?"
-              subtitle="Cards conceituais priorizam linguagem de negocio; codigos, fontes e metodologia ficam na gaveta tecnica."
+              subtitle="Cards conceituais priorizam linguagem de negócio; códigos, fontes e metodologia ficam na gaveta técnica."
             />
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
               {data.products.map((product) => (
@@ -208,8 +208,8 @@ function ChainExplorerClient() {
 
           <section className="space-y-6">
             <Question
-              title="De quais territorios o Brasil mais depende?"
-              subtitle="Clique em um fornecedor para aplicar o territorio como filtro global e atualizar a URL compartilhavel."
+              title="De quais territórios o Brasil mais depende?"
+              subtitle="Clique em um fornecedor para aplicar o território como filtro global e atualizar a URL compartilhável."
             />
             <div className={`${glass} rounded-2xl p-4 sm:p-6`}>
               <ChainMap
@@ -222,8 +222,8 @@ function ChainExplorerClient() {
 
           <section className="space-y-6">
             <Question
-              title="Onde dependencia e concentracao se combinam?"
-              subtitle="Os graficos tambem funcionam como seletores: clicar em barras ou pontos filtra produto e territorio."
+              title="Onde dependência e concentração se combinam?"
+              subtitle="Os gráficos também funcionam como seletores: clicar em barras ou pontos filtra produto e território."
             />
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
               <DependencyChart data={data.dependency} onSelect={(row) => updateFilters({ product: row.id ?? row.product, territory: row.territory })} />
@@ -233,8 +233,8 @@ function ChainExplorerClient() {
 
           <section className="space-y-6">
             <Question
-              title="O comercio exterior esta ampliando a exposicao?"
-              subtitle="Serie de importacoes e exportacoes por periodo, com leitura direta de saldo e escala comercial."
+              title="O comércio exterior está ampliando a exposição?"
+              subtitle="Série de importações e exportações por período, com leitura direta de saldo e escala comercial."
             />
             <GlassPanel className="h-[360px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -262,8 +262,8 @@ function ChainExplorerClient() {
 
           <section className="space-y-6 pb-16">
             <Question
-              title="A producao nacional cobre quais etapas?"
-              subtitle="Leitura sintese por etapa produtiva para orientar investigacao setorial e validacao especialista."
+              title="A produção nacional cobre quais etapas?"
+              subtitle="Leitura síntese por etapa produtiva para orientar investigação setorial e validação especialista."
             />
             <GlassPanel className="h-[340px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -314,7 +314,7 @@ function StateShell({
     return (
       <div className={`${glass} rounded-2xl p-8 text-center`}>
         <AlertTriangle className="mx-auto h-10 w-10 text-amber-300" strokeWidth={1.5} />
-        <h2 className="mt-4 text-xl font-bold tracking-tight text-white">Nao conseguimos carregar esta leitura.</h2>
+        <h2 className="mt-4 text-xl font-bold tracking-tight text-white">Não conseguimos carregar esta leitura.</h2>
         <p className="mx-auto mt-2 max-w-xl text-sm text-zinc-400">{error}</p>
         <button
           type="button"
@@ -333,7 +333,7 @@ function StateShell({
         <PackageSearch className="mx-auto h-10 w-10 text-cyan-300" strokeWidth={1.5} />
         <h2 className="mt-4 text-xl font-bold tracking-tight text-white">Nenhum produto encontrado.</h2>
         <p className="mx-auto mt-2 max-w-xl text-sm text-zinc-400">
-          Nenhum produto encontrado para este territorio. Tente ampliar o periodo ou remover filtros tecnicos.
+          Nenhum produto encontrado para este território. Tente ampliar o período ou remover filtros técnicos.
         </p>
       </div>
     );
@@ -425,7 +425,7 @@ function ChainMap({
   if (!data.length) {
     return (
       <div className="flex min-h-[320px] items-center justify-center text-center text-sm text-zinc-400">
-        Sem territorios para o recorte atual.
+        Sem territórios para o recorte atual.
       </div>
     );
   }
