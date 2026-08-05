@@ -117,10 +117,14 @@ def get_sovereignty_graph(chain: str, filters: PublishedFilters | None = None) -
     return build_sovereignty_graph(chain, get_conceptual_products(chain, filters))
 
 
-def get_solar_sovereignty_metrics(chain: str) -> dict:
-    """Read the published AIPNET solar-input metrics from PostgreSQL."""
+_AIPNET_CHAINS = {"silicio", "fertilizantes", "combustiveis_transicao", "aco"}
 
-    if _normalize_chain(chain) != "silicio":
+
+def get_solar_sovereignty_metrics(chain: str) -> dict:
+    """Read the published AIPNET per-chain input metrics from PostgreSQL."""
+
+    normalized_chain = _normalize_chain(chain)
+    if normalized_chain not in _AIPNET_CHAINS:
         return {}
 
     conn: Optional[PgConnection] = None
@@ -129,9 +133,10 @@ def get_solar_sovereignty_metrics(chain: str) -> dict:
         conn = psycopg2.connect(_database_dsn())
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute(
-            "SELECT metrics FROM aipnet_solar_input_metrics ORDER BY "
+            "SELECT metrics FROM aipnet_solar_input_metrics WHERE chain_name = %s ORDER BY "
             "CASE stage WHEN 'extracao' THEN 1 WHEN 'processamento' THEN 2 "
-            "WHEN 'refinamento' THEN 3 WHEN 'componentes_avancados' THEN 4 ELSE 5 END, input_id"
+            "WHEN 'refinamento' THEN 3 WHEN 'componentes_avancados' THEN 4 ELSE 5 END, input_id",
+            (normalized_chain,),
         )
         inputs = [dict(row["metrics"]) for row in cur.fetchall()]
 
@@ -139,7 +144,7 @@ def get_solar_sovereignty_metrics(chain: str) -> dict:
         try:
             cur.execute(
                 "SELECT green_jobs FROM aipnet_solar_green_jobs WHERE chain_name = %s",
-                ("silicio",),
+                (normalized_chain,),
             )
             green_jobs_row = cur.fetchone()
             if green_jobs_row is not None:
@@ -150,7 +155,7 @@ def get_solar_sovereignty_metrics(chain: str) -> dict:
             conn.rollback()
 
         result = {
-            "chain_name": "silicio",
+            "chain_name": normalized_chain,
             "reference_period": inputs[0]["reference_period"] if inputs else "2026-H1",
             "methodology_version": "1.1.0-aipnet-solar",
             "inputs": inputs,

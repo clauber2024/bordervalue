@@ -122,7 +122,7 @@ class SolarInputMetric(BaseModel):
 class SolarSovereigntyResponse(BaseModel):
     model_config = ConfigDict(extra="allow", str_strip_whitespace=True)
 
-    chain_name: Literal["silicio"]
+    chain_name: Literal["silicio", "fertilizantes", "combustiveis_transicao", "aco"]
     reference_period: str
     methodology_version: str
     inputs: List[SolarInputMetric]

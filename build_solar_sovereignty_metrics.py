@@ -426,6 +426,9 @@ def build_payload(
     production: dict[str, dict[str, object]],
     countries: dict[str, dict[str, str]],
     mineral_evidence: dict[str, object],
+    chain_name: str = "silicio",
+    global_concentration_source: dict[str, object] | None = None,
+    mineral_evidence_input_ids: frozenset[str] = frozenset({"quartzo", "quartzito"}),
 ) -> dict[str, object]:
     inputs: list[dict[str, object]] = []
     for definition in SOLAR_INPUTS:
@@ -479,14 +482,14 @@ def build_payload(
                 "confidence_level": definition.confidence_level,
                 "data_gap_reason": definition.data_gap_reason,
                 "trade_record_count": int(sum(values["records"] for _, values in rows)),
-                "mineral_evidence": mineral_evidence if definition.input_id in {"quartzo", "quartzito"} else None,
+                "mineral_evidence": mineral_evidence if definition.input_id in mineral_evidence_input_ids else None,
             }
         )
     return {
-        "chain_name": "silicio",
+        "chain_name": chain_name,
         "reference_period": "2026-H1",
         "methodology_version": "1.1.0-aipnet-solar",
-        "global_concentration_source": {
+        "global_concentration_source": global_concentration_source or {
             "institution": "International Energy Agency (IEA)",
             "publication": "Energy Technology Perspectives 2026 - Supply chain risks and industrial competitiveness",
             "url": "https://www.iea.org/reports/energy-technology-perspectives-2026/supply-chain-risks-and-industrial-competitiveness",
@@ -587,26 +590,32 @@ def write_rows(path: Path, fields: list[str], rows: Iterable[dict[str, object]])
         writer.writerows(rows)
 
 
-def write_sql(payload: dict[str, object]) -> None:
+def write_sql(payload: dict[str, object], output_dir: Path = OUTPUT_DIR) -> None:
+    # chain_name + composite PK: originally input_id alone was the PK,
+    # which only worked because this table only ever held the silicio
+    # chain. Extending to other chains needs chain_name to disambiguate
+    # (e.g. "amonia" exists in both fertilizantes and
+    # combustiveis_transicao with different NCM baskets/figures).
     statements = [
         "CREATE TABLE IF NOT EXISTS aipnet_solar_input_metrics (",
-        "  input_id text PRIMARY KEY, label text NOT NULL, stage text NOT NULL,",
-        "  reference_period text NOT NULL, metrics jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now()",
+        "  chain_name text NOT NULL, input_id text NOT NULL, label text NOT NULL, stage text NOT NULL,",
+        "  reference_period text NOT NULL, metrics jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now(),",
+        "  PRIMARY KEY (chain_name, input_id)",
         ");",
     ]
     for item in payload["inputs"]:
         serialized = json.dumps(item, ensure_ascii=False).replace("'", "''")
         statements.append(
-            "INSERT INTO aipnet_solar_input_metrics (input_id, label, stage, reference_period, metrics) "
-            f"VALUES ('{item['input_id']}', '{sql_text(item['label'])}', '{sql_text(item['stage'])}', "
-            f"'{sql_text(item['reference_period'])}', '{serialized}'::jsonb) "
-            "ON CONFLICT (input_id) DO UPDATE SET label=EXCLUDED.label, stage=EXCLUDED.stage, "
+            "INSERT INTO aipnet_solar_input_metrics (chain_name, input_id, label, stage, reference_period, metrics) "
+            f"VALUES ('{sql_text(payload['chain_name'])}', '{item['input_id']}', '{sql_text(item['label'])}', "
+            f"'{sql_text(item['stage'])}', '{sql_text(item['reference_period'])}', '{serialized}'::jsonb) "
+            "ON CONFLICT (chain_name, input_id) DO UPDATE SET label=EXCLUDED.label, stage=EXCLUDED.stage, "
             "reference_period=EXCLUDED.reference_period, metrics=EXCLUDED.metrics, updated_at=now();"
         )
-    (OUTPUT_DIR / "load_aipnet_solar_metrics.sql").write_text("\n".join(statements) + "\n", encoding="utf-8")
+    (output_dir / "load_aipnet_solar_metrics.sql").write_text("\n".join(statements) + "\n", encoding="utf-8")
 
 
-def write_green_jobs_sql(payload: dict[str, object]) -> None:
+def write_green_jobs_sql(payload: dict[str, object], output_dir: Path = OUTPUT_DIR) -> None:
     # payload["green_jobs"] (from load_green_jobs()) was always computed
     # here but never persisted -- write_sql() above only stores
     # payload["inputs"] row by row. Without this table,
@@ -620,10 +629,10 @@ def write_green_jobs_sql(payload: dict[str, object]) -> None:
         "  updated_at timestamptz NOT NULL DEFAULT now()",
         ");",
         "INSERT INTO aipnet_solar_green_jobs (chain_name, green_jobs) "
-        f"VALUES ('{payload['chain_name']}', '{serialized}'::jsonb) "
+        f"VALUES ('{sql_text(payload['chain_name'])}', '{serialized}'::jsonb) "
         "ON CONFLICT (chain_name) DO UPDATE SET green_jobs=EXCLUDED.green_jobs, updated_at=now();",
     ]
-    (OUTPUT_DIR / "load_aipnet_solar_green_jobs.sql").write_text(
+    (output_dir / "load_aipnet_solar_green_jobs.sql").write_text(
         "\n".join(statements) + "\n", encoding="utf-8"
     )
 

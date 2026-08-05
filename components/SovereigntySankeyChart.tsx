@@ -193,11 +193,21 @@ export function SovereigntySankeyChart({
       // it out as the rightmost destination instead of a visual source.
       const isFertilizerChain = /fertiliz/i.test(chainName ?? "");
       const isTransitionFuelChain = /combustíveis de transição|combustiveis de transicao/i.test(chainName ?? "");
+      // Prefer the real end-of-chain product (stage "produto_final", e.g.
+      // "Módulos fotovoltaicos") over a generic system label when the data
+      // actually names one -- a synthetic "Sistema solar fotovoltaico"
+      // fallback isn't the real product the chain produces.
+      const finalProductInputs = solarInputs
+        .filter((input) => input.stage === "produto_final")
+        .sort((left, right) => right.imports_value_usd - left.imports_value_usd);
+      const realFinalProductName = finalProductInputs.length
+        ? finalProductInputs.map((input) => input.label).join(" / ")
+        : null;
       const finalSystemName = isFertilizerChain
         ? "Oferta nacional de fertilizantes"
         : isTransitionFuelChain
           ? "Usos finais dos combustíveis de transição"
-          : chainName ?? "Sistema solar fotovoltaico";
+          : realFinalProductName ?? chainName ?? "Sistema solar fotovoltaico";
       const finalIndex = ensureNode("product:chain-system", finalSystemName, "product");
       nodes[finalIndex].rawValue = solarImportTotal;
       nodes[finalIndex].share = 1;
