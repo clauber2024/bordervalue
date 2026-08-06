@@ -151,14 +151,6 @@ export function NIBMatrixChart({
 
       {hasCapacityCoverage ? (
         <>
-      <div className="flex flex-wrap gap-x-5 gap-y-2 px-4 pt-4 text-[11px] text-zinc-400 sm:px-6">
-        <MatrixLegend color="#f87171" label="Atrair nova capacidade" />
-        <MatrixLegend color="#fbbf24" label="Modernizar e expandir" />
-        <MatrixLegend color="#34d399" label="Posição competitiva" />
-        <MatrixLegend color="#38bdf8" label="Monitorar" />
-        <MatrixLegend color="#c084fc" label="Substituir / descarbonizar" />
-      </div>
-
       {proxyCount > 0 ? (
         <div className="mx-4 mt-4 rounded-lg border border-amber-300/15 bg-amber-400/[0.06] px-4 py-3 text-xs text-zinc-400 sm:mx-6">
           <strong className="text-amber-200">{proxyCount} oportunidades em validação por proxy.</strong>{" "}
@@ -189,7 +181,14 @@ export function NIBMatrixChart({
         <div className="bg-emerald-400/[0.06] px-3 py-2.5 text-emerald-200">Déficit baixo · Competitiva</div>
       </div>
 
-      <div className="h-[470px] min-h-[380px] w-full px-2 py-2 sm:px-4">
+      <div className="relative h-[470px] min-h-[380px] w-full px-2 py-2 sm:px-4">
+        <div className="pointer-events-none absolute right-3 top-3 z-10 flex max-w-[13rem] flex-col gap-1.5 rounded-lg border border-zinc-800/70 bg-zinc-950/85 px-3 py-2.5 text-[10.5px] leading-tight text-zinc-300 shadow-lg backdrop-blur-md sm:right-5">
+          <MatrixLegend color="#f87171" label="Atrair nova capacidade" />
+          <MatrixLegend color="#fbbf24" label="Modernizar e expandir" />
+          <MatrixLegend color="#34d399" label="Posição competitiva" />
+          <MatrixLegend color="#38bdf8" label="Monitorar" />
+          <MatrixLegend color="#c084fc" label="Substituir / descarbonizar" />
+        </div>
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 38, right: 54, bottom: 70, left: 92 }}>
             <CartesianGrid stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
@@ -727,8 +726,17 @@ function getTransitionGuardrail(product: Pick<ProdutoConceitual, "produto_nome">
   if (/gas natural/.test(name)) {
     return "Diretriz de transição: substituir gás fóssil por biometano e, nas rotas químicas, hidrogênio renovável e amônia verde.";
   }
-  if (/petrole|petroquim|nafta|oleo combustivel/.test(name)) {
-    return "Diretriz de transição: priorizar matérias-primas renováveis, reciclagem, circularidade e eletrificação dos processos.";
+  if (/metanol/.test(name)) {
+    return "Diretriz de transição: substituir metanol fóssil por bio-metanol (resíduos/biomassa) ou e-metanol (CO₂ capturado + hidrogênio renovável), rotas mapeadas pela IRENA/Methanol Institute (Innovation Outlook: Renewable Methanol, 2021).";
+  }
+  if (/nafta/.test(name)) {
+    return "Diretriz de transição: substituir nafta petroquímica por bionafta/nafta renovável (coproduto do HVO, óleos e gorduras) como matéria-prima de plásticos e químicos de base (IEA, The Future of Petrochemicals, 2018).";
+  }
+  if (/plastic|resina|polimero|polímero/.test(name)) {
+    return "Diretriz de transição: substituir plástico/resina virgem por reciclagem mecânica e química (pirólise/despolimerização) e conteúdo reciclado certificado (IEA, The Future of Petrochemicals, 2018).";
+  }
+  if (/petrole|petroquim|oleo combustivel/.test(name)) {
+    return "Diretriz de transição: priorizar matérias-primas renováveis (bionafta, reciclagem química), circularidade e eletrificação dos processos (IEA, The Future of Petrochemicals, 2018).";
   }
   if (/carvao mineral|coque fossil/.test(name)) {
     return "Diretriz de transição: priorizar eletrificação, hidrogênio renovável e redutores de baixo carbono.";

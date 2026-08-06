@@ -1,12 +1,15 @@
 "use client";
 
-import { BriefcaseBusiness, Info, MapPinned, Scale, WalletCards } from "lucide-react";
+import { useMemo, useState } from "react";
+import { BriefcaseBusiness, Info, MapPinned, Scale, WalletCards, X } from "lucide-react";
 import type { SolarGreenJobs } from "../types/solar-sovereignty";
 
 type GreenJobsTSBPanelProps = {
   data: SolarGreenJobs;
   chainName?: string;
 };
+
+type Selection = { kind: "activity"; cnae: string } | { kind: "state"; uf: string } | null;
 
 const integer = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
 const currency = new Intl.NumberFormat("pt-BR", {
@@ -17,11 +20,40 @@ const currency = new Intl.NumberFormat("pt-BR", {
 });
 
 export function GreenJobsTSBPanel({ data, chainName = "cadeia analisada" }: GreenJobsTSBPanelProps) {
+  const [selection, setSelection] = useState<Selection>(null);
+
   const maxActivityJobs = Math.max(...data.activities.map((item) => item.formal_jobs), 1);
   const maxStateJobs = Math.max(...data.top_states.map((item) => item.formal_jobs), 1);
   const hasGasActivity = data.activities.some((activity) =>
     activity.sector_names.some((name) => /gás natural|gas natural/i.test(name)),
   );
+
+  // activity <-> state cross-tab: both sides come from the same associated
+  // CNAEs x RAIS rows (see load_green_jobs() in build_solar_sovereignty_metrics.py),
+  // not fabricated in the frontend. Older cached payloads may not have it yet.
+  const stateJobsByActivity = useMemo(() => {
+    const map = new Map<string, Map<string, number>>();
+    for (const activity of data.activities) {
+      map.set(activity.cnae_class, new Map((activity.state_jobs ?? []).map((s) => [s.uf, s.formal_jobs])));
+    }
+    return map;
+  }, [data.activities]);
+
+  const activityJobsByState = useMemo(() => {
+    const map = new Map<string, Map<string, number>>();
+    for (const state of data.top_states) {
+      map.set(state.uf, new Map((state.activity_jobs ?? []).map((a) => [a.cnae_class, a.formal_jobs])));
+    }
+    return map;
+  }, [data.top_states]);
+
+  const hasCrossData = data.activities.some((activity) => (activity.state_jobs?.length ?? 0) > 0);
+
+  const selectedActivity = selection?.kind === "activity" ? selection.cnae : null;
+  const selectedState = selection?.kind === "state" ? selection.uf : null;
+  const selectedActivityLabel = selectedActivity
+    ? data.activities.find((a) => a.cnae_class === selectedActivity)?.sector_names[0] ?? selectedActivity
+    : null;
 
   return (
     <section className="overflow-hidden rounded-xl border border-emerald-300/15 bg-zinc-950/65 text-zinc-100">
@@ -44,40 +76,113 @@ export function GreenJobsTSBPanel({ data, chainName = "cadeia analisada" }: Gree
 
       <div className="grid gap-6 border-t border-white/[0.08] px-4 py-5 sm:px-6 lg:grid-cols-[1.25fr_0.75fr]">
         <div>
-          <h4 className="text-sm font-semibold text-white">Onde estão os vínculos na cadeia ampliada</h4>
-          <p className="mt-1 text-xs text-zinc-500">Atividades nomeadas de forma executiva; códigos permanecem na gaveta técnica.</p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h4 className="text-sm font-semibold text-white">Onde estão os vínculos na cadeia ampliada</h4>
+              <p className="mt-1 text-xs text-zinc-500">
+                {hasCrossData
+                  ? "Clique numa atividade para destacar os estados com vínculos nela."
+                  : "Atividades nomeadas de forma executiva; códigos permanecem na gaveta técnica."}
+              </p>
+            </div>
+            {selectedState ? (
+              <button
+                type="button"
+                onClick={() => setSelection(null)}
+                className="flex shrink-0 items-center gap-1 rounded-full border border-cyan-300/30 bg-cyan-400/10 px-2.5 py-1 text-[11px] font-medium text-cyan-200 hover:bg-cyan-400/20"
+              >
+                {selectedState}
+                <X className="h-3 w-3" />
+              </button>
+            ) : null}
+          </div>
           <div className="mt-4 space-y-4">
             {data.activities.map((activity) => {
               const label = activity.sector_names[0] ?? "Atividade produtiva associada à TSB";
+              const isSelected = activity.cnae_class === selectedActivity;
+              const jobsInSelectedState = selectedState
+                ? stateJobsByActivity.get(activity.cnae_class)?.get(selectedState) ?? 0
+                : null;
+              const isDimmed = hasCrossData && selectedState !== null && !isSelected && jobsInSelectedState === 0;
+              const displayedJobs = selectedState !== null ? jobsInSelectedState ?? 0 : activity.formal_jobs;
               return (
-                <div key={activity.cnae_class}>
+                <button
+                  type="button"
+                  key={activity.cnae_class}
+                  onClick={() =>
+                    hasCrossData &&
+                    setSelection(isSelected ? null : { kind: "activity", cnae: activity.cnae_class })
+                  }
+                  aria-pressed={isSelected}
+                  className={`block w-full text-left transition-opacity ${isDimmed ? "opacity-30" : "opacity-100"} ${hasCrossData ? "cursor-pointer" : "cursor-default"}`}
+                >
                   <div className="mb-1.5 flex items-end justify-between gap-4 text-xs">
-                    <span className="font-medium text-zinc-300">{label}</span>
-                    <span className="shrink-0 font-semibold text-emerald-300">{integer.format(activity.formal_jobs)}</span>
+                    <span className={`font-medium ${isSelected ? "text-emerald-200" : "text-zinc-300"}`}>{label}</span>
+                    <span className="shrink-0 font-semibold text-emerald-300">{integer.format(displayedJobs)}</span>
                   </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-zinc-900">
-                    <div className="h-full rounded-full bg-emerald-400" style={{ width: `${Math.max(activity.formal_jobs / maxActivityJobs * 100, 2)}%` }} />
+                  <div className={`h-2 overflow-hidden rounded-full bg-zinc-900 ${isSelected ? "ring-1 ring-emerald-300/60" : ""}`}>
+                    <div
+                      className="h-full rounded-full bg-emerald-400"
+                      style={{ width: `${Math.max((displayedJobs / maxActivityJobs) * 100, 2)}%` }}
+                    />
                   </div>
                   <p className="mt-1 text-[11px] text-zinc-500">Cobertura estatística no recorte TSB: {(activity.exposure_ratio * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</p>
-                </div>
+                </button>
               );
             })}
           </div>
         </div>
 
         <div>
-          <h4 className="text-sm font-semibold text-white">Concentração territorial</h4>
-          <p className="mt-1 text-xs text-zinc-500">Estados com mais vínculos nas atividades associadas.</p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h4 className="text-sm font-semibold text-white">Concentração territorial</h4>
+              <p className="mt-1 text-xs text-zinc-500">
+                {hasCrossData
+                  ? "Clique num estado para destacar as atividades com vínculos nele."
+                  : "Estados com mais vínculos nas atividades associadas."}
+              </p>
+            </div>
+            {selectedActivityLabel ? (
+              <button
+                type="button"
+                onClick={() => setSelection(null)}
+                className="flex shrink-0 items-center gap-1 rounded-full border border-emerald-300/30 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-medium text-emerald-200 hover:bg-emerald-400/20"
+              >
+                {selectedActivityLabel}
+                <X className="h-3 w-3" />
+              </button>
+            ) : null}
+          </div>
           <div className="mt-4 space-y-3">
-            {data.top_states.map((state) => (
-              <div key={state.uf} className="grid grid-cols-[2rem_1fr_auto] items-center gap-3 text-xs">
-                <span className="font-bold text-zinc-300">{state.uf}</span>
-                <div className="h-2 overflow-hidden rounded-full bg-zinc-900">
-                  <div className="h-full rounded-full bg-cyan-400" style={{ width: `${Math.max(state.formal_jobs / maxStateJobs * 100, 2)}%` }} />
-                </div>
-                <span className="min-w-14 text-right text-zinc-400">{integer.format(state.formal_jobs)}</span>
-              </div>
-            ))}
+            {data.top_states.map((state) => {
+              const isSelected = state.uf === selectedState;
+              const jobsInSelectedActivity = selectedActivity
+                ? activityJobsByState.get(state.uf)?.get(selectedActivity) ?? 0
+                : null;
+              const isDimmed = hasCrossData && selectedActivity !== null && !isSelected && jobsInSelectedActivity === 0;
+              const displayedJobs = selectedActivity !== null ? jobsInSelectedActivity ?? 0 : state.formal_jobs;
+              return (
+                <button
+                  type="button"
+                  key={state.uf}
+                  onClick={() =>
+                    hasCrossData && setSelection(isSelected ? null : { kind: "state", uf: state.uf })
+                  }
+                  aria-pressed={isSelected}
+                  className={`grid w-full grid-cols-[2rem_1fr_auto] items-center gap-3 text-left text-xs transition-opacity ${isDimmed ? "opacity-30" : "opacity-100"} ${hasCrossData ? "cursor-pointer" : "cursor-default"}`}
+                >
+                  <span className={`font-bold ${isSelected ? "text-cyan-200" : "text-zinc-300"}`}>{state.uf}</span>
+                  <div className={`h-2 overflow-hidden rounded-full bg-zinc-900 ${isSelected ? "ring-1 ring-cyan-300/60" : ""}`}>
+                    <div
+                      className="h-full rounded-full bg-cyan-400"
+                      style={{ width: `${Math.max((displayedJobs / maxStateJobs) * 100, 2)}%` }}
+                    />
+                  </div>
+                  <span className="min-w-14 text-right text-zinc-400">{integer.format(displayedJobs)}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
