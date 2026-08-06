@@ -133,7 +133,7 @@ export function HeaderTopBar({
               <strong className="text-amber-400">{deficitLabel ?? "—"}</strong>
             </div>
 
-            <div className="hidden items-center gap-1.5 rounded-xl border border-zinc-800/60 bg-zinc-900/40 px-2.5 py-1 font-mono text-xs text-zinc-400 xl:flex">
+            <div className="hidden items-center gap-1.5 rounded-xl border border-zinc-800/60 bg-zinc-900/40 px-2.5 py-1 font-mono text-xs text-zinc-400 2xl:flex">
               <Calendar className="h-3.5 w-3.5 text-zinc-500" />
               <span>{referencePeriod}</span>
             </div>
