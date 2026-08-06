@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -13,6 +13,7 @@ from database.data_access import (
     PublishedFilters,
     get_conceptual_products,
     get_aipnet_metrics,
+    get_energy_context,
     get_sovereignty_graph,
 )
 from schemas.network import GraphResponse, SolarSovereigntyResponse
@@ -62,6 +63,54 @@ async def read_solar_sovereignty_inputs(
             detail=f"Cadeia AIPNET não suportada: {chain}",
         )
     return SolarSovereigntyResponse.model_validate(payload)
+
+
+class EnergyContextItem(BaseModel):
+    fonte_energetica: str
+    valor: float
+
+
+class EnergyContextBlock(BaseModel):
+    setor_ben: str
+    unidade: str
+    itens: List[EnergyContextItem]
+
+
+class EnergyContextResponse(BaseModel):
+    chain_name: str
+    granularidade: str = Field(
+        ...,
+        description="Sempre 'nacional_anual': referencia do BEN/EPE, nao cruzavel linha a linha com dados municipais.",
+    )
+    fonte_citacao: str
+    ano_selecionado: int
+    anos_disponiveis: List[int]
+    blocos: List[EnergyContextBlock]
+
+
+@router.get(
+    "/energy-context/{chain_name}",
+    response_model=EnergyContextResponse,
+    status_code=status.HTTP_200_OK,
+    tags=["BEN/EPE"],
+)
+async def read_energy_context(
+    chain_name: str,
+    year: Optional[int] = Query(None, description="Ano de referencia; usa o mais recente disponivel se omitido."),
+) -> EnergyContextResponse:
+    try:
+        payload = await run_in_threadpool(get_energy_context, chain_name, year)
+    except DataAccessUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Contexto energetico BEN indisponivel no banco Published.",
+        ) from exc
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Sem contexto energetico BEN para a cadeia: {chain_name}",
+        )
+    return EnergyContextResponse.model_validate(payload)
 
 
 class MetadataApi(BaseModel):

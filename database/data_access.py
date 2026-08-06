@@ -174,6 +174,77 @@ def get_aipnet_metrics(chain: str) -> dict:
                 conn.close()
 
 
+def get_energy_context(chain: str, year: int | None = None) -> dict:
+    """Read national/annual BEN (Balanço Energético Nacional, EPE) context
+    rows for a chain.
+
+    This is EPE's own national accounting, not survey microdata -- it has
+    no municipal/NCM/CNAE key and must never be cross-referenced row-by-row
+    with mv_published_indicators (same precedent as OBEPE in the sibling
+    Atlas Solar Justo project: cited alongside municipal data, never merged
+    into it). See build_energy_context_ben.py for how the table is loaded.
+    """
+
+    normalized_chain = _normalize_chain(chain)
+    if normalized_chain not in _AIPNET_CHAINS:
+        return {}
+
+    conn: Optional[PgConnection] = None
+    cur: Optional[PgCursor] = None
+    try:
+        conn = psycopg2.connect(_database_dsn())
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute(
+            "SELECT DISTINCT ano_referencia FROM analytical_energy_context_national "
+            "WHERE cadeia_prioritaria = %s ORDER BY ano_referencia",
+            (normalized_chain,),
+        )
+        available_years = [row["ano_referencia"] for row in cur.fetchall()]
+        if not available_years:
+            return {}
+
+        selected_year = year if year in available_years else available_years[-1]
+
+        cur.execute(
+            "SELECT setor_ben, fonte_energetica, valor, unidade, fonte_ben "
+            "FROM analytical_energy_context_national "
+            "WHERE cadeia_prioritaria = %s AND ano_referencia = %s "
+            "ORDER BY setor_ben, fonte_energetica",
+            (normalized_chain, selected_year),
+        )
+        rows = cur.fetchall()
+        if not rows:
+            return {}
+
+        blocks: dict[str, dict] = {}
+        for row in rows:
+            block = blocks.setdefault(
+                row["setor_ben"],
+                {"setor_ben": row["setor_ben"], "unidade": row["unidade"], "itens": []},
+            )
+            block["itens"].append(
+                {"fonte_energetica": row["fonte_energetica"], "valor": float(row["valor"])}
+            )
+
+        return {
+            "chain_name": normalized_chain,
+            "granularidade": "nacional_anual",
+            "fonte_citacao": rows[0]["fonte_ben"],
+            "ano_selecionado": selected_year,
+            "anos_disponiveis": available_years,
+            "blocos": list(blocks.values()),
+        }
+    except psycopg2.OperationalError as exc:
+        raise DataAccessUnavailableError(DATA_UNAVAILABLE_MESSAGE) from exc
+    finally:
+        if cur is not None:
+            with suppress(Exception):
+                cur.close()
+        if conn is not None:
+            with suppress(Exception):
+                conn.close()
+
+
 def filter_published_products(
     products: List[Mapping[str, Any]],
     filters: PublishedFilters,

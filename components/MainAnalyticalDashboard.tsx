@@ -22,6 +22,7 @@ import { ChainSelectionLanding } from "./ChainSelectionLanding";
 import { ExecutiveMainHero, type ExecutiveMainKpi, type ExecutiveTopAlert } from "./ExecutiveMainHero";
 import { ExecutiveMetadataFooter, type ExecutiveMetadata } from "./ExecutiveMetadataFooter";
 import { HeaderTopBar } from "./HeaderTopBar";
+import { EnergyContextBenPanel } from "./EnergyContextBenPanel";
 import { GreenJobsTSBPanel } from "./GreenJobsTSBPanel";
 import { NIBMatrixChart } from "./NIBMatrixChart";
 import { ProportionalityToggle } from "./ProportionalityToggle";
@@ -29,6 +30,7 @@ import { SovereigntySankeyChart } from "./SovereigntySankeyChart";
 import { TechnicalDrawer } from "./TechnicalDrawer";
 import { VulnerabilityChart as ExecutiveVulnerabilityChart, type ProductVulnerability, type SovereigntyCoverageGroup } from "./VulnerabilityChart";
 import { useBorderValue } from "../hooks/useBorderValue";
+import { useEnergyContext } from "../hooks/useEnergyContext";
 import { useSolarSovereignty } from "../hooks/useSolarSovereignty";
 import { apiRoutes } from "../lib/apiRoutes";
 import { chainCatalog } from "../lib/chainCatalog";
@@ -147,8 +149,10 @@ export default function MainAnalyticalDashboard() {
   const diagnosticRef = useRef<HTMLDivElement>(null);
   const overviewRef = useRef<HTMLDivElement>(null);
   const advancedRef = useRef<HTMLElement>(null);
+  const nibRef = useRef<HTMLDivElement>(null);
   const { data: technicalProducts = [] } = useBorderValue(selectedChain ?? undefined);
   const { data: solarSovereignty } = useSolarSovereignty(selectedChain);
+  const { data: energyContext } = useEnergyContext(selectedChain);
 
   const loadData = useCallback(async () => {
     if (!selectedChain) return;
@@ -220,6 +224,19 @@ export default function MainAnalyticalDashboard() {
     setChainAnalysisFocus(focus.nodeId === "all" ? null : { stage: aipnetCoverageStage(focus.nodeId) || focus.stage, input: focus.input });
     requestAnimationFrame(() => diagnosticRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }, []);
+
+  const handleSelectNcmShortcut = useCallback((inputId: string) => {
+    const input = solarSovereignty?.inputs.find((item) => item.input_id === inputId);
+    if (!input) return;
+    setCriticalOnly(false);
+    setChainAnalysisFocus({ stage: sectorStageLabel(input.stage), input: input.label });
+    requestAnimationFrame(() => diagnosticRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }, [solarSovereignty]);
+
+  const handleOpenNibMatrix = useCallback(() => {
+    handleReadingModeChange("analytical");
+    window.setTimeout(() => nibRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
+  }, [handleReadingModeChange]);
 
   const metrics = useMemo(() => {
     const totalImports = data.kpis?.totalImports ?? data.products.reduce((acc, item) => acc + item.metrics.imports, 0);
@@ -295,13 +312,78 @@ export default function MainAnalyticalDashboard() {
     [data.metadata, selectedChain, solarSovereignty],
   );
 
+  const headerChainOptions = useMemo(
+    () => chainCatalog.filter((chain) => chain.status === "published").map((chain) => ({ id: chain.id, name: chain.name, group: chain.group })),
+    [],
+  );
+  const headerNcmShortcuts = useMemo(() => {
+    const inputs = solarSovereignty?.inputs ?? [];
+    return [...inputs]
+      .sort((left, right) => {
+        const leftScore = (left.external_dependency ?? left.global_china_share ?? 0) * Math.max(left.supplier_hhi_brazil, 1);
+        const rightScore = (right.external_dependency ?? right.global_china_share ?? 0) * Math.max(right.supplier_hhi_brazil, 1);
+        return rightScore - leftScore;
+      })
+      .slice(0, 6)
+      .map((input) => ({
+        id: input.input_id,
+        code: input.ncm_codes[0] ?? "s/ NCM",
+        label: input.label,
+        riskLabel: `${formatPercentOneDecimal((input.external_dependency ?? input.global_china_share ?? 0) * 100)} dependência · HHI ${number.format(input.supplier_hhi_brazil)}`,
+      }));
+  }, [solarSovereignty]);
+  const headerCriticalCount = selectedChain
+    ? executiveVulnerabilityData.filter((item) => item.dependency >= 75).length
+    : undefined;
+  const headerDeficitLabel = selectedChain ? money.format(metrics.totalImports - metrics.totalExports) : undefined;
+  const headerReferencePeriod = `ComexStat ${solarSovereignty?.reference_period ?? "Jan-Jun 2026"} · RAIS 2024`;
+  const canExportChain = Boolean(selectedChain) && nibMatrixProducts.length > 0;
+
+  const handleExportChain = useCallback(() => {
+    if (!selectedChain || !nibMatrixProducts.length) return;
+    const header = ["Produto", "NCM", "Importacao FOB (USD)", "Exportacao FOB (USD)", "Dependencia Externa (%)", "HHI"];
+    const rows = nibMatrixProducts.map((product) => [
+      product.produto_nome,
+      product.ncm_codigo,
+      product.comercio.importacao_valor_fob.toFixed(2),
+      product.comercio.exportacao_valor_fob.toFixed(2),
+      (product.industria.dependencia_externa_fracao * 100).toFixed(1),
+      Math.round(product.comercio.hhi_global).toString(),
+    ]);
+    const csv = [header, ...rows].map((row) => row.map(csvEscape).join(";")).join("\n");
+    const blob = new Blob([`﻿${csv}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `border-value-${selectedChain}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [nibMatrixProducts, selectedChain]);
+
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
-      <HeaderTopBar />
+      <HeaderTopBar
+        activeChainName={selectedChainMetadata?.name}
+        chains={headerChainOptions}
+        ncmShortcuts={headerNcmShortcuts}
+        onSelectChain={handleChainSelect}
+        onSelectNcm={handleSelectNcmShortcut}
+        criticalCount={headerCriticalCount}
+        deficitLabel={headerDeficitLabel}
+        referencePeriod={headerReferencePeriod}
+        readingMode={readingMode}
+        onReadingModeChange={handleReadingModeChange}
+        canExport={canExportChain}
+        onExport={handleExportChain}
+        onOpenNibMatrix={handleOpenNibMatrix}
+      />
 
+      {!selectedChain ? (
+        <div className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8">
+          <ChainSelectionLanding onSelect={handleChainSelect} />
+        </div>
+      ) : (
       <div className="mx-auto max-w-7xl space-y-10 px-4 py-8 sm:px-6 lg:px-8">
-        {!selectedChain ? <ChainSelectionLanding onSelect={handleChainSelect} /> : (
-        <>
         <section className="relative z-50 rounded-xl border border-cyan-300/15 bg-cyan-400/[0.05] px-4 py-3 shadow-xl backdrop-blur-xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
@@ -432,9 +514,11 @@ export default function MainAnalyticalDashboard() {
               </ExpandableAnalyticsPanel>
 
               {nibMatrixProducts.length ? (
-                <ExpandableAnalyticsPanel title="Matriz de priorização NIB" subtitle="Posicionamento estratégico dos produtos da cadeia">
-                  <NIBMatrixChart data={nibMatrixProducts} />
-                </ExpandableAnalyticsPanel>
+                <div ref={nibRef} className="scroll-mt-40 md:scroll-mt-28">
+                  <ExpandableAnalyticsPanel title="Matriz de priorização NIB" subtitle="Posicionamento estratégico dos produtos da cadeia">
+                    <NIBMatrixChart data={nibMatrixProducts} />
+                  </ExpandableAnalyticsPanel>
+                </div>
               ) : null}
 
               {solarSovereignty?.green_jobs ? (
@@ -443,6 +527,15 @@ export default function MainAnalyticalDashboard() {
                   subtitle="Vínculos RAIS em atividades da cadeia associadas à Taxonomia Sustentável Brasileira"
                 >
                   <GreenJobsTSBPanel data={solarSovereignty.green_jobs} chainName={selectedChainMetadata?.name ?? "cadeia analisada"} />
+                </ExpandableAnalyticsPanel>
+              ) : null}
+
+              {energyContext?.blocos.length ? (
+                <ExpandableAnalyticsPanel
+                  title="Contexto Energético Nacional (BEN/EPE)"
+                  subtitle="Referência nacional/anual do Balanço Energético Nacional — não cruzada linha a linha com os dados municipais"
+                >
+                  <EnergyContextBenPanel data={energyContext} />
                 </ExpandableAnalyticsPanel>
               ) : null}
 
@@ -459,9 +552,8 @@ export default function MainAnalyticalDashboard() {
 
           <ExecutiveMetadataFooter metadata={executiveMetadata} />
         </StateShell>
-        </>
-        )}
       </div>
+      )}
     </main>
   );
 }
@@ -892,6 +984,10 @@ function sectorRecommendedPolicy(chainName: string, inputLabel: string) {
     return "Missão 5 da NIB (Bioeconomia, descarbonização e transição e segurança energéticas): desenvolver fornecedores nacionais para combustíveis e tecnologias de baixo carbono, condicionando apoio à redução verificável de emissões.";
   }
   return "Direcionamento NIB a homologar: insumo ainda não mapeado explicitamente a uma das 6 missões da Nova Indústria Brasil (MDIC/BNDES).";
+}
+
+function csvEscape(value: string) {
+  return /[";\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
 function formatPercentOneDecimal(value: number) {
