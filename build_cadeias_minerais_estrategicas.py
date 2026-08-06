@@ -15,8 +15,14 @@ import pandas as pd
 # Some minimal container images (e.g. Railway's Railpack build) ship Python
 # without a populated system CA store, so the default SSL context fails with
 # "unable to get local issuer certificate" even though the download URL is
-# fine. certifi ships its own trusted bundle independent of the OS.
+# fine. certifi ships its own trusted bundle independent of the OS. The
+# bundled intermediate below additionally covers balanca.economia.gov.br
+# (used by operational_pipeline.py), which sends an incomplete chain -- kept
+# here too so both download scripts share one hardened SSL context recipe.
 _SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+_SSL_CONTEXT.load_verify_locations(
+    cafile=str(Path(__file__).resolve().parent / "certs" / "sectigo_public_server_authentication_ca_ov_r36.pem")
+)
 
 
 BASE_DIR = Path(__file__).resolve().parent

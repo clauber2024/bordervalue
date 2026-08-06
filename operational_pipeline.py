@@ -29,7 +29,17 @@ import pandas as pd
 # without a populated system CA store, so the default SSL context fails with
 # "unable to get local issuer certificate" even though the download URL is
 # fine. certifi ships its own trusted bundle independent of the OS.
+#
+# balanca.economia.gov.br (SERPRO) additionally sends an incomplete chain --
+# its leaf cert only, no intermediate -- so even certifi's roots aren't
+# enough on their own (confirmed by hand: same failure with a fresh certifi
+# against this host from a network with a normal OS trust store). The
+# bundled cert below is that missing intermediate, fetched from its AIA
+# "CA Issuers" URL (crt.sectigo.com/SectigoPublicServerAuthenticationCAOVR36.crt).
 _SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+_SSL_CONTEXT.load_verify_locations(
+    cafile=str(Path(__file__).resolve().parent / "certs" / "sectigo_public_server_authentication_ca_ov_r36.pem")
+)
 
 from pipeline_harmonizacao import (
     ColumnConfig,
