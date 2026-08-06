@@ -11,6 +11,7 @@ import argparse
 import json
 import logging
 import shutil
+import ssl
 import subprocess
 import tempfile
 import zipfile
@@ -21,7 +22,14 @@ from typing import Any, Iterable, Mapping
 from urllib.parse import unquote, urlparse
 from urllib.request import Request, urlopen
 
+import certifi
 import pandas as pd
+
+# Some minimal container images (e.g. Railway's Railpack build) ship Python
+# without a populated system CA store, so the default SSL context fails with
+# "unable to get local issuer certificate" even though the download URL is
+# fine. certifi ships its own trusted bundle independent of the OS.
+_SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
 from pipeline_harmonizacao import (
     ColumnConfig,
@@ -221,7 +229,7 @@ def _download(url: str, destination: Path) -> Path:
 
     LOGGER.info("Baixando %s", url)
     request = Request(url, headers={"User-Agent": "BorderValue/1.0"})
-    with urlopen(request, timeout=300) as response, tempfile.NamedTemporaryFile(
+    with urlopen(request, timeout=300, context=_SSL_CONTEXT) as response, tempfile.NamedTemporaryFile(
         dir=destination.parent, delete=False
     ) as temporary:
         shutil.copyfileobj(response, temporary)

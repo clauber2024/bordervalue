@@ -2,13 +2,21 @@ from __future__ import annotations
 
 import json
 import re
+import ssl
 import unicodedata
 from html import unescape
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+import certifi
 import pandas as pd
+
+# Some minimal container images (e.g. Railway's Railpack build) ship Python
+# without a populated system CA store, so the default SSL context fails with
+# "unable to get local issuer certificate" even though the download URL is
+# fine. certifi ships its own trusted bundle independent of the OS.
+_SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -398,7 +406,7 @@ def download_if_needed(url: str, destination: Path) -> tuple[Path | None, str]:
     try:
         destination.parent.mkdir(parents=True, exist_ok=True)
         request = Request(url, headers={"User-Agent": "BorderValue/1.0"})
-        with urlopen(request, timeout=120) as response:
+        with urlopen(request, timeout=120, context=_SSL_CONTEXT) as response:
             destination.write_bytes(response.read())
         return destination, "downloaded"
     except (HTTPError, URLError, TimeoutError, OSError) as exc:
