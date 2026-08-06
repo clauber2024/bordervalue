@@ -89,6 +89,26 @@ def create_base_tables(cur) -> None:
         )
         """
     )
+    cur.execute(
+        """
+        CREATE TABLE analytical_renovacalc_certification (
+            processo_anp text,
+            razao_social text NOT NULL,
+            unidade_produtora text NOT NULL,
+            cidade text,
+            uf text,
+            cnpj text,
+            biocombustivel text NOT NULL,
+            rota_descricao text,
+            rota_codigo text,
+            conceptual_product_id text,
+            volume_elegivel_fracao numeric,
+            ano_base_certificacao integer,
+            validade_certificado date,
+            fonte text NOT NULL
+        )
+        """
+    )
 
 
 def execute_sql_file(conn: PgConnection, filename: str) -> None:

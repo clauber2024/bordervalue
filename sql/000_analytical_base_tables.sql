@@ -45,3 +45,24 @@ CREATE TABLE IF NOT EXISTS analytical_employment_by_municipality (
     massa_salarial_rais numeric NOT NULL DEFAULT 0,
     is_tsb_sector boolean NOT NULL DEFAULT false
 );
+
+-- Certificados ANP/RenovaBio (fonte real do fator_alpha da cadeia
+-- combustiveis_transicao, ver build_renovacalc_factors.py). Referenciada
+-- pelo LEFT JOIN em mv_published_indicators.sql, por isso precisa existir
+-- (mesmo vazia) antes daquela materialized view ser criada.
+CREATE TABLE IF NOT EXISTS analytical_renovacalc_certification (
+    processo_anp text,
+    razao_social text NOT NULL,
+    unidade_produtora text NOT NULL,
+    cidade text,
+    uf text,
+    cnpj text,
+    biocombustivel text NOT NULL,
+    rota_descricao text,
+    rota_codigo text,
+    conceptual_product_id text,
+    volume_elegivel_fracao numeric,
+    ano_base_certificacao integer,
+    validade_certificado date,
+    fonte text NOT NULL
+);

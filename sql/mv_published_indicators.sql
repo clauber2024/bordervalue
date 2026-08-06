@@ -31,6 +31,25 @@ aggregated_industry AS (
         SUM(massa_salarial_rais * proportion_factor) AS salary_mass_weighted
     FROM analytical_industry_and_employment
     GROUP BY conceptual_product_id
+),
+aggregated_renovacalc AS (
+    -- Fator de proporcionalidade real para a cadeia combustiveis_transicao
+    -- (etanol, biodiesel), a partir dos certificados ANP/RenovaBio ativos
+    -- ("Validos") carregados por build_renovacalc_factors.py. Media simples
+    -- (nao ponderada) do volume elegivel entre certificados ativos -- mesmo
+    -- metodo usado pelo Painel Dinamico RenovaBio da ANP para a metrica
+    -- equivalente por rota (ver docstring do loader). Produtos sem
+    -- correspondencia aqui (ex: hidrogenio, gas_natural_biometano) ficam
+    -- sem fator_alpha nesta view -- data_access.py aplica o default 1.0/
+    -- aplicado=False de forma generica.
+    SELECT
+        conceptual_product_id,
+        AVG(volume_elegivel_fracao) AS fator_alpha,
+        COUNT(*) AS certificacoes_count
+    FROM analytical_renovacalc_certification
+    WHERE conceptual_product_id IS NOT NULL
+      AND volume_elegivel_fracao IS NOT NULL
+    GROUP BY conceptual_product_id
 )
 SELECT
     t.conceptual_product_id,
@@ -53,10 +72,18 @@ SELECT
             0
         ) AS dependencia_externa_fracao,
     i.employment_weighted,
-    i.salary_mass_weighted
+    i.salary_mass_weighted,
+    r.fator_alpha,
+    (r.fator_alpha IS NOT NULL AND r.fator_alpha < 1.0) AS fator_proporcionalidade_aplicado,
+    CASE WHEN r.fator_alpha IS NOT NULL THEN
+        'ANP/RenovaBio - Certificados de Producao Eficiente (Validos, media nao ponderada de '
+            || r.certificacoes_count || ' certificados ativos)'
+    END AS fonte_proxy
 FROM aggregated_trade AS t
 LEFT JOIN aggregated_industry AS i
-    ON t.conceptual_product_id = i.conceptual_product_id;
+    ON t.conceptual_product_id = i.conceptual_product_id
+LEFT JOIN aggregated_renovacalc AS r
+    ON t.conceptual_product_id = r.conceptual_product_id;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_published_product_id
     ON mv_published_indicators(conceptual_product_id);
