@@ -15,8 +15,8 @@ Usage:
     python build_aipnet_sectors.py
 
 Output, per chain:
-    outputs/aipnet_sector_<chain>/load_aipnet_solar_metrics.sql
-    outputs/aipnet_sector_<chain>/load_aipnet_solar_green_jobs.sql
+    outputs/aipnet_sector_<chain>/load_aipnet_input_metrics.sql
+    outputs/aipnet_sector_<chain>/load_aipnet_green_jobs.sql
 """
 
 from __future__ import annotations

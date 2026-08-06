@@ -596,8 +596,10 @@ def write_sql(payload: dict[str, object], output_dir: Path = OUTPUT_DIR) -> None
     # chain. Extending to other chains needs chain_name to disambiguate
     # (e.g. "amonia" exists in both fertilizantes and
     # combustiveis_transicao with different NCM baskets/figures).
+    # Table renamed from aipnet_solar_input_metrics -- "solar" was a
+    # leftover from when only the silicio chain existed here.
     statements = [
-        "CREATE TABLE IF NOT EXISTS aipnet_solar_input_metrics (",
+        "CREATE TABLE IF NOT EXISTS aipnet_input_metrics (",
         "  chain_name text NOT NULL, input_id text NOT NULL, label text NOT NULL, stage text NOT NULL,",
         "  reference_period text NOT NULL, metrics jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now(),",
         "  PRIMARY KEY (chain_name, input_id)",
@@ -606,33 +608,33 @@ def write_sql(payload: dict[str, object], output_dir: Path = OUTPUT_DIR) -> None
     for item in payload["inputs"]:
         serialized = json.dumps(item, ensure_ascii=False).replace("'", "''")
         statements.append(
-            "INSERT INTO aipnet_solar_input_metrics (chain_name, input_id, label, stage, reference_period, metrics) "
+            "INSERT INTO aipnet_input_metrics (chain_name, input_id, label, stage, reference_period, metrics) "
             f"VALUES ('{sql_text(payload['chain_name'])}', '{item['input_id']}', '{sql_text(item['label'])}', "
             f"'{sql_text(item['stage'])}', '{sql_text(item['reference_period'])}', '{serialized}'::jsonb) "
             "ON CONFLICT (chain_name, input_id) DO UPDATE SET label=EXCLUDED.label, stage=EXCLUDED.stage, "
             "reference_period=EXCLUDED.reference_period, metrics=EXCLUDED.metrics, updated_at=now();"
         )
-    (output_dir / "load_aipnet_solar_metrics.sql").write_text("\n".join(statements) + "\n", encoding="utf-8")
+    (output_dir / "load_aipnet_input_metrics.sql").write_text("\n".join(statements) + "\n", encoding="utf-8")
 
 
 def write_green_jobs_sql(payload: dict[str, object], output_dir: Path = OUTPUT_DIR) -> None:
     # payload["green_jobs"] (from load_green_jobs()) was always computed
     # here but never persisted -- write_sql() above only stores
     # payload["inputs"] row by row. Without this table,
-    # database/data_access.py::get_solar_sovereignty_metrics() has no
+    # database/data_access.py::get_aipnet_metrics() has no
     # green_jobs to return, so components/GreenJobsTSBPanel.tsx never
-    # renders in production even when aipnet_solar_input_metrics is loaded.
+    # renders in production even when aipnet_input_metrics is loaded.
     serialized = json.dumps(payload["green_jobs"], ensure_ascii=False).replace("'", "''")
     statements = [
-        "CREATE TABLE IF NOT EXISTS aipnet_solar_green_jobs (",
+        "CREATE TABLE IF NOT EXISTS aipnet_green_jobs (",
         "  chain_name text PRIMARY KEY, green_jobs jsonb NOT NULL,",
         "  updated_at timestamptz NOT NULL DEFAULT now()",
         ");",
-        "INSERT INTO aipnet_solar_green_jobs (chain_name, green_jobs) "
+        "INSERT INTO aipnet_green_jobs (chain_name, green_jobs) "
         f"VALUES ('{sql_text(payload['chain_name'])}', '{serialized}'::jsonb) "
         "ON CONFLICT (chain_name) DO UPDATE SET green_jobs=EXCLUDED.green_jobs, updated_at=now();",
     ]
-    (output_dir / "load_aipnet_solar_green_jobs.sql").write_text(
+    (output_dir / "load_aipnet_green_jobs.sql").write_text(
         "\n".join(statements) + "\n", encoding="utf-8"
     )
 

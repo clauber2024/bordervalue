@@ -120,7 +120,7 @@ def get_sovereignty_graph(chain: str, filters: PublishedFilters | None = None) -
 _AIPNET_CHAINS = {"silicio", "fertilizantes", "combustiveis_transicao", "aco"}
 
 
-def get_solar_sovereignty_metrics(chain: str) -> dict:
+def get_aipnet_metrics(chain: str) -> dict:
     """Read the published AIPNET per-chain input metrics from PostgreSQL."""
 
     normalized_chain = _normalize_chain(chain)
@@ -133,7 +133,7 @@ def get_solar_sovereignty_metrics(chain: str) -> dict:
         conn = psycopg2.connect(_database_dsn())
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute(
-            "SELECT metrics FROM aipnet_solar_input_metrics WHERE chain_name = %s ORDER BY "
+            "SELECT metrics FROM aipnet_input_metrics WHERE chain_name = %s ORDER BY "
             "CASE stage WHEN 'extracao' THEN 1 WHEN 'processamento' THEN 2 "
             "WHEN 'refinamento' THEN 3 WHEN 'componentes_avancados' THEN 4 ELSE 5 END, input_id",
             (normalized_chain,),
@@ -143,7 +143,7 @@ def get_solar_sovereignty_metrics(chain: str) -> dict:
         green_jobs = None
         try:
             cur.execute(
-                "SELECT green_jobs FROM aipnet_solar_green_jobs WHERE chain_name = %s",
+                "SELECT green_jobs FROM aipnet_green_jobs WHERE chain_name = %s",
                 (normalized_chain,),
             )
             green_jobs_row = cur.fetchone()
@@ -151,7 +151,7 @@ def get_solar_sovereignty_metrics(chain: str) -> dict:
                 green_jobs = dict(green_jobs_row["green_jobs"])
         except psycopg2.errors.UndefinedTable:
             # Table not loaded yet in this environment -- degrade to no
-            # green_jobs rather than failing the whole solar response.
+            # green_jobs rather than failing the whole response.
             conn.rollback()
 
         result = {

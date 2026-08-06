@@ -10,7 +10,7 @@ import { transitionFuelDestination } from "../lib/transitionFuelTopology";
 type SankeyNodeDatum = {
   id: string;
   name: string;
-  kind: "supplier" | "input" | "stage" | "product";
+  kind: "supplier" | "input" | "stage" | "destination" | "product";
   value?: number;
   rawValue?: number;
   share?: number;
@@ -222,7 +222,7 @@ export function SovereigntySankeyChart({
         const balance = total.exports - total.raw;
         const destinationName = isTransitionFuelChain ? transitionFuelDestination(stage) : null;
         const destinationIndex = destinationName
-          ? ensureNode(`destination:${stage}`, destinationName, "stage")
+          ? ensureNode(`destination:${stage}`, destinationName, "destination")
           : integrationIndex;
         if (destinationName) {
           nodes[destinationIndex].rawValue = total.raw;
@@ -382,7 +382,7 @@ export function SovereigntySankeyChart({
         <div className="mt-4 grid grid-cols-1 gap-3 px-1 text-xs md:grid-cols-2 xl:grid-cols-4">
           <ReadingPill
             label="Direção"
-            value={solarInputs.length ? "A rede conecta origens, insumos, etapas produtivas e o sistema fotovoltaico final." : "O fluxo vai do principal fornecedor internacional ao produto conceitual analisado."}
+            value={solarInputs.length ? "A rede conecta origens, insumos, etapas produtivas e o sistema final da cadeia." : "O fluxo vai do principal fornecedor internacional ao produto conceitual analisado."}
           />
           <ReadingPill
             label="Espessura"
@@ -410,7 +410,7 @@ function renderNode(
   onSelect: (id: string) => void,
   onHover: (id: string | null) => void,
 ) {
-  const fill = payload.kind === "supplier" ? "#38bdf8" : payload.kind === "input" ? "#f59e0b" : payload.kind === "stage" ? "#a78bfa" : "#34d399";
+  const fill = payload.kind === "supplier" ? "#38bdf8" : payload.kind === "input" ? "#f59e0b" : payload.kind === "stage" ? "#a78bfa" : payload.kind === "destination" ? "#2dd4bf" : "#34d399";
   const flagPalette = payload.kind === "supplier" ? countryFlagPalette(payload.name) : null;
   const gradientId = `country-${safeSvgId(payload.id)}`;
   const labelX = x + width + 10;
@@ -458,7 +458,7 @@ function renderNode(
         {compactLabel(payload.name)}
       </text>
       <text x={labelX} y={labelY + 11} fill="#a1a1aa" fontSize={10} fontWeight={500} dominantBaseline="middle">
-        {payload.kind === "supplier" ? "Origem principal" : payload.kind === "input" ? "Insumo" : payload.kind === "stage" ? "Etapa produtiva" : "Sistema final"}
+        {payload.kind === "supplier" ? "Origem principal" : payload.kind === "input" ? "Insumo" : payload.kind === "stage" ? "Etapa produtiva" : payload.kind === "destination" ? "Uso final" : "Sistema final"}
         {payload.share !== undefined ? ` · ${percent.format(payload.share)}` : ""}
       </text>
     </motion.g>
@@ -607,7 +607,7 @@ function FlowTooltip({ active, payload }: SankeyTooltipProps) {
     return (
       <div className="max-w-72 rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-100 shadow-xl">
         <p className="font-semibold text-white">{node.name}</p>
-        <p className="mt-1 text-zinc-500">{node.kind === "supplier" ? "Origem" : node.kind === "input" ? "Insumo" : node.kind === "stage" ? "Etapa produtiva" : "Sistema final"}</p>
+        <p className="mt-1 text-zinc-500">{node.kind === "supplier" ? "Origem" : node.kind === "input" ? "Insumo" : node.kind === "stage" ? "Etapa produtiva" : node.kind === "destination" ? "Uso final" : "Sistema final"}</p>
         {node.rawValue !== undefined ? <div className="mt-3"><TooltipRow label="Importações" value={usdLong.format(node.rawValue)} tone="cyan" /></div> : null}
         {node.share !== undefined ? <div className="mt-2"><TooltipRow label="Participação" value={percent.format(node.share)} tone="emerald" /></div> : null}
       </div>

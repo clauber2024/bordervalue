@@ -12,7 +12,7 @@ from database.data_access import (
     DataAccessUnavailableError,
     PublishedFilters,
     get_conceptual_products,
-    get_solar_sovereignty_metrics,
+    get_aipnet_metrics,
     get_sovereignty_graph,
 )
 from schemas.network import GraphResponse, SolarSovereigntyResponse
@@ -50,7 +50,7 @@ async def read_solar_sovereignty_inputs(
     chain: str = Query(..., min_length=1),
 ) -> SolarSovereigntyResponse:
     try:
-        payload = await run_in_threadpool(get_solar_sovereignty_metrics, chain)
+        payload = await run_in_threadpool(get_aipnet_metrics, chain)
     except DataAccessUnavailableError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
