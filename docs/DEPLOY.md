@@ -56,10 +56,17 @@ do zero, é um desses dois.
 5. **Variables**: adicionar
    ```
    BORDER_VALUE_DATABASE_DSN=${{Postgres.DATABASE_URL}}
+   ADMIN_TRIGGER_SECRET=<gere um valor forte>
    ```
    (digitar `${{` abre o seletor de variáveis de outro serviço do mesmo projeto —
    escolher o serviço Postgres criado no passo 1). `psycopg2.connect()` aceita URI
    e DSN keyword=value, então a `DATABASE_URL` da Railway funciona direto.
+   `ADMIN_TRIGGER_SECRET` é o segredo de serviço-para-serviço do Painel Admin (ver
+   Seção 4) — **o mesmo valor precisa estar configurado também na Vercel** (Seção
+   3). Gere com:
+   ```bash
+   openssl rand -hex 32
+   ```
 6. Não é preciso configurar CORS/`FRONTEND_URL` como no padrão de outros projetos —
    `api/main.py` já tem `allow_origins=["*"]`.
 7. **Settings → Networking**: "Generate Domain", porta `8080` (é a que o Uvicorn
@@ -76,9 +83,12 @@ do zero, é um desses dois.
 4. **Environment Variables**:
    ```
    BORDER_VALUE_API_BASE_URL=https://<url-do-backend-na-railway>
+   ADMIN_PASSWORD=<senha do Painel Admin>
+   ADMIN_TRIGGER_SECRET=<o MESMO valor configurado no backend na Railway, Seção 2>
    ```
-   (variável só server-side — usada pelos Route Handlers do Next em
-   `lib/publishedApi.ts`, nunca chega no browser).
+   As 3 variáveis são só server-side — usadas pelos Route Handlers do Next em
+   `lib/publishedApi.ts` e `app/api/admin/*/route.ts`, nunca chegam no browser (ver
+   Seção 4, "Autenticação do Painel Admin").
 5. Deploy.
 
 Hobby da Vercel é só para uso não-comercial — se o projeto virar comercial, precisa
@@ -86,54 +96,85 @@ migrar pra Pro (mesma ressalva já vale para o plano Hobby usado no Atlas Solar 
 
 ## 4. Carga de dado real na camada "Published"
 
-Diferente de só copiar um dump — aqui a carga é por **cadeia**, via os scripts
-`build_analytical_staging_silicio.py` (cadeia silício, 16 produtos) e
-`build_analytical_staging_sectors.py` (fertilizantes, combustíveis de transição,
-aço — reaproveita os helpers do script do silício). Cada um gera um `.sql` próprio
-em `outputs/analytical_staging_*/` com `DELETE` + `INSERT` escopados pelos
-`conceptual_product_id` daquela cadeia — seguro de rodar de novo sem duplicar nem
-afetar as outras cadeias.
+> Registrado em 06/08/2026. Substitui o procedimento manual original desta seção
+> (rodar script → `psql -f` local → reabrir Public Access na Railway → `psql -f`
+> remoto → fechar Public Access) por um botão em `/admin`, inspirado no Painel
+> Admin do projeto irmão Atlas Solar Justo. O procedimento manual antigo ainda é
+> descrito abaixo, mas só para a RAIS (Seção 4.3), que ficou de fora do botão.
 
-**Toda vez que os dados de origem forem atualizados** (novos CSVs de comex, PIA,
-RAIS etc.) ou uma cadeia nova for adicionada:
+### 4.1 Autenticação do Painel Admin
 
-1. Rodar os scripts localmente contra o Postgres do `docker-compose.yml`:
-   ```bash
-   docker compose up -d
-   python build_analytical_staging_silicio.py
-   python build_analytical_staging_sectors.py
-   ```
-2. Aplicar os `.sql` gerados localmente pra validar:
-   ```bash
-   docker exec -i border-value-postgres psql -U border_user -d border_value_db \
-     < outputs/analytical_staging_silicio/load_analytical_staging_silicio.sql
-   # repetir para os 3 arquivos em outputs/analytical_staging_sectors/
-   ```
-3. **Refresh das materialized views** (elas não atualizam sozinhas):
-   ```sql
-   REFRESH MATERIALIZED VIEW mv_published_indicators;
-   REFRESH MATERIALIZED VIEW mv_published_hhi_risk;
-   REFRESH MATERIALIZED VIEW mv_published_territorial_tsb;
-   ```
-4. Só depois de validar localmente, repetir os passos 2-3 contra o Postgres da
-   Railway:
-   - **Settings → Networking** do serviço Postgres → **"Add Public Access"**
-     (temporário).
-   - Pegar `DATABASE_PUBLIC_URL` na aba Variables.
-   - Rodar os mesmos `.sql` via `psql "<DATABASE_PUBLIC_URL>"` (usando a imagem
-     `postgres:15` local pra não precisar instalar `psql`, mesmo padrão do Atlas):
-     ```bash
-     docker run --rm -v "$PWD/outputs/analytical_staging_silicio":/dump postgres:15 \
-       psql "<DATABASE_PUBLIC_URL>" -f /dump/load_analytical_staging_silicio.sql
-     ```
-   - Rodar o `REFRESH MATERIALIZED VIEW` (passo 3) também contra a Railway.
-   - **"Remove Public Access"** de novo assim que confirmar que os dados chegaram
-     (`curl https://<backend>/api/chain/<cadeia>` deve devolver produtos reais).
+Duas camadas, nenhuma delas com tabela de usuários/JWT (proporcional a um painel
+de uso único, decisão registrada quando essa área foi desenhada):
 
-**Nota de conexão:** o proxy público da Railway já derrubou a conexão no meio de um
-`INSERT` uma vez nesta sessão (erro `SSL error: unexpected eof`) — a transação foi
-revertida sozinha (os scripts geram `BEGIN`/`COMMIT`), então é seguro só rodar o
-arquivo de novo se isso acontecer.
+- **`ADMIN_PASSWORD`** (só na Vercel) — a senha que você digita em
+  `/admin/login`. Nunca chega ao FastAPI nem ao browser além do form de login.
+- **`ADMIN_TRIGGER_SECRET`** (na Vercel **e** na Railway, **mesmo valor** nos
+  dois) — segredo de serviço-para-serviço. Sem ele, `POST /api/admin/refresh` no
+  backend da Railway (que é uma URL pública) ficaria acessível por qualquer um
+  via `curl` direto. As Route Handlers do Next (`app/api/admin/refresh/route.ts`,
+  `app/api/admin/status/route.ts`) anexam esse segredo como header
+  `X-Admin-Secret` ao chamar o backend — o browser nunca vê esse valor.
+
+Ver Seções 2 e 3 acima para onde cadastrar cada variável.
+
+### 4.2 Botão "Atualizar agora" (Comex, PRODLIST, PIA, ANM, 4 cadeias)
+
+Login em `https://<sua-url-vercel>/admin/login` com `ADMIN_PASSWORD`, depois
+clicar em "Atualizar agora" no card "Atualização de dados publicados". O botão
+dispara, dentro do próprio container do backend na Railway (via
+`services/admin_pipeline.py`, `POST /api/admin/refresh`), a cadeia inteira:
+
+1. Limpa o cache local de downloads (`inputs/official/EXP_2026.csv` etc.) — sem
+   isso, o segundo clique reaproveitaria silenciosamente o CSV baixado no
+   primeiro clique em vez de buscar dado novo.
+2. `operational_pipeline.py config.official.2026.json` — baixa Comex EXP/IMP
+   (mês mais recente publicado), PRODLIST e PIA-Produto direto das URLs oficiais
+   (já configuradas em `config.official.2026.json`, bloco `inputs.*.url`).
+3. `build_final_border_value_outputs.py` e `build_cadeias_minerais_estrategicas.py`
+   (este último baixa ANM Produção Bruta/Beneficiada sozinho, via HTTPS).
+4. `build_solar_sovereignty_metrics.py`, `build_sector_sovereignty_metrics.py`,
+   `build_analytical_staging_silicio.py`, `build_analytical_staging_sectors.py`,
+   `build_aipnet_sectors.py` — as 4 cadeias prioritárias.
+5. Aplica todo `.sql` gerado direto no Postgres da Railway, usando a mesma
+   `BORDER_VALUE_DATABASE_DSN` que o backend já usa em produção — **não precisa
+   mais reabrir Public Access no Postgres**.
+6. `REFRESH MATERIALIZED VIEW` nas 3 views (`mv_published_indicators`,
+   `mv_published_hhi_risk`, `mv_published_territorial_tsb`).
+
+A tela mostra o progresso passo a passo (atualiza sozinha, faz polling do status)
+e o erro completo se algum passo falhar — falha em qualquer passo interrompe os
+seguintes (marcados "Pulado"), sem deixar o site fora do ar (o job roda numa
+thread separada da API).
+
+Esses passos dependem de arquivos derivados da RAIS que **não** são regenerados
+pelo botão (`outputs/official_2026_rais/fact_employment_rais.csv`,
+`outputs/tsb_bridge_2026/*`, `dados/cache/ncm_vigente.json` e outros dois
+arquivos de dimensão) — esses ficam commitados no repositório como o snapshot
+atual (exceções pontuais no `.gitignore`), então chegam ao deploy da Railway sem
+precisar de upload. Ver Seção 4.3 para quando/como atualizá-los.
+
+### 4.3 RAIS — continua manual (fora do botão, de propósito)
+
+RAIS não entra no botão automático: são ~3,5 GB via FTP
+(`ftp://ftp.mtps.gov.br/pdet/microdados/RAIS/...`), protocolo que pode estar
+bloqueado de saída na Railway, e processar esse volume dentro do mesmo container
+que serve a API ao vivo arrisca estourar memória/disco do plano Hobby — para um
+dado que muda uma vez por ano, o risco não compensa. Continua sendo atualizado
+do jeito antigo, na sua máquina:
+
+```bash
+docker compose up -d
+python3 operational_pipeline.py config.official.2026.rais.json
+python3 build_tsb_bridge.py
+```
+
+Depois de confirmar que os `.csv` novos em `outputs/official_2026_rais/` e
+`outputs/tsb_bridge_2026/` fazem sentido (contagens, `manifest.json`), **commitar
+os arquivos derivados que o `.gitignore` já abre exceção** (ver `.gitignore`,
+seção "Exceções: snapshot derivado de RAIS/território") e dar push — o próximo
+deploy da Railway já sobe com o snapshot atualizado, pronto para o botão da Seção
+4.2 usar. Não é preciso rodar nada manualmente contra o Postgres da Railway.
 
 ## 5. Decisão de escopo em aberto (não é bug)
 
@@ -147,7 +188,9 @@ igualmente entre os `input_id`s de uma mesma CNAE).
 
 ## O que este caminho não cobre
 
-- Atualização automática de dado (a carga da Seção 4 é manual, sem scheduler).
+- Atualização de dado sem intervenção humana (o botão da Seção 4.2 precisa ser
+  clicado por um administrador logado — não há scheduler/cron disparando
+  sozinho). RAIS (Seção 4.3) segue exigindo terminal, sem botão nenhum.
 - Backup automático do Postgres da Railway — configurar via plano pago da Railway
   antes de tratar esse ambiente como definitivo.
 - Domínio próprio — configurável depois via CNAME em ambas as plataformas, sem

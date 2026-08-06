@@ -66,7 +66,7 @@ export async function fetchPublishedChains(
   return responses.flat();
 }
 
-function publishedApiBaseUrl() {
+export function publishedApiBaseUrl() {
   return (
     process.env.BORDER_VALUE_API_BASE_URL ??
     process.env.NEXT_PUBLIC_BORDER_VALUE_API_BASE_URL ??

@@ -1,0 +1,4 @@
+﻿year,tsb_associated,tsb_grupo_exposicao,formal_jobs,wage_mass,cnae_count,municipality_count
+2024,True,Alta exposicao TSB,620872,3677024324.12,19,2929
+2024,True,Exposicao intermediaria TSB,283599,1392555446.95,18,2274
+2024,False,Sem exposicao TSB direta,56896180,223310293613.4,628,5572

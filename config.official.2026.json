@@ -7,16 +7,26 @@
         "dtype": {"CO_NCM": "string"}
       },
       "files": [
-        {"path": "inputs/official/EXP_2026.csv", "flow": "EXP"},
-        {"path": "inputs/official/IMP_2026.csv", "flow": "IMP"}
+        {
+          "path": "inputs/official/EXP_2026.csv",
+          "flow": "EXP",
+          "url": "https://balanca.economia.gov.br/balanca/bd/comexstat-bd/ncm/EXP_2026.csv"
+        },
+        {
+          "path": "inputs/official/IMP_2026.csv",
+          "flow": "IMP",
+          "url": "https://balanca.economia.gov.br/balanca/bd/comexstat-bd/ncm/IMP_2026.csv"
+        }
       ]
     },
     "ncm_prodlist": {
       "path": "inputs/official/ncm_prodlist_2025.xlsx",
+      "url": "https://concla.ibge.gov.br/images/concla/downloads/5CorrespondenciaNCMxPRODLIST-Industria2025.xlsx",
       "read_options": {"dtype": "string"}
     },
     "domestic_production": {
-      "path": "inputs/official/pia_2024_value_production.json"
+      "path": "inputs/official/pia_2024_value_production.json",
+      "url": "https://apisidra.ibge.gov.br/values/t/10476/n1/all/v/215/p/2024/c1264/all?formato=json"
     }
   },
   "settings": {

@@ -17,14 +17,32 @@ env/
 .git.onedrive-placeholder/
 
 # Generated outputs
-outputs/
+outputs/*
 dashboard/__pycache__/
 dashboard/data.json
 dashboard/*.parquet
-dados/cache/
+dados/cache/*
 dados/processados/
 inputs/official/
 *.parquet
+
+# Exceções: snapshot derivado de RAIS/território exigido pelo botão de
+# atualização do Painel Admin (build_solar_sovereignty_metrics.py e afins) --
+# fica desatualizado só quando a RAIS for reprocessada manualmente (ver
+# docs/DEPLOY.md, Secao 4). Agregado por UF/municipio/CNAE, sem microdado
+# individual.
+!outputs/official_2026_rais/
+outputs/official_2026_rais/*
+!outputs/official_2026_rais/fact_employment_rais.csv
+!outputs/tsb_bridge_2026/
+!dados/cache/ncm_vigente.json
+!dados/cache/dim_pais_comex.csv
+!dados/cache/dim_municipio_ibge.csv
+
+# Local secrets (ADMIN_PASSWORD, ADMIN_TRIGGER_SECRET, etc.)
+.env
+.env.local
+.env.*.local
 
 # OS/editor noise
 .DS_Store

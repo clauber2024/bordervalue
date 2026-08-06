@@ -453,6 +453,8 @@ def health_check() -> dict:
 
 
 from routers.api import router as published_router
+from routers.admin import router as admin_router
 
 
 app.include_router(published_router)
+app.include_router(admin_router)

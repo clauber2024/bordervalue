@@ -1,0 +1,49 @@
+﻿scn67,setor_scn67,exposicao_tsb,grupo_exposicao,leitura_tecnica,exposicao_tsb_ratio,exposure_rank
+0280,Produção florestal; pesca e aquicultura,"93,89%",Alta exposicao TSB,Setor em que a maior parte da massa salarial esta associada a CNAEs compativeis/elegiveis segundo a TSB.,0.9389,2
+0580,Extração de carvão mineral e de minerais não-metálicos,"14,63%",Exposicao intermediaria TSB,Exposição marginal no agregado do setor.,0.1463,1
+0680,"Extração de petróleo e gás, inclusive as atividades de apoio","0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+0791,"Extração de minério de ferro, inclusive beneficiamentos e a aglomeração","100,00%",Alta exposicao TSB,Exposição integral no recorte CNAE–SCN utilizado.,1.0,2
+0792,"Extração de minerais metálicos não-ferrosos, inclusive beneficiamentos","46,72%",Exposicao intermediaria TSB,"Exposição parcial, relevante para minerais estratégicos e transição.",0.4672,1
+1091,"Abate e produtos de carne, inclusive os produtos do laticínio e da pesca","0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+1092,Fabricação e refino de açúcar,"0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+1093,Outros produtos alimentares,"0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+1100,Fabricação de bebidas,"0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+1200,Fabricação de produtos do fumo,"0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+1300,Fabricação de produtos têxteis,"0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+1400,Confecção de artefatos do vestuário e acessórios,"0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+1500,Fabricação de calçados e de artefatos de couro,"0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+1600,Fabricação de produtos da madeira,"0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+1700,"Fabricação de celulose, papel e produtos de papel","99,99%",Alta exposicao TSB,Exposição praticamente integral no recorte analisado.,0.9998999999999999,2
+1800,Impressão e reprodução de gravações,"0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+1991,Refino de petróleo e coquerias,"0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+1992,Fabricação de biocombustíveis,"100,00%",Alta exposicao TSB,Setor diretamente associado à transição energética.,1.0,2
+2091,"Fabricação de químicos orgânicos e inorgânicos, resinas e elastômeros","69,44%",Exposicao intermediaria TSB,"Exposição elevada, mas ainda não integral.",0.6944,1
+2092,"Fabricação de defensivos, desinfestantes, tintas e químicos diversos","12,21%",Exposicao intermediaria TSB,Exposição marginal e dependente de subatividades específicas.,0.12210000000000001,1
+2093,"Fabricação de produtos de limpeza, cosméticos/perfumaria e higiene pessoal","0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+2100,Fabricação de produtos farmoquímicos e farmacêuticos,"0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+2200,Fabricação de produtos de borracha e de material plástico,"0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+2300,Fabricação de produtos de minerais não-metálicos,"23,89%",Exposicao intermediaria TSB,Exposição parcial em setor heterogêneo.,0.2389,1
+2491,"Produção de ferro-gusa/ferroligas, siderurgia e tubos de aço sem costura","81,40%",Alta exposicao TSB,"Setor industrial de transição, com forte peso em atividades compatíveis.",0.8140000000000001,2
+2492,Metalurgia de metais não-ferosos e a fundição de metais,"30,14%",Exposicao intermediaria TSB,"Parcela compatível relevante, mas minoritária.",0.3014,1
+2500,"Fabricação de produtos de metal, exceto máquinas e equipamentos","8,86%",Exposicao intermediaria TSB,"Exposição baixa, com predominância de atividades convencionais.",0.0886,1
+2600,"Fabricação de equipamentos de informática, produtos eletrônicos e ópticos","0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+2700,Fabricação de máquinas e equipamentos elétricos,"0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+2800,Fabricação de máquinas e equipamentos mecânicos,"0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+2991,"Fabricação de automóveis, caminhões e ônibus, exceto peças","0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+2992,Fabricação de peças e acessórios para veículos automotores,"0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+3000,"Fabricação de outros equipamentos de transporte, exceto veículos automotores","0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+3180,Fabricação de móveis e de produtos de indústrias diversas,"0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+3300,"Manutenção, reparação e instalação de máquinas e equipamentos","12,68%",Exposicao intermediaria TSB,Exposição associada a atividades habilitadoras e de suporte.,0.1268,1
+3500,"Energia elétrica, gás natural e outras utilidades","97,23%",Alta exposicao TSB,"Alta exposição, com forte relevância para a transição energética.",0.9723,2
+3680,"Água, esgoto e gestão de resíduos","91,21%",Alta exposicao TSB,"Setor associado a saneamento, resíduos e serviços ambientais.",0.9120999999999999,2
+4180,Construção,"77,71%",Alta exposicao TSB,"Exposição majoritária, mas dependente da composição interna das atividades.",0.7770999999999999,2
+4580,Comércio por atacado e varejo,"0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+4900,Transporte terrestre,"99,83%",Alta exposicao TSB,Setor em que a maior parte da massa salarial esta associada a CNAEs compativeis/elegiveis segundo a TSB.,0.9983,2
+5280,"Armazenamento, atividades auxiliares dos transportes e correio","0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+5600,Alimentação,"0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+5980,"Atividades de televisão, rádio, cinema e gravação/edição de som e imagem","0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+6100,Telecomunicações,"0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+6280,Desenvolvimento de sistemas e outros serviços de informação,"0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+7180,"Serviços de arquitetura, engenharia, testes/análises técnicas e P & D","0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+7700,Aluguéis não-imobiliários e gestão de ativos de propriedade intelectual,"0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
+9080,"Atividades artísticas, criativas e de espetáculos","0,00%",Sem exposicao TSB direta,Setor sem CNAEs classificados como compativeis/elegiveis segundo a TSB no recorte utilizado.,0.0,0
