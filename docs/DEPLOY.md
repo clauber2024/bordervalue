@@ -136,6 +136,11 @@ dispara, dentro do próprio container do backend na Railway (via
 4. `build_solar_sovereignty_metrics.py`, `build_sector_sovereignty_metrics.py`,
    `build_analytical_staging_silicio.py`, `build_analytical_staging_sectors.py`,
    `build_aipnet_sectors.py` — as 4 cadeias prioritárias.
+   `build_energy_context_ben.py` também roda aqui — lê os workbooks do BEN/EPE
+   commitados como exceção em `inputs/official/` (sem lógica de download, ao
+   contrário dos outros passos) e carrega `analytical_energy_context_national`.
+   Se o BEN 2027 (ano-base 2026) sair, os 2 arquivos precisam ser
+   re-baixados manualmente e re-commitados — não há atualização automática.
 5. Aplica todo `.sql` gerado direto no Postgres da Railway, usando a mesma
    `BORDER_VALUE_DATABASE_DSN` que o backend já usa em produção — **não precisa
    mais reabrir Public Access no Postgres**.

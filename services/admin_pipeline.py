@@ -66,6 +66,7 @@ PIPELINE_SCRIPTS: tuple[tuple[str, list[str]], ...] = (
     ("Camada Published - silicio", ["build_analytical_staging_silicio.py"]),
     ("Camada Published - setores", ["build_analytical_staging_sectors.py"]),
     ("AIPNET - setores", ["build_aipnet_sectors.py"]),
+    ("Contexto energetico nacional (BEN/EPE)", ["build_energy_context_ben.py"]),
 )
 
 # Known output paths of every script above that actually emits SQL meant to
@@ -85,6 +86,7 @@ SQL_TARGETS: tuple[Path, ...] = (
     ROOT / "outputs" / "aipnet_sector_combustiveis_transicao" / "load_aipnet_green_jobs.sql",
     ROOT / "outputs" / "aipnet_sector_aco" / "load_aipnet_input_metrics.sql",
     ROOT / "outputs" / "aipnet_sector_aco" / "load_aipnet_green_jobs.sql",
+    ROOT / "outputs" / "analytical_energy_context_ben" / "load_analytical_energy_context_national.sql",
 )
 
 MATERIALIZED_VIEWS: tuple[str, ...] = (

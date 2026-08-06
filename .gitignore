@@ -39,6 +39,17 @@ outputs/official_2026_rais/*
 !dados/cache/dim_pais_comex.csv
 !dados/cache/dim_municipio_ibge.csv
 
+# Excecao: workbooks-fonte do BEN (EPE), exigidos pelo botao de atualizacao
+# do Painel Admin (build_energy_context_ben.py) -- sem logica de download,
+# le direto desses arquivos. Ficam desatualizados so quando o BEN publicar
+# novo ano-base (ver docs/DEPLOY.md, Secao 4, e project memory sobre BEN/EPE).
+# (a pasta inteira precisa ser reaberta antes de negar arquivos especificos --
+# git nao desce em diretorios ja ignorados por regra de diretorio.)
+!inputs/official/
+inputs/official/*
+!inputs/official/BEN2026_Capitulo2_Oferta_Demanda_por_Fonte.xlsx
+!inputs/official/BEN2026_Capitulo3_Consumo_Energia_por_Setor.xlsx
+
 # Local secrets (ADMIN_PASSWORD, ADMIN_TRIGGER_SECRET, etc.)
 .env
 .env.local
