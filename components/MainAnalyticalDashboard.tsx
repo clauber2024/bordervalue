@@ -142,6 +142,8 @@ export default function MainAnalyticalDashboard() {
   const [criticalOnly, setCriticalOnly] = useState(false);
   const [readingMode, setReadingMode] = useState<ReadingMode>("analytical");
   const [modeFeedback, setModeFeedback] = useState("Cadeia preservada, com painéis adicionais de aprofundamento.");
+  const [chainMenuOpen, setChainMenuOpen] = useState(false);
+  const chainMenuRef = useRef<HTMLDivElement>(null);
   const diagnosticRef = useRef<HTMLDivElement>(null);
   const overviewRef = useRef<HTMLDivElement>(null);
   const advancedRef = useRef<HTMLElement>(null);
@@ -196,6 +198,22 @@ export default function MainAnalyticalDashboard() {
     setChainAnalysisFocus(null);
     router.push(pathname, { scroll: false });
   }, [pathname, router]);
+
+  const handleQuickChainSwitch = useCallback((chainId: string) => {
+    setChainMenuOpen(false);
+    handleChainSelect(chainId);
+  }, [handleChainSelect]);
+
+  useEffect(() => {
+    if (!chainMenuOpen) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (chainMenuRef.current && !chainMenuRef.current.contains(event.target as Node)) {
+        setChainMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [chainMenuOpen]);
 
   const handleAipnetAnalysisFocus = useCallback((focus: AipnetAnalysisFocus) => {
     setCriticalOnly(false);
@@ -299,13 +317,46 @@ export default function MainAnalyticalDashboard() {
               ) : null}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handleClearChain}
-            className="shrink-0 self-start rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:bg-white/[0.09] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 sm:self-auto"
-          >
-            Trocar cadeia
-          </button>
+          <div ref={chainMenuRef} className="relative shrink-0 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setChainMenuOpen((current) => !current)}
+              aria-expanded={chainMenuOpen}
+              aria-haspopup="listbox"
+              className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:bg-white/[0.09] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+            >
+              Trocar cadeia
+              <ChevronDown className={`h-3 w-3 transition-transform ${chainMenuOpen ? "rotate-180" : ""}`} />
+            </button>
+            {chainMenuOpen ? (
+              <div
+                role="listbox"
+                className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-xl border border-white/10 bg-zinc-950/95 shadow-2xl backdrop-blur-xl"
+              >
+                <button
+                  type="button"
+                  onClick={() => { setChainMenuOpen(false); handleClearChain(); }}
+                  className="block w-full border-b border-white/10 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-300"
+                >
+                  Ver todas as cadeias (painel inicial)
+                </button>
+                {chainCatalog.filter((chain) => chain.status === "published").map((chain) => (
+                  <button
+                    key={chain.id}
+                    type="button"
+                    role="option"
+                    aria-selected={chain.id === selectedChain}
+                    onClick={() => handleQuickChainSwitch(chain.id)}
+                    disabled={chain.id === selectedChain}
+                    className={`flex w-full flex-col gap-0.5 px-3 py-2.5 text-left transition ${chain.id === selectedChain ? "cursor-default bg-cyan-400/10 text-cyan-100" : "text-zinc-300 hover:bg-white/[0.06] hover:text-white"}`}
+                  >
+                    <span className="text-xs font-semibold">{chain.name}</span>
+                    <span className="text-[10px] text-zinc-500">{chain.group}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
         </div>
         </section>
         <aside className="sticky top-[9.5rem] z-40 -my-4 flex flex-col gap-2 rounded-xl border border-cyan-300/20 bg-zinc-950/90 px-3 py-2.5 shadow-2xl backdrop-blur-xl md:top-[4.75rem] lg:flex-row lg:items-center lg:justify-between" aria-label="Profundidade da análise">

@@ -366,6 +366,7 @@ export function SovereigntySankeyChart({
                 focusContext.highlightIds,
                 (id) => setSelectedFlowId((current) => current === id ? null : id),
                 (id) => setHoveredFlowId(id),
+                colorMode,
               )}
               nodePadding={solarInputs.length ? 24 : 26}
               nodeWidth={solarInputs.length ? 16 : 18}
@@ -455,6 +456,10 @@ function renderNode(
         filter="drop-shadow(0 8px 18px rgba(0,0,0,0.36))"
       />
       <text x={labelX} y={labelY - 5} fill="#fafafa" fontSize={12} fontWeight={700} dominantBaseline="middle">
+        {/* Native title tooltip carries the untruncated name -- the label
+            itself stays short so long stage/destination names ("Combustíveis
+            de aviação / proxy SAF") don't collide with the next column. */}
+        <title>{payload.name}</title>
         {compactLabel(payload.name)}
       </text>
       <text x={labelX} y={labelY + 11} fill="#a1a1aa" fontSize={10} fontWeight={500} dominantBaseline="middle">
@@ -479,6 +484,7 @@ function renderLink({
   focusedHighlightIds: Set<string>,
   onSelect: (id: string) => void,
   onHover: (id: string | null) => void,
+  colorMode: "balance" | "imports" | "exports",
 ) {
   const strokeWidth = Math.max(linkWidth, 1.4);
   const path = `M${sourceX},${sourceY} C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}`;
@@ -488,7 +494,14 @@ function renderLink({
   const isSelected = selectedNodeId
     ? payload.source.id === selectedNodeId || payload.target.id === selectedNodeId || focusedHighlightIds.has(payload.highlightId)
     : selectedLinkId === payload.highlightId || focusedHighlightIds.has(payload.highlightId);
-  const isDimmed = activeFlowId !== null && !isSelected;
+  // "Colorir fluxos por" isn't just a palette swap: Importações/Exportações
+  // now actually filter -- flows without that kind of movement fade out
+  // instead of only turning gray, so the mode reads as a real filter.
+  const matchesColorMode =
+    colorMode === "balance" ||
+    (colorMode === "imports" && payload.rawValue > 0) ||
+    (colorMode === "exports" && (payload.exportsValue ?? 0) > 0);
+  const isDimmed = (activeFlowId !== null && !isSelected) || !matchesColorMode;
 
   return (
     <g>
