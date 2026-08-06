@@ -62,6 +62,21 @@ class SolarInputDefinition:
     confidence_level: str
     data_gap_reason: str | None = None
     global_china_share: float | None = None
+    # Classifies the dominant production route's energy/feedstock origin --
+    # not the material itself -- so minerals (no fossil/renewable duality)
+    # and molecules/fuels alike get an honest, source-backed label. See
+    # PRODUCTION_ROUTE_CLASSES for the five allowed values and their meaning.
+    production_route_class: str = "undetermined"
+    production_route_rationale: str = ""
+
+
+PRODUCTION_ROUTE_CLASSES = {
+    "fossil_dominant": "Rota fóssil dominante",
+    "transition_underway": "Transição em curso",
+    "low_carbon_dominant": "Baixo carbono predominante",
+    "untapped_potential": "Potencial de descarbonização não realizado",
+    "undetermined": "Rota indeterminada",
+}
 
 
 SOLAR_INPUTS = (
@@ -72,6 +87,8 @@ SOLAR_INPUTS = (
         ("25061000",),
         "validated",
         "alta",
+        production_route_class="low_carbon_dominant",
+        production_route_rationale="Extração mecânica (britagem/lavagem), sem feedstock fóssil, baixa intensidade energética.",
     ),
     SolarInputDefinition(
         "quartzito",
@@ -80,6 +97,8 @@ SOLAR_INPUTS = (
         ("25062000",),
         "validated",
         "alta",
+        production_route_class="low_carbon_dominant",
+        production_route_rationale="Mesma lógica do quartzo: extração mecânica, sem feedstock fóssil.",
     ),
     SolarInputDefinition(
         "silicio_grau_metalurgico",
@@ -89,6 +108,8 @@ SOLAR_INPUTS = (
         "estimated",
         "media",
         "A NCM não separa o uso fotovoltaico dos demais usos do silício.",
+        production_route_class="fossil_dominant",
+        production_route_rationale="Redução carbotérmica em forno a arco; produção mundial concentrada na China, com matriz elétrica majoritariamente a carvão.",
     ),
     SolarInputDefinition(
         "polissilicio_solar",
@@ -99,6 +120,8 @@ SOLAR_INPUTS = (
         "media",
         "A NCM de silício de alta pureza não identifica exclusivamente o grau solar.",
         0.85,
+        production_route_class="fossil_dominant",
+        production_route_rationale="Processo Siemens é altamente eletrointensivo; produção mundial concentrada na China (matriz a carvão).",
     ),
     SolarInputDefinition(
         "wafers_fotovoltaicos",
@@ -109,6 +132,8 @@ SOLAR_INPUTS = (
         "baixa",
         "As NCMs de elementos dopados também abrangem aplicações eletrônicas não solares.",
         0.95,
+        production_route_class="fossil_dominant",
+        production_route_rationale="Herda a intensidade elétrica do crescimento de lingote/corte, mesma geografia de produção do polissilício.",
     ),
     SolarInputDefinition(
         "celulas_fotovoltaicas",
@@ -117,6 +142,8 @@ SOLAR_INPUTS = (
         ("85414210", "85414220", "85414290"),
         "validated",
         "alta",
+        production_route_class="fossil_dominant",
+        production_route_rationale="Fornos de difusão/deposição, produção concentrada na mesma matriz elétrica chinesa.",
     ),
     SolarInputDefinition(
         "modulos_fotovoltaicos",
@@ -125,44 +152,64 @@ SOLAR_INPUTS = (
         ("85414300",),
         "validated",
         "alta",
+        production_route_class="transition_underway",
+        production_route_rationale="Montagem/laminação é menos eletrointensiva e mais distribuída geograficamente que célula/wafer, mas ainda carrega energia embutida upstream fóssil.",
     ),
     SolarInputDefinition(
         "silica_industrial", "Sílica industrial", "extracao", ("25051000",),
         "estimated", "media", "Proxy por areias siliciosas e quartzosas; a NCM não isola o uso solar.",
+        production_route_class="low_carbon_dominant",
+        production_route_rationale="Areia industrial, extração mecânica, sem feedstock fóssil.",
     ),
     SolarInputDefinition(
         "eletrodos_carbono", "Eletrodos de carbono", "processamento",
         ("38013010", "85451100", "85451910", "85451990"), "estimated", "media",
         "Cesta de pastas e eletrodos de carbono; exige fator de uso na produção de silício.",
+        production_route_class="fossil_dominant",
+        production_route_rationale="Feedstock é coque de petróleo/piche de alcatrão de hulha -- subprodutos fósseis diretos.",
     ),
     SolarInputDefinition(
         "hidrogenio_alta_pureza", "Hidrogênio de alta pureza", "refinamento", ("28041000",),
         "estimated", "media", "A NCM de hidrogênio não diferencia pureza nem aplicação solar.",
+        production_route_class="fossil_dominant",
+        production_route_rationale=">95% da produção mundial via reforma a vapor de gás natural (H2 cinza).",
     ),
     SolarInputDefinition(
         "acido_cloridrico", "Ácido clorídrico", "refinamento", ("28061010", "28061020"),
         "estimated", "media", "O comércio total do produto é usado como proxy da disponibilidade para refino solar.",
+        production_route_class="undetermined",
+        production_route_rationale="Tipicamente subproduto de processos cloro-soda/clorados diversos; origem mista (eletrólise + petroquímica) sem rota dominante defensável.",
     ),
     SolarInputDefinition(
         "cadinhos_quartzo", "Cadinhos de quartzo", "componentes_avancados", ("69032010",),
         "estimated", "baixa", "A classificação de cadinhos não identifica exclusivamente quartzo nem uso fotovoltaico.",
+        production_route_class="transition_underway",
+        production_route_rationale="Matéria-prima é mineral, mas a fusão em forno normalmente usa gás natural como energia térmica.",
     ),
     SolarInputDefinition(
         "vidro_solar", "Vidro solar", "produto_final", ("70051000", "70071900"),
         "estimated", "baixa", "Proxy por vidro revestido e vidro temperado; não há identificação exclusiva para módulos solares.",
+        production_route_class="fossil_dominant",
+        production_route_rationale="Fornos de vidro operam predominantemente a gás natural globalmente.",
     ),
     SolarInputDefinition(
         "encapsulantes_eva", "Encapsulantes EVA", "produto_final", ("39013010", "39013090"),
         "estimated", "media", "Proxy por copolímeros de etileno e acetato de vinila, sem fator de uso fotovoltaico.",
+        production_route_class="fossil_dominant",
+        production_route_rationale="EVA é copolímero petroquímico derivado de eteno (nafta/gás).",
     ),
     SolarInputDefinition(
         "fitas_cobre", "Fitas de cobre", "produto_final", ("74091100", "74091900"),
         "estimated", "baixa", "Proxy por chapas, folhas e tiras de cobre refinado em rolos e outras formas.",
+        production_route_class="transition_underway",
+        production_route_rationale="Refino de cobre é eletrointensivo; polos relevantes (Chile) já usam matriz solar/hídrica crescente, mas o volume mundial ainda inclui forte participação de matriz a carvão.",
     ),
     SolarInputDefinition(
         "molduras_aluminio", "Molduras de alumínio", "produto_final",
         ("76041021", "76041029", "76042100", "76042920"), "estimated", "baixa",
         "Proxy por perfis de alumínio; a destinação para módulos não é isolada.",
+        production_route_class="transition_underway",
+        production_route_rationale="Alumínio primário é extremamente eletrointensivo; a maior parte da produção mundial usa matriz a carvão, mas há polos hidrelétricos relevantes (Brasil, Noruega, Islândia, Canadá).",
     ),
 )
 
@@ -394,13 +441,35 @@ def load_green_jobs() -> dict[str, object]:
             })
 
     territory: dict[str, dict[str, float]] = defaultdict(lambda: {"formal_jobs": 0.0, "wage_mass_brl": 0.0})
+    cnae_state_jobs: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
     with RAIS_FACT_PATH.open("r", encoding="utf-8-sig", newline="") as handle:
         for row in csv.DictReader(handle):
-            if str(row.get("cnae_class", "")) not in associated_cnaes:
+            cnae = str(row.get("cnae_class", ""))
+            if cnae not in associated_cnaes:
                 continue
             uf = str(row.get("uf", "N/D"))
-            territory[uf]["formal_jobs"] += number(row.get("formal_jobs"))
+            jobs = number(row.get("formal_jobs"))
+            territory[uf]["formal_jobs"] += jobs
             territory[uf]["wage_mass_brl"] += number(row.get("wage_mass"))
+            cnae_state_jobs[cnae][uf] += jobs
+
+    # cross-tab of the same associated_cnaes x RAIS_FACT_PATH rows used above,
+    # just re-keyed by state so each side of the panel can highlight the other
+    # (activity click -> states with jobs in it, state click -> activities with
+    # jobs in it) without fabricating a relationship the source data doesn't have.
+    state_cnae_jobs: dict[str, dict[str, float]] = defaultdict(dict)
+    for cnae, by_state in cnae_state_jobs.items():
+        for uf, jobs in by_state.items():
+            if jobs > 0:
+                state_cnae_jobs[uf][cnae] = jobs
+
+    for activity in activities:
+        by_state = cnae_state_jobs.get(activity["cnae_class"], {})
+        activity["state_jobs"] = [
+            {"uf": uf, "formal_jobs": int(jobs)}
+            for uf, jobs in sorted(by_state.items(), key=lambda item: item[1], reverse=True)
+            if jobs > 0
+        ]
 
     return {
         "reference_year": 2024,
@@ -410,7 +479,17 @@ def load_green_jobs() -> dict[str, object]:
         "cnae_count": len(associated_cnaes),
         "activities": sorted(activities, key=lambda item: item["formal_jobs"], reverse=True),
         "top_states": [
-            {"uf": uf, "formal_jobs": int(values["formal_jobs"]), "wage_mass_brl": values["wage_mass_brl"]}
+            {
+                "uf": uf,
+                "formal_jobs": int(values["formal_jobs"]),
+                "wage_mass_brl": values["wage_mass_brl"],
+                "activity_jobs": [
+                    {"cnae_class": cnae, "formal_jobs": int(jobs)}
+                    for cnae, jobs in sorted(
+                        state_cnae_jobs.get(uf, {}).items(), key=lambda item: item[1], reverse=True
+                    )
+                ],
+            }
             for uf, values in sorted(territory.items(), key=lambda item: item[1]["formal_jobs"], reverse=True)[:8]
         ],
         "methodology_note": (
@@ -481,6 +560,8 @@ def build_payload(
                 "measurement_method": definition.measurement_method,
                 "confidence_level": definition.confidence_level,
                 "data_gap_reason": definition.data_gap_reason,
+                "production_route_class": definition.production_route_class,
+                "production_route_rationale": definition.production_route_rationale,
                 "trade_record_count": int(sum(values["records"] for _, values in rows)),
                 "mineral_evidence": mineral_evidence if definition.input_id in mineral_evidence_input_ids else None,
             }
@@ -557,6 +638,7 @@ def write_summary_csv(payload: dict[str, object]) -> None:
         "domestic_production_value_usd_comparable", "external_dependency",
         "global_china_share", "global_hhi_floor", "measurement_method",
         "confidence_level", "data_gap_reason",
+        "production_route_class", "production_route_rationale",
     ]
     write_rows(OUTPUT_DIR / "solar_input_summary.csv", fields, payload["inputs"])
 

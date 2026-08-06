@@ -4,8 +4,10 @@ import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ResponsiveContainer, Sankey, Tooltip } from "recharts";
 import type { ProdutoConceitual } from "../types/border-value";
-import type { SolarInputMetric } from "../types/solar-sovereignty";
+import type { ProductionRouteClass, SolarInputMetric } from "../types/solar-sovereignty";
 import { transitionFuelDestination } from "../lib/transitionFuelTopology";
+
+type ColorMode = "balance" | "imports" | "exports" | "route";
 
 type SankeyNodeDatum = {
   id: string;
@@ -32,6 +34,8 @@ type SankeyLinkDatum = {
   color?: string;
   flowLabel?: string;
   share?: number;
+  routeClass?: ProductionRouteClass;
+  routeRationale?: string;
 };
 
 type SankeyChartData = {
@@ -115,7 +119,7 @@ export function SovereigntySankeyChart({
   solarInputs = [],
   chainName,
 }: SovereigntySankeyChartProps) {
-  const [colorMode, setColorMode] = useState<"balance" | "imports" | "exports">("balance");
+  const [colorMode, setColorMode] = useState<ColorMode>("balance");
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
   const [hoveredFlowId, setHoveredFlowId] = useState<string | null>(null);
   const products = useMemo(() => (dado ? [dado] : data ?? []), [data, dado]);
@@ -139,6 +143,13 @@ export function SovereigntySankeyChart({
       const solarImportTotal = solarInputs.reduce((sum, input) => sum + input.imports_value_usd, 0);
       const stageTotals = new Map<string, { index: number; value: number; raw: number; exports: number }>();
       const supplierTotals = new Map<string, number>();
+      // Aggregate links (stage/destination/integration) mix several inputs
+      // with potentially different production routes -- track raw-value
+      // weight per route class so the aggregate can be colored by whichever
+      // route dominates the money flowing through it, instead of forcing an
+      // arbitrary single input's classification onto the whole bundle.
+      const stageRouteWeights = new Map<string, Map<ProductionRouteClass, number>>();
+      const chainRouteWeights = new Map<ProductionRouteClass, number>();
 
       solarInputs.forEach((input) => {
         const supplierName = input.top_supplier?.country_name ?? "Origem não informada";
@@ -162,7 +173,7 @@ export function SovereigntySankeyChart({
         const inputNode = ensureNode(`input:${input.input_id}`, input.label, "input");
         const stageName = executiveStageLabel(input.stage);
         const stageNode = ensureNode(`stage:${input.stage}`, stageName, "stage");
-        const color = flowColor(colorMode, rawValue, exportsValue, balance);
+        const color = flowColor(colorMode, rawValue, exportsValue, balance, input.production_route_class);
         const share = rawValue / Math.max(solarImportTotal, 1);
 
         [source, inputNode, stageNode].forEach((index) => {
@@ -175,18 +186,25 @@ export function SovereigntySankeyChart({
           source, target: inputNode, value, rawValue, exportsValue, balance, color,
           alpha: 1, alphaApplied: false, supplierName, productName: input.label,
           flowLabel: `${supplierName} → ${input.label}`, share,
+          routeClass: input.production_route_class, routeRationale: input.production_route_rationale,
         });
         links.push({
           id: `input-stage:${input.input_id}`, highlightId: input.input_id,
           source: inputNode, target: stageNode, value, rawValue, exportsValue, balance, color,
           alpha: 1, alphaApplied: false, supplierName, productName: input.label,
           flowLabel: `${input.label} → ${stageName}`, share,
+          routeClass: input.production_route_class, routeRationale: input.production_route_rationale,
         });
         const total = stageTotals.get(input.stage) ?? { index: stageNode, value: 0, raw: 0, exports: 0 };
         total.value += value;
         total.raw += rawValue;
         total.exports += exportsValue;
         stageTotals.set(input.stage, total);
+
+        const stageWeights = stageRouteWeights.get(input.stage) ?? new Map<ProductionRouteClass, number>();
+        stageWeights.set(input.production_route_class, (stageWeights.get(input.production_route_class) ?? 0) + rawValue);
+        stageRouteWeights.set(input.stage, stageWeights);
+        chainRouteWeights.set(input.production_route_class, (chainRouteWeights.get(input.production_route_class) ?? 0) + rawValue);
       });
 
       // Create the terminal node after every upstream layer so Recharts lays
@@ -228,40 +246,45 @@ export function SovereigntySankeyChart({
           nodes[destinationIndex].rawValue = total.raw;
           nodes[destinationIndex].share = total.raw / Math.max(solarImportTotal, 1);
         }
+        const stageRoute = dominantRoute(stageRouteWeights.get(stage));
         links.push({
           id: `stage-final:${stage}`, highlightId: `stage:${stage}`,
           source: total.index, target: destinationIndex, value: total.value, rawValue: total.raw,
-          exportsValue: total.exports, balance, color: flowColor(colorMode, total.raw, total.exports, balance),
+          exportsValue: total.exports, balance, color: flowColor(colorMode, total.raw, total.exports, balance, stageRoute),
           alpha: 1, alphaApplied: false, supplierName: "Múltiplas origens",
           productName: isFertilizerChain ? "Produção e formulação de fertilizantes" : destinationName ?? finalSystemName,
           flowLabel: `${executiveStageLabel(stage)} → ${isFertilizerChain ? "Produção e formulação" : destinationName ?? finalSystemName}`,
           share: total.raw / Math.max(solarImportTotal, 1),
+          routeClass: stageRoute ?? undefined,
         });
         if (destinationName) {
           links.push({
             id: `destination-final:${stage}`, highlightId: `destination:${stage}`,
             source: destinationIndex, target: finalIndex, value: total.value, rawValue: total.raw,
-            exportsValue: total.exports, balance, color: flowColor(colorMode, total.raw, total.exports, balance),
+            exportsValue: total.exports, balance, color: flowColor(colorMode, total.raw, total.exports, balance, stageRoute),
             alpha: 1, alphaApplied: false, supplierName: "Múltiplas origens",
             productName: finalSystemName, flowLabel: `${destinationName} → ${finalSystemName}`,
             share: total.raw / Math.max(solarImportTotal, 1),
+            routeClass: stageRoute ?? undefined,
           });
         }
       });
       if (isFertilizerChain) {
         const totalExports = solarInputs.reduce((sum, input) => sum + Math.max(input.exports_value_usd, 0), 0);
         const totalBalance = totalExports - solarImportTotal;
+        const chainRoute = dominantRoute(chainRouteWeights);
         links.push({
           id: "integration-final:fertilizers", highlightId: "integration:fertilizers",
           source: integrationIndex, target: finalIndex, value: stageTotals.size
             ? Array.from(stageTotals.values()).reduce((sum, total) => sum + total.value, 0)
             : visualFlowValue(solarImportTotal),
           rawValue: solarImportTotal, exportsValue: totalExports, balance: totalBalance,
-          color: flowColor(colorMode, solarImportTotal, totalExports, totalBalance),
+          color: flowColor(colorMode, solarImportTotal, totalExports, totalBalance, chainRoute),
           alpha: 1, alphaApplied: false, supplierName: "Múltiplas origens",
           productName: finalSystemName,
           flowLabel: `Produção e formulação → ${finalSystemName}`,
           share: 1,
+          routeClass: chainRoute ?? undefined,
         });
       }
 
@@ -341,43 +364,61 @@ export function SovereigntySankeyChart({
                 <FlowModeButton active={colorMode === "balance"} onClick={() => setColorMode("balance")} description="Compara exportações e importações. Vermelho indica déficit, âmbar indica equilíbrio relativo e verde indica superávit.">Saldo comercial</FlowModeButton>
                 <FlowModeButton active={colorMode === "imports"} onClick={() => setColorMode("imports")} description="Destaca em vermelho os caminhos com importações observadas. A largura continua representando o peso visual do valor FOB importado.">Importações</FlowModeButton>
                 <FlowModeButton active={colorMode === "exports"} onClick={() => setColorMode("exports")} description="Destaca em verde os caminhos com exportações observadas. Fluxos sem exportação no período permanecem em cinza.">Exportações</FlowModeButton>
+                <FlowModeButton active={colorMode === "route"} onClick={() => setColorMode("route")} description="Classifica cada insumo pela rota produtiva dominante hoje: vermelho é rota fóssil, âmbar é transição em curso, verde é rota já de baixo carbono, azul é potencial de descarbonização ainda não realizado no comércio, e cinza é rota indeterminada. Agregados (etapa, uso final) mostram a rota que domina o valor comercializado.">Fonte energética</FlowModeButton>
                 {selectedFlowId ? <button type="button" onClick={() => setSelectedFlowId(null)} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-400 transition hover:text-white">Limpar destaque</button> : null}
               </div>
             </div>
-            <div className="flex items-center gap-2 text-[10px] text-zinc-500"><span className="h-2 w-12 rounded-full bg-gradient-to-r from-red-500 via-amber-400 to-emerald-500" /> déficit → superávit</div>
+            {colorMode === "route" ? (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-zinc-500">
+                {(Object.keys(ROUTE_CLASS_LABELS) as ProductionRouteClass[]).map((routeClass) => (
+                  <span key={routeClass} className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: ROUTE_CLASS_COLORS[routeClass] }} />
+                    {ROUTE_CLASS_LABELS[routeClass]}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-[10px] text-zinc-500"><span className="h-2 w-12 rounded-full bg-gradient-to-r from-red-500 via-amber-400 to-emerald-500" /> déficit → superávit</div>
+            )}
           </div>
         ) : null}
-        <div className="w-full transition-[height] duration-500" style={{ height: effectiveHeight }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <Sankey
-              data={sankeyData}
-              dataKey="value"
-              nameKey="name"
-              node={(props: SankeyNodeRenderProps) => renderNode(
-                props,
-                activeFlowId,
-                focusContext.nodeIds,
-                (id) => setSelectedFlowId((current) => current === id ? null : id),
-                (id) => setHoveredFlowId(id),
-              )}
-              link={(props: SankeyLinkRenderProps) => renderLink(
-                props,
-                activeFlowId,
-                focusContext.highlightIds,
-                (id) => setSelectedFlowId((current) => current === id ? null : id),
-                (id) => setHoveredFlowId(id),
-                colorMode,
-              )}
-              nodePadding={solarInputs.length ? 24 : 26}
-              nodeWidth={solarInputs.length ? 16 : 18}
-              linkCurvature={0.55}
-              iterations={48}
-              margin={{ top: 20, right: 150, bottom: 20, left: 20 }}
-              sort={false}
-            >
-              <Tooltip content={<FlowTooltip />} />
-            </Sankey>
-          </ResponsiveContainer>
+        <div className="w-full overflow-x-auto transition-[height] duration-500" style={{ height: effectiveHeight }}>
+          {/* Fixed min-width keeps node-column spacing (and thus label room)
+              constant regardless of viewport -- on narrow screens the chart
+              scrolls horizontally instead of squeezing columns to the point
+              where labels overlap the next stage. */}
+          <div className="h-full min-w-[1260px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <Sankey
+                data={sankeyData}
+                dataKey="value"
+                nameKey="name"
+                node={(props: SankeyNodeRenderProps) => renderNode(
+                  props,
+                  activeFlowId,
+                  focusContext.nodeIds,
+                  (id) => setSelectedFlowId((current) => current === id ? null : id),
+                  (id) => setHoveredFlowId(id),
+                )}
+                link={(props: SankeyLinkRenderProps) => renderLink(
+                  props,
+                  activeFlowId,
+                  focusContext.highlightIds,
+                  (id) => setSelectedFlowId((current) => current === id ? null : id),
+                  (id) => setHoveredFlowId(id),
+                  colorMode,
+                )}
+                nodePadding={solarInputs.length ? 24 : 26}
+                nodeWidth={solarInputs.length ? 16 : 18}
+                linkCurvature={0.55}
+                iterations={48}
+                margin={{ top: 20, right: 232, bottom: 20, left: 20 }}
+                sort={false}
+              >
+                <Tooltip content={<FlowTooltip />} />
+              </Sankey>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-3 px-1 text-xs md:grid-cols-2 xl:grid-cols-4">
@@ -391,7 +432,13 @@ export function SovereigntySankeyChart({
           />
           <ReadingPill
             label="Cor"
-            value={solarInputs.length ? "A cor segue o modo ativo. No saldo comercial, vermelho indica déficit, âmbar indica equilíbrio relativo e verde indica superávit." : "A cor diferencia os fluxos exibidos e a aplicação do fator de proporcionalidade."}
+            value={
+              solarInputs.length
+                ? colorMode === "route"
+                  ? "A cor classifica a rota produtiva dominante de cada insumo: vermelho é fóssil, âmbar é transição em curso, verde é baixo carbono predominante, azul é potencial de descarbonização não realizado e cinza é rota indeterminada."
+                  : "A cor segue o modo ativo. No saldo comercial, vermelho indica déficit, âmbar indica equilíbrio relativo e verde indica superávit."
+                : "A cor diferencia os fluxos exibidos e a aplicação do fator de proporcionalidade."
+            }
           />
           <ReadingPill
             label="Interação"
@@ -456,9 +503,10 @@ function renderNode(
         filter="drop-shadow(0 8px 18px rgba(0,0,0,0.36))"
       />
       <text x={labelX} y={labelY - 5} fill="#fafafa" fontSize={12} fontWeight={700} dominantBaseline="middle">
-        {/* Native title tooltip carries the untruncated name -- the label
-            itself stays short so long stage/destination names ("Combustíveis
-            de aviação / proxy SAF") don't collide with the next column. */}
+        {/* Native title tooltip carries the untruncated name. compactLabel's
+            34-char cutoff and the chart's min-width scroll wrapper were
+            tuned together (see margin.right below) so even the longest
+            stage/destination names don't collide with the next column. */}
         <title>{payload.name}</title>
         {compactLabel(payload.name)}
       </text>
@@ -484,7 +532,7 @@ function renderLink({
   focusedHighlightIds: Set<string>,
   onSelect: (id: string) => void,
   onHover: (id: string | null) => void,
-  colorMode: "balance" | "imports" | "exports",
+  colorMode: ColorMode,
 ) {
   const strokeWidth = Math.max(linkWidth, 1.4);
   const path = `M${sourceX},${sourceY} C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}`;
@@ -499,6 +547,7 @@ function renderLink({
   // instead of only turning gray, so the mode reads as a real filter.
   const matchesColorMode =
     colorMode === "balance" ||
+    colorMode === "route" ||
     (colorMode === "imports" && payload.rawValue > 0) ||
     (colorMode === "exports" && (payload.exportsValue ?? 0) > 0);
   const isDimmed = (activeFlowId !== null && !isSelected) || !matchesColorMode;
@@ -641,6 +690,15 @@ function FlowTooltip({ active, payload }: SankeyTooltipProps) {
         <TooltipRow label="Exportações" value={usdLong.format(link.exportsValue ?? 0)} tone="emerald" />
         {link.balance !== undefined ? <TooltipRow label="Saldo" value={signedUsd(link.balance)} tone={link.balance >= 0 ? "emerald" : "red"} /> : null}
         {link.share !== undefined ? <TooltipRow label="Participação" value={percent.format(link.share)} tone="emerald" /> : null}
+        {link.routeClass ? (
+          <div className="rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-2 leading-5">
+            <p className="flex items-center gap-1.5 font-semibold text-zinc-200">
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: ROUTE_CLASS_COLORS[link.routeClass] }} />
+              {ROUTE_CLASS_LABELS[link.routeClass]}
+            </p>
+            {link.routeRationale ? <p className="mt-1 text-zinc-400">{link.routeRationale}</p> : null}
+          </div>
+        ) : null}
         <p className="rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-2 leading-5 text-zinc-300">
           {reductionCopy}
         </p>
@@ -707,8 +765,8 @@ function executiveLabel(value: string, fallback: string) {
 }
 
 function compactLabel(value: string) {
-  if (value.length <= 26) return value;
-  return `${value.slice(0, 23).trim()}...`;
+  if (value.length <= 34) return value;
+  return `${value.slice(0, 31).trim()}...`;
 }
 
 function clampShare(value: number) {
@@ -746,11 +804,51 @@ function executiveStageLabel(stage: string) {
   } as Record<string, string>)[stage] ?? stage;
 }
 
-function flowColor(mode: "balance" | "imports" | "exports", imports: number, exports: number, balance: number) {
+function flowColor(
+  mode: ColorMode,
+  imports: number,
+  exports: number,
+  balance: number,
+  routeClass?: ProductionRouteClass | null,
+) {
+  if (mode === "route") return routeClassColor(routeClass);
   if (mode === "imports") return imports > 0 ? "#f87171" : "#52525b";
   if (mode === "exports") return exports > 0 ? "#34d399" : "#52525b";
   const ratio = balance / Math.max(imports + exports, 1);
   return ratio < -0.25 ? "#ef4444" : ratio > 0.25 ? "#22c55e" : "#f59e0b";
+}
+
+const ROUTE_CLASS_COLORS: Record<ProductionRouteClass, string> = {
+  fossil_dominant: "#f87171",
+  transition_underway: "#f59e0b",
+  low_carbon_dominant: "#34d399",
+  untapped_potential: "#38bdf8",
+  undetermined: "#71717a",
+};
+
+const ROUTE_CLASS_LABELS: Record<ProductionRouteClass, string> = {
+  fossil_dominant: "Fóssil dominante",
+  transition_underway: "Transição em curso",
+  low_carbon_dominant: "Baixo carbono predominante",
+  untapped_potential: "Potencial não realizado",
+  undetermined: "Rota indeterminada",
+};
+
+function routeClassColor(routeClass?: ProductionRouteClass | null): string {
+  return routeClass ? ROUTE_CLASS_COLORS[routeClass] : ROUTE_CLASS_COLORS.undetermined;
+}
+
+function dominantRoute(weights: Map<ProductionRouteClass, number> | undefined): ProductionRouteClass | null {
+  if (!weights || !weights.size) return null;
+  let best: ProductionRouteClass | null = null;
+  let bestValue = -Infinity;
+  weights.forEach((value, key) => {
+    if (value > bestValue) {
+      bestValue = value;
+      best = key;
+    }
+  });
+  return best;
 }
 
 function signedUsd(value: number) {

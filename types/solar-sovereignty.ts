@@ -13,6 +13,13 @@ export type SolarMonthlyTrade = {
   net_weight_kg: number;
 };
 
+export type ProductionRouteClass =
+  | "fossil_dominant"
+  | "transition_underway"
+  | "low_carbon_dominant"
+  | "untapped_potential"
+  | "undetermined";
+
 export type SolarInputMetric = {
   input_id: string;
   label: string;
@@ -39,6 +46,8 @@ export type SolarInputMetric = {
   measurement_method: "validated" | "estimated" | "structural";
   confidence_level: "alta" | "media" | "baixa";
   data_gap_reason: string | null;
+  production_route_class: ProductionRouteClass;
+  production_route_rationale: string;
 };
 
 export type SolarSovereigntyResponse = {
@@ -69,12 +78,14 @@ export type SolarGreenJobsActivity = {
   exposure_group: string;
   technical_reading: string;
   input_ids: string[];
+  state_jobs?: Array<{ uf: string; formal_jobs: number }>;
 };
 
 export type SolarGreenJobsState = {
   uf: string;
   formal_jobs: number;
   wage_mass_brl: number;
+  activity_jobs?: Array<{ cnae_class: string; formal_jobs: number }>;
 };
 
 export type SolarGreenJobs = {
