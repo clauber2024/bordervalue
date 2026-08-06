@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowRight,
   BookOpen,
@@ -17,6 +17,9 @@ import type { ChainSummary } from "../app/api/chains/summary/route";
 
 type ChainSelectionLandingProps = {
   onSelect: (chainId: string) => void;
+  chains: readonly ChainCatalogItem[];
+  summaries: Record<string, ChainSummary>;
+  isLoading: boolean;
 };
 
 const money = new Intl.NumberFormat("pt-BR", {
@@ -51,31 +54,9 @@ const STATUS_STYLE: Record<RiskStatus, string> = {
   unknown: "bg-zinc-900 text-zinc-500 border-zinc-800",
 };
 
-export function ChainSelectionLanding({ onSelect }: ChainSelectionLandingProps) {
-  const [chains, setChains] = useState<ChainCatalogItem[]>([]);
-  const [summaries, setSummaries] = useState<Record<string, ChainSummary>>({});
+export function ChainSelectionLanding({ onSelect, chains, summaries, isLoading }: ChainSelectionLandingProps) {
   const [query, setQuery] = useState("");
   const [activeGroup, setActiveGroup] = useState<string>("all");
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    let isMounted = true;
-    Promise.all([
-      fetch("/api/chains").then((response) => response.json()) as Promise<{ chains?: ChainCatalogItem[] }>,
-      fetch("/api/chains/summary").then((response) => response.json()) as Promise<{ chains?: ChainSummary[] }>,
-    ])
-      .then(([chainsPayload, summaryPayload]) => {
-        if (!isMounted) return;
-        setChains(chainsPayload.chains ?? []);
-        const byId: Record<string, ChainSummary> = {};
-        for (const summary of summaryPayload.chains ?? []) byId[summary.id] = summary;
-        setSummaries(byId);
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
-    return () => { isMounted = false; };
-  }, []);
 
   const groups = useMemo(() => Array.from(new Set(chains.map((chain) => chain.group))), [chains]);
 
@@ -142,7 +123,7 @@ export function ChainSelectionLanding({ onSelect }: ChainSelectionLandingProps) 
       </div>
 
       <div className="mx-auto mt-10 flex max-w-5xl flex-col items-center gap-3 rounded-2xl border border-white/[0.08] bg-zinc-900/40 p-3 backdrop-blur-xl sm:flex-row sm:justify-between">
-        <div className="flex w-full items-center gap-2 overflow-x-auto sm:w-auto">
+        <div className="flex w-full items-center gap-2 overflow-x-auto sm:w-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <Filter className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
           <FilterPill label="Todas as Cadeias" active={activeGroup === "all"} onClick={() => setActiveGroup("all")} />
           {groups.map((group) => (

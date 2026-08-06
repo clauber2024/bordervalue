@@ -21,7 +21,8 @@ export type HeaderTopBarProps = {
   ncmShortcuts: HeaderNcmShortcut[];
   onSelectChain: (chainId: string) => void;
   onSelectNcm: (inputId: string) => void;
-  criticalCount?: number;
+  alertCount?: number;
+  alertLabel?: string;
   deficitLabel?: string;
   referencePeriod: string;
   readingMode: ReadingMode;
@@ -37,7 +38,8 @@ export function HeaderTopBar({
   ncmShortcuts,
   onSelectChain,
   onSelectNcm,
-  criticalCount,
+  alertCount,
+  alertLabel,
   deficitLabel,
   referencePeriod,
   readingMode,
@@ -121,9 +123,9 @@ export function HeaderTopBar({
 
           <div className="flex shrink-0 items-center gap-2.5">
             <div className="hidden items-center gap-2 rounded-xl border border-red-900/50 bg-red-950/30 px-2.5 py-1 font-mono text-xs lg:flex">
-              <span className={`h-2 w-2 rounded-full bg-red-500 ${criticalCount ? "animate-pulse" : ""}`} />
+              <span className={`h-2 w-2 rounded-full bg-red-500 ${alertCount ? "animate-pulse" : ""}`} />
               <span className="text-zinc-400">Alerta:</span>
-              <strong className="text-red-400">{criticalCount !== undefined ? `${criticalCount} NCMs ≥75%` : "—"}</strong>
+              <strong className="text-red-400">{alertLabel ?? "—"}</strong>
             </div>
 
             <div className="hidden items-center gap-2 rounded-xl border border-zinc-800/80 bg-zinc-900/60 px-2.5 py-1 font-mono text-xs sm:flex">

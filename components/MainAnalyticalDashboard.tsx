@@ -37,6 +37,7 @@ import { chainCatalog } from "../lib/chainCatalog";
 import type { ProdutoConceitual } from "../types/border-value";
 import type { SolarInputMetric, SolarSovereigntyResponse } from "../types/solar-sovereignty";
 import type { ConceptualProduct } from "./ConceptualProductCard";
+import type { ChainSummary } from "../app/api/chains/summary/route";
 
 type ViewState = "loading" | "ready" | "error" | "empty";
 type ReadingMode = "guided" | "analytical";
@@ -153,6 +154,24 @@ export default function MainAnalyticalDashboard() {
   const { data: technicalProducts = [] } = useBorderValue(selectedChain ?? undefined);
   const { data: solarSovereignty } = useSolarSovereignty(selectedChain);
   const { data: energyContext } = useEnergyContext(selectedChain);
+  const [chainSummaries, setChainSummaries] = useState<Record<string, ChainSummary>>({});
+  const [chainSummariesLoading, setChainSummariesLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch("/api/chains/summary")
+      .then((response) => response.json())
+      .then((payload: { chains?: ChainSummary[] }) => {
+        if (!isMounted) return;
+        const byId: Record<string, ChainSummary> = {};
+        for (const summary of payload.chains ?? []) byId[summary.id] = summary;
+        setChainSummaries(byId);
+      })
+      .finally(() => {
+        if (isMounted) setChainSummariesLoading(false);
+      });
+    return () => { isMounted = false; };
+  }, []);
 
   const loadData = useCallback(async () => {
     if (!selectedChain) return;
@@ -332,10 +351,24 @@ export default function MainAnalyticalDashboard() {
         riskLabel: `${formatPercentOneDecimal((input.external_dependency ?? input.global_china_share ?? 0) * 100)} dependência · HHI ${number.format(input.supplier_hhi_brazil)}`,
       }));
   }, [solarSovereignty]);
-  const headerCriticalCount = selectedChain
+  const globalSummary = useMemo(() => {
+    const ok = Object.values(chainSummaries).filter((summary) => summary.ok);
+    if (!ok.length) return null;
+    return {
+      criticalAlerts: ok.reduce((sum, summary) => sum + (summary.criticalCount ?? 0), 0),
+      deficit: ok.reduce((sum, summary) => sum + (summary.totalImportsUsd ?? 0) - (summary.totalExportsUsd ?? 0), 0),
+    };
+  }, [chainSummaries]);
+
+  const headerAlertCount = selectedChain
     ? executiveVulnerabilityData.filter((item) => item.dependency >= 75).length
-    : undefined;
-  const headerDeficitLabel = selectedChain ? money.format(metrics.totalImports - metrics.totalExports) : undefined;
+    : globalSummary?.criticalAlerts;
+  const headerAlertLabel = selectedChain
+    ? headerAlertCount !== undefined ? `${headerAlertCount} NCMs ≥75%` : undefined
+    : globalSummary ? `${globalSummary.criticalAlerts} Alertas Críticos` : undefined;
+  const headerDeficitLabel = selectedChain
+    ? money.format(metrics.totalImports - metrics.totalExports)
+    : globalSummary ? money.format(globalSummary.deficit) : undefined;
   const headerReferencePeriod = `ComexStat ${solarSovereignty?.reference_period ?? "Jan-Jun 2026"} · RAIS 2024`;
   const canExportChain = Boolean(selectedChain) && nibMatrixProducts.length > 0;
 
@@ -368,7 +401,8 @@ export default function MainAnalyticalDashboard() {
         ncmShortcuts={headerNcmShortcuts}
         onSelectChain={handleChainSelect}
         onSelectNcm={handleSelectNcmShortcut}
-        criticalCount={headerCriticalCount}
+        alertCount={headerAlertCount}
+        alertLabel={headerAlertLabel}
         deficitLabel={headerDeficitLabel}
         referencePeriod={headerReferencePeriod}
         readingMode={readingMode}
@@ -380,7 +414,12 @@ export default function MainAnalyticalDashboard() {
 
       {!selectedChain ? (
         <div className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8">
-          <ChainSelectionLanding onSelect={handleChainSelect} />
+          <ChainSelectionLanding
+            onSelect={handleChainSelect}
+            chains={chainCatalog}
+            summaries={chainSummaries}
+            isLoading={chainSummariesLoading}
+          />
         </div>
       ) : (
       <div className="mx-auto max-w-7xl space-y-10 px-4 py-8 sm:px-6 lg:px-8">
