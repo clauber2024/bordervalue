@@ -191,6 +191,22 @@ Na camada final:
 - `ChainDashboard` aplica o fator quando o produto vem da API.
 - Classificacao: prototipo visual por default; regra aplicavel quando o fator vier da camada Published.
 
+### Rateio setorial via MIP/IBGE (fertilizantes, aco, silicio)
+
+- Escopo: `analytical_industry_and_employment.proportion_factor`, gravado por `build_analytical_staging_sectors.py` (fertilizantes, aco) e `build_analytical_staging_silicio.py` (silicio).
+- Estado atual: `proportion_factor` e sempre `1.0` nas 3 cadeias -- sem rateio algum. O proprio comentario do script documenta a decisao: "there is nothing left to allocate" (producao) e "equal-weight approximation rather than a true per-product allocation" (RAIS). Ou seja, todo o valor de producao (PIA) e vinculos (RAIS) do CNAE mapeado sao atribuidos integralmente a cada produto conceitual daquele CNAE, mesmo quando o CNAE cobre mais de um produto da cadeia.
+- `database/data_access.py:455` retorna `"Matriz Insumo-Produto IBGE"` como `fonte_proxy` default quando `aplicado=False` -- e um rotulo, nao um valor calculado. Nenhum arquivo do IBGE e lido em lugar nenhum do pipeline hoje.
+- Investigacao da fonte, parte 1 -- dado oficial IBGE (2026-08-06): ao contrario do RenovaCalc/RenovaBio, o dado oficial puro nao da caminho limpo para ligar o rotulo a um valor real:
+  - A Matriz de Insumo-Produto completa (com coeficientes tecnicos Aij, granularidade Nivel 67 atividades x 127 produtos -- unico nivel fino o suficiente para separar, por exemplo, fertilizantes de "quimicos" em geral, ou aco de "metalurgia" em geral) e publicada em ciclo quinquenal irregular. Ultima edicao: **2015** (11 anos de defasagem em relacao ao ano-base 2026 do projeto).
+  - A Tabela de Recursos e Usos (TRU) do SCN, publicada anualmente e mais atual (edicao 2023, arquivos `12_tab*_2023.xls` no FTP do IBGE), so existe no **Nivel 12** -- agregacao setorial grosseira demais para o rateio produto-a-produto que o projeto precisa.
+  - Sem corte estadual/municipal oficial em nenhuma das duas versoes.
+  - Precisaria, alem disso, de crosswalk CNAE -> atividade MIP (existe correspondencia oficial do IBGE, mas nunca foi construida no projeto).
+- Investigacao da fonte, parte 2 -- literatura academica (2026-08-06): a academia brasileira ja resolveu (parcialmente) esse exato problema, em duas frentes:
+  - **Atualizacao temporal**: familia de algoritmos RAS/GRAS/RAWS (biproportional scaling) reequilibra a matriz 2015 nivel-fino usando as TRUs anuais como vetor de controle, gerando series estimadas sem perder granularidade setorial. Metodo de referencia: Guilhoto & Sesso Filho (2005, 2010). O [NEREUS/USP publica pronto e gratuito](https://www.usp.br/nereus/?dados=sistema-de-matrizes-de-insumo-produto-brasil-2010-2017) o resultado disso: series **nivel 68 setores**, anos **2010-2018**, xlsx, sem cadastro -- reduz a defasagem de 11 para ~8 anos mantendo o nivel de detalhe que a TRU nivel 12 nao tem.
+  - **Regionalizacao**: IPEA construiu uma Matriz Insumo-Produto Inter-Regional (MIP-ir, ano-base 2018) usando microdados de Nota Fiscal Eletronica (NF-e) para desagregar fluxos entre estados, cruzados com TRU/Contas Regionais/POF -- resultado: 27 UFs x 68 atividades. NEREUS tambem publica matrizes inter-regionais por estado na mesma linhagem metodologica.
+  - Residual que nenhuma das duas frentes resolve: nem NEREUS nem IPEA chegam a 2026 (best case e 2018) nem a nivel municipal (best case e UF); e sao reconstrucoes academicas, nao dado oficial IBGE -- precisariam ser citadas como metodologia de terceiros, com premissas proprias, nao como "fonte IBGE".
+- Classificacao: **limitacao conhecida, com mitigacao academica disponivel mas parcial** -- melhor que "sem solucao pronta": existe fonte de terceiros (NEREUS, nivel 68, ate 2018) que já bate a granularidade que falta na TRU anual do IBGE, mas ainda com defasagem residual (2018 vs. 2026) e sem corte municipal. Diferente do RenovaCalc (dado primario oficial, atual, plant-level), aqui o melhor caminho realista e uma reconstrucao academica de terceiros, nao o proprio IBGE. Ate decisao em contrario, tratar `proportion_factor=1.0` como aproximacao documentada, nao como bug pendente de fix trivial.
+
 ### Sankey AIPNET
 
 - Componente: `components/SovereigntySankeyChart.tsx`.
@@ -278,6 +294,7 @@ Tratar como prototipo visual ate nova integracao:
 - A experiencia Next ainda nao consome `outputs/final_border_value_2026` nem `dashboard/data.json`.
 - A topologia AIPNET ainda nao tem endpoint real; o modelo existe, mas a visualizacao usa topologias hardcoded.
 - ANM/AMB consta como camada complementar pendente, com `fact_anm_mineral_production.csv` sem linhas.
+- Rateio setorial (fertilizantes/aco/silicio) via MIP/IBGE nao tem fonte pronta para substituir `proportion_factor=1.0` -- ver "Rateio setorial via MIP/IBGE" acima; diferente do RenovaCalc, aqui a lacuna e estrutural (fonte defasada ou grosseira), nao so de engenharia.
 
 ## Proxima decisao recomendada
 
