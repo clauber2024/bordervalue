@@ -866,19 +866,32 @@ function executiveStageLabel(stage: string) {
   return labels[stage] ?? stage.replaceAll("_", " ");
 }
 
+// Cita a missão oficial da Nova Industria Brasil (Decreto no. 11.986/2024,
+// MDIC/BNDES) mais aderente a cada cadeia, em vez de um texto generico de
+// "diversificar fornecedores" repetido para qualquer insumo. As 6 missoes
+// oficiais: 1) Cadeias agroindustriais sustentaveis e digitais para a
+// seguranca alimentar, nutricional e energetica; 2) Complexo economico
+// industrial da saude; 3) Infraestrutura, saneamento, moradia e mobilidade
+// sustentaveis; 4) Transformacao digital da industria; 5) Bioeconomia,
+// descarbonizacao e transicao e seguranca energeticas; 6) Tecnologias de
+// soberania e defesa nacionais. Fonte: MDIC/ABDI, "Nova Industria Brasil"
+// (janelaunica.mdic.gov.br/portal/nova-industria-brasil).
 function sectorRecommendedPolicy(chainName: string, inputLabel: string) {
   const context = `${chainName} ${inputLabel}`.toLowerCase();
 
-  if (/aço|siderurg|ferro|grafite|ferroliga|laminado/.test(context)) {
-    return "Missão NIB: diversificar fornecedores e desenvolver capacidade nacional de insumos siderúrgicos compatíveis com rotas industriais de baixo carbono.";
+  if (/quartzo|silício|silicio|polissilício|polissilicio|wafer|fotovoltaic|módulo|modulo|célula|celula/.test(context)) {
+    return "Missão 5 da NIB (Bioeconomia, descarbonização e transição e segurança energéticas): diversificar fornecedores e desenvolver capacidade produtiva nacional na cadeia solar fotovoltaica, hoje concentrada na China nas etapas de polissilício e wafers.";
   }
-  if (/fertiliz|amônia|fosfat|potáss|ureia/.test(context)) {
-    return "Missão NIB: ampliar a oferta doméstica de fertilizantes de baixo carbono, diversificar origens e priorizar rotas com hidrogênio renovável e biometano.";
+  if (/aço|siderurg|ferro|grafite|ferroliga|laminado|estrutura/.test(context)) {
+    return "Missão 3 da NIB (Infraestrutura, saneamento, moradia e mobilidade sustentáveis): diversificar fornecedores de insumos siderúrgicos e desenvolver capacidade nacional em rotas compatíveis com a Missão 5 (descarbonização industrial).";
   }
-  if (/combust|saf|biometano|hidrogênio|eletrolis/.test(context)) {
-    return "Missão NIB: desenvolver fornecedores nacionais para combustíveis e tecnologias de baixo carbono, condicionando apoio à redução verificável de emissões.";
+  if (/fertiliz|amônia|amonia|fosfat|potáss|potass|ureia|rocha fosfática|rocha fosfatica/.test(context)) {
+    return "Missão 1 da NIB (Cadeias agroindustriais sustentáveis e digitais para a segurança alimentar, nutricional e energética): ampliar a oferta doméstica de fertilizantes, diversificar origens e reduzir a dependência externa que hoje ameaça a segurança alimentar nacional.";
   }
-  return "Missão NIB: diversificar fornecedores, validar alternativas tecnológicas e desenvolver capacidade produtiva nacional para o insumo crítico.";
+  if (/combust|saf|biometano|hidrogênio|hidrogenio|eletrolis|etanol|biodiesel|metanol|gás natural|gas natural/.test(context)) {
+    return "Missão 5 da NIB (Bioeconomia, descarbonização e transição e segurança energéticas): desenvolver fornecedores nacionais para combustíveis e tecnologias de baixo carbono, condicionando apoio à redução verificável de emissões.";
+  }
+  return "Direcionamento NIB a homologar: insumo ainda não mapeado explicitamente a uma das 6 missões da Nova Indústria Brasil (MDIC/BNDES).";
 }
 
 function formatPercentOneDecimal(value: number) {
