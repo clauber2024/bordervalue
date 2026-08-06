@@ -302,7 +302,7 @@ export default function MainAnalyticalDashboard() {
       <div className="mx-auto max-w-7xl space-y-10 px-4 py-8 sm:px-6 lg:px-8">
         {!selectedChain ? <ChainSelectionLanding onSelect={handleChainSelect} /> : (
         <>
-        <section className="rounded-xl border border-cyan-300/15 bg-cyan-400/[0.05] px-4 py-3 shadow-xl backdrop-blur-xl">
+        <section className="relative z-50 rounded-xl border border-cyan-300/15 bg-cyan-400/[0.05] px-4 py-3 shadow-xl backdrop-blur-xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">
