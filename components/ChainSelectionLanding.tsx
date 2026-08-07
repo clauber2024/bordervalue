@@ -33,26 +33,55 @@ const number = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
 
 type RiskStatus = "critical" | "warning" | "safe" | "unknown";
 
-function riskStatus(avgDependency?: number): RiskStatus {
-  if (avgDependency === undefined) return "unknown";
-  if (avgDependency >= 0.75) return "critical";
-  if (avgDependency >= 0.4) return "warning";
-  return "safe";
+type RiskPresentation = {
+  status: RiskStatus;
+  label: string;
+  style: string;
+  badgeText?: string;
+};
+
+const UNKNOWN_RISK: RiskPresentation = {
+  status: "unknown",
+  label: "Métricas em Atualização",
+  style: "bg-zinc-900 text-zinc-500 border-zinc-800",
+};
+
+// Classifica pelo pico de risco (maior dependência entre os insumos + contagem de itens
+// criticos), nao pela media da cadeia: uma media baixa pode esconder um unico insumo com
+// dependencia extrema (ex: Wafers fotovoltaicos a 97%) e sinalizar seguranca industrial
+// que nao existe.
+function riskPresentation(summary?: ChainSummary): RiskPresentation {
+  if (!summary?.ok) return UNKNOWN_RISK;
+
+  const criticalCount = summary.criticalCount ?? 0;
+  const maxDependency = summary.maxDependency ?? 0;
+  const avgDependency = summary.avgDependency ?? 0;
+
+  if (criticalCount > 0 || maxDependency >= 0.75) {
+    return {
+      status: "critical",
+      label: "Exposição Crítica",
+      style: "bg-red-950/70 text-red-300 border-red-800/60 shadow-[0_0_15px_rgba(239,68,68,0.15)]",
+      badgeText: criticalCount > 0 ? `${criticalCount} insumo${criticalCount > 1 ? "s" : ""} em alerta crítico` : undefined,
+    };
+  }
+
+  if (maxDependency >= 0.5 || avgDependency >= 0.4) {
+    return {
+      status: "warning",
+      label: "Atenção de Suprimento",
+      style: "bg-amber-950/70 text-amber-300 border-amber-800/60",
+      badgeText: "Risco moderado de importação",
+    };
+  }
+
+  return {
+    status: "safe",
+    label: "Exposição Controlada",
+    style: "bg-emerald-950/70 text-emerald-300 border-emerald-800/60",
+    badgeText: "Suprimento predominantemente doméstico",
+  };
 }
-
-const STATUS_LABEL: Record<RiskStatus, string> = {
-  critical: "Alerta Crítico de Dependência",
-  warning: "Atenção de Suprimento",
-  safe: "Exposição Controlada",
-  unknown: "Métricas em Atualização",
-};
-
-const STATUS_STYLE: Record<RiskStatus, string> = {
-  critical: "bg-red-950/70 text-red-300 border-red-800/60",
-  warning: "bg-amber-950/70 text-amber-300 border-amber-800/60",
-  safe: "bg-emerald-950/70 text-emerald-300 border-emerald-800/60",
-  unknown: "bg-zinc-900 text-zinc-500 border-zinc-800",
-};
 
 export function ChainSelectionLanding({ onSelect, chains, summaries, isLoading }: ChainSelectionLandingProps) {
   const [query, setQuery] = useState("");
@@ -200,14 +229,14 @@ function ChainCard({
   onSelect: (chainId: string) => void;
 }) {
   const isPublished = chain.status === "published";
-  const status = isPublished ? riskStatus(summary?.avgDependency) : "unknown";
+  const risk = isPublished ? riskPresentation(summary) : UNKNOWN_RISK;
 
   return (
     <div
       className={`group flex flex-col justify-between rounded-2xl border p-5 backdrop-blur-xl transition ${
         isPublished
           ? `border-white/[0.08] bg-zinc-900/40 shadow-xl ${
-              status === "critical" ? "hover:border-red-500/50 hover:shadow-[0_0_25px_rgba(239,68,68,0.12)]" : "hover:border-cyan-400/30 hover:bg-cyan-400/[0.04]"
+              risk.status === "critical" ? "hover:border-red-500/50 hover:shadow-[0_0_25px_rgba(239,68,68,0.12)]" : "hover:border-cyan-400/30 hover:bg-cyan-400/[0.04]"
             }`
           : "border-zinc-900 bg-zinc-950/40 opacity-60"
       }`}
@@ -217,8 +246,8 @@ function ChainCard({
           <span className="rounded-md border border-zinc-800 bg-zinc-900 px-2 py-0.5 font-mono text-[10px] text-zinc-400">
             {chain.group}
           </span>
-          <span className={`rounded-full border px-2 py-0.5 font-mono text-[10px] font-bold ${isPublished ? STATUS_STYLE[status] : "border-zinc-800 bg-zinc-900 text-zinc-500"}`}>
-            {isPublished ? STATUS_LABEL[status] : "Em Homologação"}
+          <span className={`rounded-full border px-2 py-0.5 font-mono text-[10px] font-bold ${isPublished ? risk.style : "border-zinc-800 bg-zinc-900 text-zinc-500"}`}>
+            {isPublished ? risk.label : "Em Homologação"}
           </span>
         </div>
 
@@ -244,6 +273,9 @@ function ChainCard({
               <div className="truncate border-t border-zinc-900 pt-1.5 text-zinc-400">
                 <span className="text-zinc-500">Gargalo:</span> {summary.topBottleneck}
               </div>
+            ) : null}
+            {risk.status === "critical" && risk.badgeText ? (
+              <div className="text-red-400">{risk.badgeText}</div>
             ) : null}
           </div>
         ) : isPublished ? (

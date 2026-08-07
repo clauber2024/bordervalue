@@ -4,7 +4,6 @@ import Link from "next/link";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
-  Calendar,
   Compass,
   Download,
   Search,
@@ -26,7 +25,6 @@ export type HeaderTopBarProps = {
   alertCount?: number;
   alertLabel?: string;
   deficitLabel?: string;
-  referencePeriod: string;
   readingMode: ReadingMode;
   onReadingModeChange: (mode: ReadingMode) => void;
   canExport: boolean;
@@ -43,7 +41,6 @@ export function HeaderTopBar({
   alertCount,
   alertLabel,
   deficitLabel,
-  referencePeriod,
   readingMode,
   onReadingModeChange,
   canExport,
@@ -141,11 +138,6 @@ export function HeaderTopBar({
             <div className="hidden items-center gap-2 rounded-xl border border-zinc-800/80 bg-zinc-900/60 px-2.5 py-1 font-mono text-xs sm:flex">
               <span className="text-zinc-500">Déficit:</span>
               <strong className="text-amber-400">{deficitLabel ?? "—"}</strong>
-            </div>
-
-            <div className="hidden items-center gap-1.5 rounded-xl border border-zinc-800/60 bg-zinc-900/40 px-2.5 py-1 font-mono text-xs text-zinc-400 2xl:flex">
-              <Calendar className="h-3.5 w-3.5 text-zinc-500" />
-              <span>{referencePeriod}</span>
             </div>
 
             <div className="hidden items-center rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-0.5 text-[11px] font-semibold sm:flex">

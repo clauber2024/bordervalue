@@ -9,6 +9,7 @@ export type ChainSummary = {
   totalImportsUsd?: number;
   totalExportsUsd?: number;
   avgDependency?: number;
+  maxDependency?: number;
   criticalCount?: number;
   inputsCount?: number;
   topBottleneck?: string;
@@ -54,6 +55,7 @@ function aggregateInputs(payload: SolarSovereigntyResponse) {
   const avgDependency = dependencyValues.length
     ? dependencyValues.reduce((sum, value) => sum + value, 0) / dependencyValues.length
     : undefined;
+  const maxDependency = dependencyValues.length ? Math.max(...dependencyValues) : undefined;
   const criticalCount = inputs.filter(
     (input) => (input.external_dependency ?? input.global_china_share ?? 0) >= 0.75,
   ).length;
@@ -64,6 +66,7 @@ function aggregateInputs(payload: SolarSovereigntyResponse) {
     totalImportsUsd,
     totalExportsUsd,
     avgDependency,
+    maxDependency,
     criticalCount,
     inputsCount: inputs.length,
     topBottleneck,

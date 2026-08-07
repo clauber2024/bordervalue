@@ -369,7 +369,6 @@ export default function MainAnalyticalDashboard() {
   const headerDeficitLabel = selectedChain
     ? money.format(metrics.totalImports - metrics.totalExports)
     : globalSummary ? money.format(globalSummary.deficit) : undefined;
-  const headerReferencePeriod = `ComexStat ${solarSovereignty?.reference_period ?? "Jan-Jun 2026"} · RAIS 2024`;
   const canExportChain = Boolean(selectedChain) && nibMatrixProducts.length > 0;
 
   const handleExportChain = useCallback(() => {
@@ -404,7 +403,6 @@ export default function MainAnalyticalDashboard() {
         alertCount={headerAlertCount}
         alertLabel={headerAlertLabel}
         deficitLabel={headerDeficitLabel}
-        referencePeriod={headerReferencePeriod}
         readingMode={readingMode}
         onReadingModeChange={handleReadingModeChange}
         canExport={canExportChain}
