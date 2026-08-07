@@ -230,13 +230,15 @@ export function SovereigntySankeyChart({
       // Prefer the real end-of-chain product (stage "produto_final", e.g.
       // "Módulos fotovoltaicos") over a generic system label when the data
       // actually names one -- a synthetic "Sistema solar fotovoltaico"
-      // fallback isn't the real product the chain produces.
+      // fallback isn't the real product the chain produces. Several inputs
+      // can share stage "produto_final" (modules, frames, glass, cells all
+      // land in "produto_final" for silicio) -- take only the highest-value
+      // one instead of joining every label, or the node reads as a run-on
+      // string ("Módulos fotovoltaicos / Molduras de alumínio / ...").
       const finalProductInputs = solarInputs
         .filter((input) => input.stage === "produto_final")
         .sort((left, right) => right.imports_value_usd - left.imports_value_usd);
-      const realFinalProductName = finalProductInputs.length
-        ? finalProductInputs.map((input) => input.label).join(" / ")
-        : null;
+      const realFinalProductName = finalProductInputs[0]?.label ?? null;
       const finalSystemName = isFertilizerChain
         ? "Oferta nacional de fertilizantes"
         : isTransitionFuelChain
