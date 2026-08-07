@@ -159,7 +159,7 @@ const valueChains: ValueChain[] = [
         id: "inversores_solares",
         name: "Inversores Solares",
         risk: "IMPORTACAO",
-        description: "Conversão CC/CA da geração fotovoltaica, com alta exposição cambial e aduaneira nas importações.",
+        description: "Conversão CC/CA da geração fotovoltaica, majoritariamente importada da China. Segundo a ABSOLAR, fabricantes instalados no Brasil produzem menos de 5% do que o setor solar demanda.",
         icon: Zap,
       },
       {
