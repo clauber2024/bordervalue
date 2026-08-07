@@ -37,6 +37,7 @@ type SankeyLinkDatum = {
   share?: number;
   routeClass?: ProductionRouteClass;
   routeRationale?: string;
+  dataGapReason?: string;
 };
 
 type SankeyChartData = {
@@ -200,6 +201,7 @@ export function SovereigntySankeyChart({
           alpha: 1, alphaApplied: false, supplierName, productName: input.label,
           flowLabel: `${supplierName} → ${input.label}`, share,
           routeClass: input.production_route_class, routeRationale: input.production_route_rationale,
+          dataGapReason: input.data_gap_reason ?? undefined,
         });
         links.push({
           id: `input-stage:${input.input_id}`, highlightId: input.input_id,
@@ -207,6 +209,7 @@ export function SovereigntySankeyChart({
           alpha: 1, alphaApplied: false, supplierName, productName: input.label,
           flowLabel: `${input.label} → ${stageName}`, share,
           routeClass: input.production_route_class, routeRationale: input.production_route_rationale,
+          dataGapReason: input.data_gap_reason ?? undefined,
         });
         const total = stageTotals.get(input.stage) ?? { index: stageNode, value: 0, raw: 0, exports: 0 };
         total.value += value;
@@ -722,6 +725,12 @@ function FlowTooltip({ active, payload }: SankeyTooltipProps) {
               {ROUTE_CLASS_LABELS[link.routeClass]}
             </p>
             {link.routeRationale ? <p className="mt-1 text-zinc-400">{link.routeRationale}</p> : null}
+          </div>
+        ) : null}
+        {link.dataGapReason ? (
+          <div className="flex items-start gap-1.5 rounded-md border border-amber-500/20 bg-amber-500/[0.06] px-2.5 py-2 leading-5 text-amber-200/90">
+            <Info className="mt-0.5 h-3 w-3 shrink-0 text-amber-400" strokeWidth={1.5} />
+            <p>{link.dataGapReason}</p>
           </div>
         ) : null}
         <p className="rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-2 leading-5 text-zinc-300">
