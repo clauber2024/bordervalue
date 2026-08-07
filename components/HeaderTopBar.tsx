@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   Calendar,
+  Compass,
   Download,
   Search,
   ShieldAlert,
@@ -122,6 +124,14 @@ export function HeaderTopBar({
           </div>
 
           <div className="flex shrink-0 items-center gap-2.5">
+            <Link
+              href="/sobre"
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-xs font-semibold text-zinc-300 transition hover:border-emerald-300/25 hover:bg-emerald-400/[0.07] hover:text-white"
+            >
+              <Compass className="h-3.5 w-3.5 text-emerald-300" />
+              <span className="hidden sm:inline">Sobre</span>
+            </Link>
+
             <div className="hidden items-center gap-2 rounded-xl border border-red-900/50 bg-red-950/30 px-2.5 py-1 font-mono text-xs lg:flex">
               <span className={`h-2 w-2 rounded-full bg-red-500 ${alertCount ? "animate-pulse" : ""}`} />
               <span className="text-zinc-400">Alerta:</span>

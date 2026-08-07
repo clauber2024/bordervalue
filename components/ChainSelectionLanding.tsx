@@ -123,7 +123,7 @@ export function ChainSelectionLanding({ onSelect, chains, summaries, isLoading }
       </div>
 
       <div className="mx-auto mt-10 flex max-w-5xl flex-col items-center gap-3 rounded-2xl border border-white/[0.08] bg-zinc-900/40 p-3 backdrop-blur-xl sm:flex-row sm:justify-between">
-        <div className="flex w-full items-center gap-2 overflow-x-auto sm:w-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex w-full min-w-0 flex-1 flex-wrap items-center gap-2">
           <Filter className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
           <FilterPill label="Todas as Cadeias" active={activeGroup === "all"} onClick={() => setActiveGroup("all")} />
           {groups.map((group) => (

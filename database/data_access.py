@@ -523,7 +523,7 @@ def _map_published_row(row: Mapping[str, Any], requested_chain: str) -> dict:
             "fator_alpha": _bounded_float(fator_alpha, minimum=0.0, maximum=1.0),
             "fonte_proxy": _as_str(
                 row.get("fonte_proxy"),
-                default="Matriz Insumo-Produto IBGE",
+                default="Aproximacao equal-weight (sem MIP -- ver MAPEAMENTO_EXISTENTE.md)",
             ),
         },
     }
