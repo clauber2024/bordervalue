@@ -300,7 +300,7 @@ export function SovereigntySankeyChart({
         });
       }
 
-      return { nodes, links };
+      return reorderStageNodes({ nodes, links });
     }
 
     products.forEach((product) => {
@@ -402,7 +402,7 @@ export function SovereigntySankeyChart({
               constant regardless of viewport -- on narrow screens the chart
               scrolls horizontally instead of squeezing columns to the point
               where labels overlap the next stage. */}
-          <div className="h-full min-w-[1260px]">
+          <div className="h-full min-w-[1340px]">
             <ResponsiveContainer width="100%" height="100%">
               <Sankey
                 data={sankeyData}
@@ -427,7 +427,7 @@ export function SovereigntySankeyChart({
                 nodeWidth={solarInputs.length ? 16 : 18}
                 linkCurvature={0.55}
                 iterations={48}
-                margin={{ top: 20, right: 232, bottom: 20, left: 20 }}
+                margin={{ top: 20, right: 300, bottom: 20, left: 20 }}
                 sort={false}
               >
                 <Tooltip content={<FlowTooltip />} />
@@ -817,6 +817,54 @@ function executiveStageLabel(stage: string) {
     transformacao: "Transformação siderúrgica",
     bens_transicao: "Bens da transição",
   } as Record<string, string>)[stage] ?? stage;
+}
+
+// Physical/economic sequence of each chain's production stages, keyed by the
+// raw `stage` value from the input data. Recharts' Sankey (with sort={false})
+// stacks same-column nodes in array order, and stage nodes get created in
+// whichever order their first (highest-supplier-value) input is processed --
+// not in production sequence. Unknown stages sort last instead of erroring.
+const STAGE_PHYSICAL_ORDER: Record<string, number> = {
+  // Silicio
+  extracao: 1, processamento: 2, refinamento: 3, componentes_avancados: 4, produto_final: 5,
+  // Aco
+  base_mineral: 1, reducao: 2, aciaria: 3, transformacao: 4, bens_transicao: 5,
+  // Fertilizantes
+  materias_primas: 1, intermediarios: 2, nitrogenados: 2, fosfatados: 2, potassicos: 2, formulacao: 3,
+  // Combustiveis de transicao
+  insumos: 1, molecula_principal: 2, derivados: 2, insumos_tecnologicos: 2, equipamentos: 2, aplicacoes_finais: 3,
+};
+
+function stagePhysicalOrder(nodeId: string): number {
+  const key = nodeId.startsWith("stage:") ? nodeId.slice(6) : "";
+  return STAGE_PHYSICAL_ORDER[key] ?? 99;
+}
+
+function reorderStageNodes(data: SankeyChartData): SankeyChartData {
+  const stageSlots = data.nodes
+    .map((node, index) => ({ node, index }))
+    .filter(({ node }) => node.kind === "stage");
+  if (stageSlots.length < 2) return data;
+
+  const orderedStageNodes = [...stageSlots]
+    .sort((a, b) => stagePhysicalOrder(a.node.id) - stagePhysicalOrder(b.node.id))
+    .map(({ node }) => node);
+
+  const newNodes = [...data.nodes];
+  stageSlots.forEach(({ index: slot }, i) => {
+    newNodes[slot] = orderedStageNodes[i];
+  });
+
+  const idByOldIndex = data.nodes.map((node) => node.id);
+  const newIndexById = new Map(newNodes.map((node, index) => [node.id, index]));
+
+  const links = data.links.map((link) => ({
+    ...link,
+    source: newIndexById.get(idByOldIndex[link.source]) ?? link.source,
+    target: newIndexById.get(idByOldIndex[link.target]) ?? link.target,
+  }));
+
+  return { nodes: newNodes, links };
 }
 
 function flowColor(
