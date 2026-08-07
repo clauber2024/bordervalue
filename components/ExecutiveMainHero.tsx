@@ -236,7 +236,7 @@ export const ExecutiveMainHero = ({
               <div className="w-fit rounded-lg border border-white/10 bg-zinc-950/80 px-3 py-1 text-xs font-semibold text-zinc-400">
                 Fatura Anual de Importação:{' '}
                 <strong className="font-mono text-amber-400">{alert.fobValue}</strong>
-                <span className="text-zinc-500"> (Valor FOB)</span>
+                <span className="text-zinc-500"> (Exposição Comercial)</span>
               </div>
             </div>
 
@@ -290,7 +290,7 @@ export const ExecutiveMainHero = ({
               </div>
               <div>
                 <span className="block text-[10px] font-semibold uppercase text-zinc-500">
-                  Líder Origem
+                  Principal País Origem
                 </span>
                 <span className="mt-1 block truncate text-xs font-bold text-amber-200">
                   {supplierTitle}

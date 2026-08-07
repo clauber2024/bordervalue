@@ -5,6 +5,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertTriangle,
   ArrowRight,
+  Cable,
+  Component,
   Cpu,
   Factory,
   Layers,
@@ -35,6 +37,19 @@ type SupplyNode = {
   icon: ElementType;
 };
 
+// Classificação por produção doméstica ativa (PIA): SEGURO = capacidade nacional consolidada,
+// IMPORTACAO = sem produção nacional relevante (exposição cambial/aduaneira), FORNECIMENTO =
+// capacidade nacional parcial/emergente (risco de disponibilidade, não de câmbio).
+type RiscoParalelo = "FORNECIMENTO" | "IMPORTACAO" | "SEGURO";
+
+type ParallelInput = {
+  id: string;
+  name: string;
+  risk: RiscoParalelo;
+  description: string;
+  icon: ElementType;
+};
+
 type ValueChain = {
   id: string;
   name: string;
@@ -42,6 +57,19 @@ type ValueChain = {
   hhiGlobal: string;
   primaryVulnerability: string;
   nodes: SupplyNode[];
+  parallelInputs?: ParallelInput[];
+};
+
+const parallelRiskLabel: Record<RiscoParalelo, string> = {
+  FORNECIMENTO: "Atenção de Fornecimento",
+  IMPORTACAO: "Atenção de Importação",
+  SEGURO: "Nacional / Seguro",
+};
+
+const parallelRiskClass: Record<RiscoParalelo, string> = {
+  FORNECIMENTO: "border-amber-500/30 bg-amber-500/10 text-amber-300",
+  IMPORTACAO: "border-red-500/30 bg-red-500/10 text-red-300",
+  SEGURO: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
 };
 
 const solarNodes: SupplyNode[] = [
@@ -79,7 +107,7 @@ const solarNodes: SupplyNode[] = [
     isCritical: true,
     isVulnerable: false,
     alertMessage:
-      "Alerta HHI Extremo: monopólio chinês de 95% na produção global de wafers.",
+      "Alerta HHI Extremo: monopólio chinês de mais de 97% na produção global de wafers.",
     relatedInputs: ["Silício grau metalúrgico", "Triclorossilano", "Hidrogênio de alta pureza", "Ácido clorídrico", "Reatores de deposição"],
     icon: Cpu,
   },
@@ -93,16 +121,16 @@ const solarNodes: SupplyNode[] = [
     isCritical: true,
     isVulnerable: true,
     alertMessage:
-      "Estrangulamento de soberania: alta dependência de importação para finalizar o produto nacional.",
+      "Risco Geopolítico Crítico: A China detém o monopólio extremo de mais de 97% da capacidade mundial de produção de Wafers fotovoltaicos, criando um estrangulamento de soberania para a montagem nacional.",
     relatedInputs: ["Polissilício solar", "Cadinho de quartzo", "Fio diamantado", "Lingotes monocristalinos", "Equipamentos de corte e limpeza"],
     icon: ShieldAlert,
   },
   {
     id: "celulas_modulos_pv_br",
-    name: "Células e Módulos PV",
+    name: "Módulos e Células PV",
     country: "Brasil",
     flag: "🇧🇷",
-    stage: "Produto final",
+    stage: "Montagem",
     description: "Montagem final de módulos fotovoltaicos no mercado doméstico.",
     relatedInputs: ["Células fotovoltaicas", "Vidro solar", "Encapsulantes EVA/POE", "Pasta de prata", "Fitas de cobre", "Molduras de alumínio", "Backsheet", "Caixa de junção"],
     isCritical: false,
@@ -119,6 +147,29 @@ const valueChains: ValueChain[] = [
     hhiGlobal: "0,91 · alto risco",
     primaryVulnerability: "Wafers fotovoltaicos — China (97%)",
     nodes: solarNodes,
+    parallelInputs: [
+      {
+        id: "vidro_temperado",
+        name: "Vidros Temperados de Segurança",
+        risk: "FORNECIMENTO",
+        description: "Cobertura frontal dos módulos, exige disponibilidade de capacidade fabril e logística de grandes volumes.",
+        icon: Component,
+      },
+      {
+        id: "inversores_solares",
+        name: "Inversores Solares",
+        risk: "IMPORTACAO",
+        description: "Conversão CC/CA da geração fotovoltaica, com alta exposição cambial e aduaneira nas importações.",
+        icon: Zap,
+      },
+      {
+        id: "fios_cobre",
+        name: "Fios de Cobre",
+        risk: "SEGURO",
+        description: "Condutores elétricos do sistema, com capacidade produtiva doméstica consolidada.",
+        icon: Cable,
+      },
+    ],
   },
   {
     id: "onshore-wind",
@@ -424,21 +475,39 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus }: { c
         </div> : null}
       </div>
 
+      <div className="relative mb-4 flex items-center gap-2">
+        <Layers className="h-4 w-4 text-amber-400" />
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-300">
+          Espinha Dorsal de Transformação · {currentChain.name}
+        </h3>
+      </div>
+
       <AnimatePresence mode="wait">
       <motion.div key={currentChain.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className={`relative grid grid-cols-1 gap-4 ${resolvedNodes.length === 5 ? "md:grid-cols-5" : "md:grid-cols-4"}`}>
         {resolvedNodes.map((node, index) => {
           const Icon = node.icon;
-          const statusClass = node.isVulnerable
-            ? "border-red-500/60 bg-red-950/35 shadow-[0_0_30px_rgba(239,68,68,0.16)]"
-            : node.isCritical
-              ? "border-amber-500/40 bg-amber-950/15"
-              : "border-zinc-800/80 bg-zinc-950/45 hover:border-zinc-700";
+          const isChokepoint = node.isCritical;
 
           return (
-            <div key={node.id} className="relative flex">
+            <div key={node.id} className="group/node relative flex">
               {index < resolvedNodes.length - 1 ? (
                 <ArrowRight className="absolute -right-4 top-1/2 z-20 hidden h-5 w-5 -translate-y-1/2 text-zinc-600 md:block" />
               ) : null}
+
+              {/* Tooltip de Estado — risco geopolítico do elo, em glassmorphism */}
+              {isChokepoint && node.alertMessage ? (
+                <div
+                  role="tooltip"
+                  className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-3 w-64 -translate-x-1/2 rounded-xl border border-red-500/30 bg-zinc-950/95 p-3.5 text-xs leading-relaxed text-zinc-200 opacity-0 shadow-2xl backdrop-blur-xl transition-opacity duration-200 group-hover/node:opacity-100 group-focus-within/node:opacity-100"
+                >
+                  <span className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-red-400">
+                    <ShieldAlert className="h-3.5 w-3.5" />
+                    Risco Geopolítico
+                  </span>
+                  {node.alertMessage}
+                </div>
+              ) : null}
+
               <motion.article
                 tabIndex={0}
                 role="button"
@@ -452,7 +521,25 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus }: { c
                   }
                 }}
                 whileHover={{ scale: 1.025, y: -4 }}
-                className={`relative flex min-h-64 w-full cursor-pointer flex-col rounded-2xl border p-5 outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-300 ${selectedNodeId === node.id ? "ring-2 ring-cyan-300/70" : ""} ${statusClass}`}
+                animate={
+                  isChokepoint
+                    ? {
+                        borderColor: ["rgba(239,68,68,0.35)", "rgba(239,68,68,0.7)", "rgba(239,68,68,0.35)"],
+                        boxShadow: [
+                          "0 0 0px rgba(239,68,68,0)",
+                          "0 0 20px rgba(239,68,68,0.22)",
+                          "0 0 0px rgba(239,68,68,0)",
+                        ],
+                      }
+                    : undefined
+                }
+                transition={isChokepoint ? { duration: 2.6, repeat: Infinity, ease: "easeInOut" } : undefined}
+                style={isChokepoint ? { borderWidth: 2, borderStyle: "solid" } : undefined}
+                className={`relative flex min-h-64 w-full cursor-pointer flex-col rounded-2xl border p-5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-cyan-300 ${selectedNodeId === node.id ? "ring-2 ring-cyan-300/70" : ""} ${
+                  isChokepoint
+                    ? "bg-red-950/25"
+                    : "border-white/[0.08] bg-zinc-900/40 backdrop-blur-xl hover:border-zinc-700"
+                }`}
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="rounded-full border border-zinc-700/70 bg-zinc-900/80 px-2 py-0.5 text-[10px] font-medium text-zinc-400">
@@ -461,7 +548,7 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus }: { c
                   <span className="text-xs text-zinc-300">{node.flag} {node.country}</span>
                 </div>
                 <div className="mt-5 flex items-start gap-3">
-                  <div className={`rounded-xl border p-2.5 ${node.isVulnerable ? "border-red-500/40 bg-red-500/15 text-red-300" : node.isCritical ? "border-amber-500/40 bg-amber-500/15 text-amber-300" : "border-cyan-500/25 bg-cyan-500/10 text-cyan-300"}`}>
+                  <div className={`rounded-xl border p-2.5 ${isChokepoint ? "border-red-500/40 bg-red-500/15 text-red-300" : "border-cyan-500/25 bg-cyan-500/10 text-cyan-300"}`}>
                     <Icon className="h-5 w-5" />
                   </div>
                   <div>
@@ -471,12 +558,10 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus }: { c
                 </div>
                 <p className="mt-4 flex-1 text-xs leading-5 text-zinc-400">{node.description}</p>
                 <div className="mt-4 border-t border-zinc-800/70 pt-3">
-                  {node.isVulnerable ? (
-                    <Status icon={ShieldAlert} label="Gargalo de soberania" className="text-red-300" />
-                  ) : node.isCritical ? (
-                    <Status icon={AlertTriangle} label="Concentração crítica" className="text-amber-300" />
+                  {isChokepoint ? (
+                    <Status icon={ShieldAlert} label={node.isVulnerable ? "Gargalo de Soberania" : "Concentração Crítica"} className="text-red-300" />
                   ) : (
-                    <Status icon={Lock} label="Capacidade nacional" className="text-emerald-300" />
+                    <Status icon={Lock} label="Capacidade Nacional" className="text-emerald-300" />
                   )}
                 </div>
               </motion.article>
@@ -485,6 +570,39 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus }: { c
         })}
       </motion.div>
       </AnimatePresence>
+
+      {currentChain.parallelInputs?.length ? (
+        <div className="relative mt-8">
+          <div className="mb-4 flex items-center gap-2">
+            <Component className="h-4 w-4 text-amber-400" />
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-300">
+              Insumos e Subcomponentes Paralelos
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {currentChain.parallelInputs.map((item) => {
+              const ParallelIcon = item.icon;
+              return (
+                <div
+                  key={item.id}
+                  className="flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-zinc-900/40 p-5 backdrop-blur-xl transition hover:border-white/20"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="rounded-xl border border-zinc-700/60 bg-zinc-800/80 p-2.5 text-zinc-300">
+                      <ParallelIcon className="h-5 w-5" />
+                    </div>
+                    <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${parallelRiskClass[item.risk]}`}>
+                      {parallelRiskLabel[item.risk]}
+                    </span>
+                  </div>
+                  <h4 className="mt-4 text-sm font-bold text-white">{item.name}</h4>
+                  <p className="mt-1.5 text-xs leading-5 text-zinc-400">{item.description}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       <AnimatePresence mode="wait">
         {selectedNode ? (
@@ -517,7 +635,7 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus }: { c
                         </span>
                       ))}
                     </div>
-                    <p className="mt-3 text-[10px] leading-4 text-zinc-600">Os destinos são tecnológicos e qualitativos; a largura do Sankey representa o valor FOB dos insumos, não a participação do consumo por modal.</p>
+                    <p className="mt-3 text-[10px] leading-4 text-zinc-600">Os destinos são tecnológicos e qualitativos; a largura do Sankey representa a fatura de importação/exportação dos insumos, não a participação do consumo por modal.</p>
                   </div>
                 ) : null}
                 {selectedNode.relatedInputs?.length ? (

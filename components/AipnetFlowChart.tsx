@@ -186,7 +186,7 @@ export const AipnetFlowChart = ({
             {formatCurrency(flow.totalValueFob)}
           </span>
           <span className="block text-[9px] text-zinc-500">
-            (Valor FOB / Jan-Jun 2026)
+            (Exposição Comercial / Jan-Jun 2026)
           </span>
         </div>
       </div>
