@@ -369,7 +369,7 @@ export default function MainAnalyticalDashboard() {
     ? executiveVulnerabilityData.filter((item) => item.dependency >= 75).length
     : globalSummary?.criticalAlerts;
   const headerAlertLabel = selectedChain
-    ? headerAlertCount !== undefined ? `${headerAlertCount} NCMs ≥75%` : undefined
+    ? headerAlertCount !== undefined ? `${headerAlertCount} Insumo${headerAlertCount === 1 ? "" : "s"} em Alerta Crítico` : undefined
     : globalSummary ? `${globalSummary.criticalAlerts} Alertas Críticos` : undefined;
   const headerDeficitLabel = selectedChain
     ? money.format(metrics.totalImports - metrics.totalExports)
@@ -501,6 +501,10 @@ export default function MainAnalyticalDashboard() {
               strategicQuestion={selectedChain === "silicio"
                 ? "Onde o Brasil possui capacidade e onde está o estrangulamento tecnológico da cadeia solar?"
                 : "Onde estão a capacidade nacional e os principais estrangulamentos desta cadeia?"}
+              greenAsset={selectedChain === "silicio" ? {
+                title: "Ativo de Descarbonização:",
+                description: "O Silício Grau Metalúrgico (Si-GM) produzido no Brasil possui pegada de carbono até 6x menor que o refinado na China, graças à matriz elétrica nacional (>84% renovável) — base para acesso a linhas do PADIS e da NIB.",
+              } : undefined}
             />
           </div>
 

@@ -13,6 +13,7 @@ import {
   Database,
   Layers3,
   Info,
+  Leaf,
   ShieldAlert,
   Sparkles,
 } from 'lucide-react';
@@ -41,10 +42,16 @@ export type ExecutiveMainKpi = {
   icon?: React.ReactNode;
 };
 
+export type ExecutiveGreenAsset = {
+  title: string;
+  description: string;
+};
+
 type ExecutiveMainHeroProps = {
   alert?: ExecutiveTopAlert;
   kpis?: ExecutiveMainKpi[];
   strategicQuestion?: string;
+  greenAsset?: ExecutiveGreenAsset;
 };
 
 const defaultAlert: ExecutiveTopAlert = {
@@ -125,12 +132,13 @@ const formatPercentage = (value: number) =>
     maximumFractionDigits: 1,
   });
 
-const formatHhi = (value: number) => value.toLocaleString('pt-BR');
+const formatHhi = (value: number) => value.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
 
 export const ExecutiveMainHero = ({
   alert = defaultAlert,
   kpis = defaultKpis,
   strategicQuestion = 'Onde o Brasil lidera e onde estão os principais estrangulamentos tecnológicos desta cadeia?',
+  greenAsset,
 }: ExecutiveMainHeroProps) => {
   const hasAuditedSupplier =
     alert.topSupplier !== 'Em auditoria' && alert.supplierShare > 0;
@@ -223,6 +231,15 @@ export const ExecutiveMainHero = ({
           <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-red-500/20 blur-3xl transition-colors group-hover:bg-red-500/30" />
 
           <div className="relative">
+            {greenAsset ? (
+              <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-emerald-500/25 bg-emerald-950/25 p-3 text-xs text-emerald-100">
+                <Leaf className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                <p className="leading-relaxed">
+                  <strong className="text-emerald-300">{greenAsset.title}</strong> {greenAsset.description}
+                </p>
+              </div>
+            ) : null}
+
             <div className="mb-4 flex flex-col justify-between gap-3 border-b border-red-500/20 pb-3 sm:flex-row sm:items-center">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-md border border-red-500/30 bg-red-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-red-300">
@@ -230,7 +247,7 @@ export const ExecutiveMainHero = ({
                   Alerta Máximo de Soberania
                 </span>
                 <span className="hidden text-[11px] font-medium text-zinc-400 md:inline">
-                  Motivo: maior risco de monopólio da pauta
+                  Prioridade de Ação Nacional: Substituição de Importações e Fortalecimento de Etapas Críticas
                 </span>
               </div>
               <div className="w-fit rounded-lg border border-white/10 bg-zinc-950/80 px-3 py-1 text-xs font-semibold text-zinc-400">
