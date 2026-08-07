@@ -276,7 +276,7 @@ export const ExecutiveMainHero = ({
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
               <p className="leading-relaxed">
                 <strong className="text-emerald-400">
-                  Por que este alerta está no topo?
+                  Critério de Priorização Institucional:
                 </strong>{' '}
                 {whyThisIsHere}
               </p>

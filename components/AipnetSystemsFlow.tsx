@@ -144,7 +144,7 @@ const valueChains: ValueChain[] = [
     id: "solar-pv",
     name: "Sistema Solar Fotovoltaico",
     category: "Energia solar e fotovoltaica",
-    hhiGlobal: "0,91 · alto risco",
+    hhiGlobal: "9.100 · alto risco",
     primaryVulnerability: "Wafers fotovoltaicos — China (97%)",
     nodes: solarNodes,
     parallelInputs: [
@@ -175,7 +175,7 @@ const valueChains: ValueChain[] = [
     id: "onshore-wind",
     name: "Tecnologias Eólicas Onshore",
     category: "Energia eólica",
-    hhiGlobal: "0,78 · risco moderado-alto",
+    hhiGlobal: "7.800 · risco moderado-alto",
     primaryVulnerability: "Ímãs permanentes de terras raras",
     nodes: [
       {
@@ -230,7 +230,7 @@ const valueChains: ValueChain[] = [
     id: "battery-storage",
     name: "Baterias de Íons de Lítio",
     category: "Armazenamento e eletromobilidade",
-    hhiGlobal: "0,88 · alto risco",
+    hhiGlobal: "8.800 · alto risco",
     primaryVulnerability: "Cátodos e refino químico de lítio",
     nodes: [
       {
