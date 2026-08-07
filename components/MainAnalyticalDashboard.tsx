@@ -263,14 +263,19 @@ export default function MainAnalyticalDashboard() {
     const avgDependency = data.kpis?.avgDependency ?? (data.products.length
       ? data.products.reduce((acc, item) => acc + item.metrics.externalDependency, 0) / data.products.length
       : 0);
-    const maxHhi = data.kpis?.maxHhi ?? Math.max(...data.products.map((item) => item.metrics.hhi), 0);
+    const maxHhiProduct = data.products.reduce<ConceptualProduct | undefined>(
+      (best, item) => (!best || item.metrics.hhi > best.metrics.hhi ? item : best),
+      undefined,
+    );
+    const maxHhi = data.kpis?.maxHhi ?? maxHhiProduct?.metrics.hhi ?? 0;
+    const maxHhiProductName = maxHhiProduct?.name.split("(")[0].trim();
     const topRisk = [...data.products].sort(
       (left, right) =>
         right.metrics.externalDependency * right.metrics.hhi -
         left.metrics.externalDependency * left.metrics.hhi,
     )[0];
 
-    return { totalImports, totalExports, avgDependency, maxHhi, topRisk };
+    return { totalImports, totalExports, avgDependency, maxHhi, maxHhiProductName, topRisk };
   }, [data.kpis, data.products]);
   const premiumProducts = useMemo(
     () => enrichSolarTechnicalProducts(
@@ -1068,6 +1073,7 @@ function buildExecutiveHeroKpis(metrics: {
   totalExports: number;
   avgDependency: number;
   maxHhi: number;
+  maxHhiProductName?: string;
 }): ExecutiveMainKpi[] {
   return [
     {
@@ -1093,8 +1099,8 @@ function buildExecutiveHeroKpis(metrics: {
     {
       label: "Concentração Máxima",
       value: number.format(metrics.maxHhi),
-      note: metrics.maxHhi >= 9000
-        ? "Monopólio: Sulfato de Amônio"
+      note: metrics.maxHhi >= 9000 && metrics.maxHhiProductName
+        ? `Monopólio: ${metrics.maxHhiProductName}`
         : hhiRiskLabel(metrics.maxHhi),
       tone: "danger",
       icon: <ShieldAlert className="h-4 w-4 text-red-400" />,

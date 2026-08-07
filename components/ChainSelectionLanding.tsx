@@ -31,6 +31,13 @@ const money = new Intl.NumberFormat("pt-BR", {
 
 const number = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
 
+function formatPeriod(referencePeriod: string): string {
+  const match = /^(\d{4})-H([12])$/.exec(referencePeriod);
+  if (!match) return referencePeriod;
+  const [, year, half] = match;
+  return half === "1" ? `Jan-Jun ${year}` : `Jul-Dez ${year}`;
+}
+
 type RiskStatus = "critical" | "warning" | "safe" | "unknown";
 
 type RiskPresentation = {
@@ -266,7 +273,7 @@ function ChainCard({
               <strong className="text-zinc-200">{summary.inputsCount} itens</strong>
             </div>
             <div className="flex items-center justify-between text-zinc-400">
-              <span>Exposição comercial:</span>
+              <span>Exposição comercial{summary.referencePeriod ? ` (${formatPeriod(summary.referencePeriod)})` : ""}:</span>
               <strong className="text-amber-400">{money.format(summary.totalImportsUsd ?? 0)}</strong>
             </div>
             {summary.topBottleneck ? (
