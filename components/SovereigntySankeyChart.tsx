@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { Info } from "lucide-react";
 import { ResponsiveContainer, Sankey, Tooltip } from "recharts";
 import type { ProdutoConceitual } from "../types/border-value";
 import type { ProductionRouteClass, SolarInputMetric } from "../types/solar-sovereignty";
@@ -368,6 +369,15 @@ export function SovereigntySankeyChart({
       </header>
 
       <div className="px-2 py-5 sm:px-4">
+        <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 text-xs text-zinc-400 backdrop-blur-md">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" strokeWidth={1.5} />
+          <p className="leading-relaxed">
+            <strong className="font-semibold text-zinc-200">Nota de Escopo Comercial (ComexStat/MDIC):</strong> Este
+            diagrama ilustra a distribuição da pauta importada e a concentração geográfica de fornecedores por
+            categoria de bem. A espessura das bandas reflete o valor financeiro (FOB) de cada pauta aduaneira, e não
+            uma sequência de transformação industrial doméstica.
+          </p>
+        </div>
         {solarInputs.length ? (
           <div className="mb-4 flex flex-col gap-3 rounded-xl border border-white/[0.07] bg-white/[0.025] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
