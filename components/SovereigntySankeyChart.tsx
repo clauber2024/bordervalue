@@ -156,6 +156,18 @@ export function SovereigntySankeyChart({
         supplierTotals.set(supplierName, (supplierTotals.get(supplierName) ?? 0) + Math.max(input.imports_value_usd, 0));
       });
 
+      // Suppliers whose combined share is under 0.1% of the chain's total imports add
+      // visual noise as standalone nodes without adding decision-relevant signal --
+      // collapse them into a single "Outros Fornecedores" node instead.
+      const LONG_TAIL_SHARE_THRESHOLD = 0.001;
+      const OTHER_SUPPLIERS_LABEL = "Outros Fornecedores";
+      const longTailSuppliers = new Set(
+        [...supplierTotals.entries()]
+          .filter(([, value]) => value / Math.max(solarImportTotal, 1) < LONG_TAIL_SHARE_THRESHOLD)
+          .map(([name]) => name),
+      );
+      const resolveSupplierName = (name: string) => (longTailSuppliers.has(name) ? OTHER_SUPPLIERS_LABEL : name);
+
       const orderedSolarInputs = [...solarInputs].sort((left, right) =>
         (supplierTotals.get(right.top_supplier?.country_name ?? "Origem não informada") ?? 0)
         - (supplierTotals.get(left.top_supplier?.country_name ?? "Origem não informada") ?? 0)
@@ -164,7 +176,7 @@ export function SovereigntySankeyChart({
       );
 
       orderedSolarInputs.forEach((input) => {
-        const supplierName = input.top_supplier?.country_name ?? "Origem não informada";
+        const supplierName = resolveSupplierName(input.top_supplier?.country_name ?? "Origem não informada");
         const rawValue = Math.max(input.imports_value_usd, 0);
         const exportsValue = Math.max(input.exports_value_usd, 0);
         const balance = exportsValue - rawValue;
@@ -382,7 +394,10 @@ export function SovereigntySankeyChart({
             )}
           </div>
         ) : null}
-        <div className="w-full overflow-x-auto transition-[height] duration-500" style={{ height: effectiveHeight }}>
+        <div
+          className="w-full overflow-x-auto transition-[height] duration-500 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-800 [&::-webkit-scrollbar-thumb:hover]:bg-zinc-700"
+          style={{ height: effectiveHeight, scrollbarColor: "#27272a transparent", scrollbarWidth: "thin" }}
+        >
           {/* Fixed min-width keeps node-column spacing (and thus label room)
               constant regardless of viewport -- on narrow screens the chart
               scrolls horizontally instead of squeezing columns to the point
