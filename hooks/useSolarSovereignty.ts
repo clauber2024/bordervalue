@@ -4,7 +4,7 @@ import useSWR from "swr";
 import type { SolarSovereigntyResponse } from "../types/solar-sovereignty";
 
 const fetcher = async (url: string): Promise<SolarSovereigntyResponse> => {
-  const response = await fetch(url, { headers: { Accept: "application/json" } });
+  const response = await fetch(url, { cache: "no-store", headers: { Accept: "application/json" } });
   if (!response.ok) throw new Error("Não foi possível carregar as métricas setoriais de soberania.");
   return response.json() as Promise<SolarSovereigntyResponse>;
 };

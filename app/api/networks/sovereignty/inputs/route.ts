@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     }
 
     const payload = await response.json();
-    return NextResponse.json(payload);
+    return NextResponse.json(payload, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json(
       { detail: `Não foi possível conectar à API Published para a cadeia ${chain}.` },
