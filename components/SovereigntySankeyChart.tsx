@@ -387,6 +387,9 @@ export function SovereigntySankeyChart({
           <div className="mb-4 flex flex-col gap-3 rounded-xl border border-white/[0.07] bg-white/[0.025] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Colorir fluxos por</p>
+              <p className="mt-1 text-[10px] leading-4 text-zinc-500">
+                Estas opções alteram apenas a cor das bandas. A espessura permanece fixada no valor importado (FOB).
+              </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 <FlowModeButton active={colorMode === "balance"} onClick={() => setColorMode("balance")} description="Compara exportações e importações. Vermelho indica déficit, âmbar indica equilíbrio relativo e verde indica superávit.">Saldo comercial</FlowModeButton>
                 <FlowModeButton active={colorMode === "imports"} onClick={() => setColorMode("imports")} description="Destaca em vermelho os caminhos com importações observadas. A largura continua representando o peso visual do valor FOB importado.">Importações</FlowModeButton>
