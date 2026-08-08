@@ -182,7 +182,13 @@ export function SovereigntySankeyChart({
         const rawValue = Math.max(input.imports_value_usd, 0);
         const exportsValue = Math.max(input.exports_value_usd, 0);
         const balance = exportsValue - rawValue;
-        const value = visualFlowValue(rawValue);
+        // "Colorir fluxos por" also drives band width now, not just color: em
+        // Exportacoes a espessura passa a refletir o valor exportado (revelando
+        // Si-GM/Quartzito, que quase nao aparecem no modo importacoes), e em
+        // Saldo comercial reflete o desequilibrio liquido absoluto. Importacoes
+        // e Fonte energetica mantem a largura ancorada no valor importado.
+        const metricRawValue = colorMode === "exports" ? exportsValue : colorMode === "balance" ? Math.abs(balance) : rawValue;
+        const value = visualFlowValue(metricRawValue);
         const source = ensureNode(`supplier:${supplierName}`, supplierName, "supplier");
         const inputNode = ensureNode(`input:${input.input_id}`, input.label, "input");
         const stageName = executiveStageLabel(input.stage);
@@ -386,15 +392,16 @@ export function SovereigntySankeyChart({
         {solarInputs.length ? (
           <div className="mb-4 flex flex-col gap-3 rounded-xl border border-white/[0.07] bg-white/[0.025] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Colorir fluxos por</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Métrica do fluxo</p>
               <p className="mt-1 text-[10px] leading-4 text-zinc-500">
-                Estas opções alteram apenas a cor das bandas. A espessura permanece fixada no valor importado (FOB).
+                Define a cor e a espessura das bandas. Em Exportações a largura passa a refletir o valor exportado
+                (revelando Si-GM e Quartzito); em Saldo comercial reflete o desequilíbrio líquido absoluto.
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
-                <FlowModeButton active={colorMode === "balance"} onClick={() => setColorMode("balance")} description="Compara exportações e importações. Vermelho indica déficit, âmbar indica equilíbrio relativo e verde indica superávit.">Saldo comercial</FlowModeButton>
-                <FlowModeButton active={colorMode === "imports"} onClick={() => setColorMode("imports")} description="Destaca em vermelho os caminhos com importações observadas. A largura continua representando o peso visual do valor FOB importado.">Importações</FlowModeButton>
-                <FlowModeButton active={colorMode === "exports"} onClick={() => setColorMode("exports")} description="Destaca em verde os caminhos com exportações observadas. Fluxos sem exportação no período permanecem em cinza.">Exportações</FlowModeButton>
-                <FlowModeButton active={colorMode === "route"} onClick={() => setColorMode("route")} description="Classifica cada insumo pela rota produtiva dominante hoje: vermelho é rota fóssil, âmbar é transição em curso, verde é rota já de baixo carbono, azul é potencial de descarbonização ainda não realizado no comércio, e cinza é rota indeterminada. Agregados (etapa, uso final) mostram a rota que domina o valor comercializado.">Fonte energética</FlowModeButton>
+                <FlowModeButton active={colorMode === "balance"} onClick={() => setColorMode("balance")} description="Compara exportações e importações. Vermelho indica déficit, âmbar indica equilíbrio relativo e verde indica superávit. A largura passa a refletir o desequilíbrio líquido absoluto de cada insumo.">Saldo comercial</FlowModeButton>
+                <FlowModeButton active={colorMode === "imports"} onClick={() => setColorMode("imports")} description="Destaca em vermelho os caminhos com importações observadas. A largura representa o valor FOB importado.">Importações</FlowModeButton>
+                <FlowModeButton active={colorMode === "exports"} onClick={() => setColorMode("exports")} description="Destaca em verde os caminhos com exportações observadas. A largura passa a refletir o valor FOB exportado -- insumos sem exportação (ex: Wafers, Módulos) encolhem a uma linha residual." >Exportações</FlowModeButton>
+                <FlowModeButton active={colorMode === "route"} onClick={() => setColorMode("route")} description="Classifica cada insumo pela rota produtiva dominante hoje: vermelho é rota fóssil, âmbar é transição em curso, verde é rota já de baixo carbono, azul é potencial de descarbonização ainda não realizado no comércio, e cinza é rota indeterminada. Agregados (etapa, uso final) mostram a rota que domina o valor comercializado. A largura permanece ancorada no valor importado.">Fonte energética</FlowModeButton>
                 {selectedFlowId ? <button type="button" onClick={() => setSelectedFlowId(null)} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-400 transition hover:text-white">Limpar destaque</button> : null}
               </div>
             </div>
@@ -461,7 +468,7 @@ export function SovereigntySankeyChart({
           />
           <ReadingPill
             label="Espessura"
-            value={solarInputs.length ? "A largura usa transformação logarítmica do valor FOB importado para tornar fluxos menores visíveis; não deve ser interpretada como proporção linear. O valor real está no tooltip." : "A largura da banda representa o valor FOB importado. Quando o Alpha está aplicado, a banda encolhe proporcionalmente."}
+            value={solarInputs.length ? "A largura usa transformação logarítmica do valor FOB da métrica ativa (importação, exportação ou saldo, conforme selecionado acima) para tornar fluxos menores visíveis; não deve ser interpretada como proporção linear. O valor real está no tooltip." : "A largura da banda representa o valor FOB importado. Quando o Alpha está aplicado, a banda encolhe proporcionalmente."}
           />
           <ReadingPill
             label="Cor"
