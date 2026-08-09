@@ -109,6 +109,8 @@ class SolarInputMetric(BaseModel):
     supplier_hhi_brazil: float = Field(ge=0, le=10000)
     top_supplier: Optional[SupplierMetric] = None
     suppliers: List[SupplierMetric]
+    top_destination: Optional[SupplierMetric] = None
+    destinations: List[SupplierMetric] = Field(default_factory=list)
     monthly_trade: List[MonthlyTradeMetric]
     domestic_production_value_usd_comparable: Optional[float] = Field(default=None, ge=0)
     external_dependency: Optional[float] = Field(default=None, ge=0)

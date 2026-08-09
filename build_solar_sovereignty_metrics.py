@@ -227,6 +227,7 @@ def main() -> None:
     write_json(payload)
     write_summary_csv(payload)
     write_country_csv(payload)
+    write_destination_csv(payload)
     write_monthly_csv(payload)
     write_sql(payload)
     write_green_jobs_sql(payload)
@@ -518,6 +519,7 @@ def build_payload(
         ]
         monthly = build_monthly(rows)
         suppliers = build_suppliers(rows, countries)
+        destinations = build_destinations(rows, countries)
         imports = sum(values["value_usd"] for key, values in rows if key[3] == "IMP" and key[1] == 2026)
         exports = sum(values["value_usd"] for key, values in rows if key[3] == "EXP" and key[1] == 2026)
         import_weight = sum(values["net_weight_kg"] for key, values in rows if key[3] == "IMP" and key[1] == 2026)
@@ -549,6 +551,8 @@ def build_payload(
                 "supplier_hhi_brazil": hhi,
                 "top_supplier": suppliers[0] if suppliers else None,
                 "suppliers": suppliers,
+                "top_destination": destinations[0] if destinations else None,
+                "destinations": destinations,
                 "monthly_trade": monthly,
                 "domestic_production_value_usd_comparable": domestic,
                 "domestic_production_value_brl": production_record["value_brl"],
@@ -586,10 +590,29 @@ def build_suppliers(
     rows: list[tuple[tuple[str, int, int, str, str], dict[str, float]]],
     countries: dict[str, dict[str, str]],
 ) -> list[dict[str, object]]:
+    return _build_country_breakdown(rows, countries, flow="IMP")
+
+
+def build_destinations(
+    rows: list[tuple[tuple[str, int, int, str, str], dict[str, float]]],
+    countries: dict[str, dict[str, str]],
+) -> list[dict[str, object]]:
+    # Mirrors build_suppliers, but for the EXP side of the same trade_rows --
+    # CO_PAIS in the official Comex Stat EXP extracts is the destination
+    # country, not the origin. The raw rows already carry this; only the
+    # IMP-only aggregation in build_suppliers discarded it for exports.
+    return _build_country_breakdown(rows, countries, flow="EXP")
+
+
+def _build_country_breakdown(
+    rows: list[tuple[tuple[str, int, int, str, str], dict[str, float]]],
+    countries: dict[str, dict[str, str]],
+    flow: str,
+) -> list[dict[str, object]]:
     values: dict[str, float] = defaultdict(float)
     for key, metrics in rows:
-        _, year, _, flow, country = key
-        if year == 2026 and flow == "IMP":
+        _, year, _, row_flow, country = key
+        if year == 2026 and row_flow == flow:
             values[country] += metrics["value_usd"]
     total = sum(values.values())
     return [
@@ -649,6 +672,17 @@ def write_country_csv(payload: dict[str, object]) -> None:
         rows.extend({"input_id": item["input_id"], **supplier} for supplier in item["suppliers"])
     write_rows(
         OUTPUT_DIR / "solar_input_suppliers_2026_h1.csv",
+        ["input_id", "country_code", "country_name", "country_iso3", "value_usd", "share"],
+        rows,
+    )
+
+
+def write_destination_csv(payload: dict[str, object]) -> None:
+    rows = []
+    for item in payload["inputs"]:
+        rows.extend({"input_id": item["input_id"], **destination} for destination in item["destinations"])
+    write_rows(
+        OUTPUT_DIR / "solar_input_destinations_2026_h1.csv",
         ["input_id", "country_code", "country_name", "country_iso3", "value_usd", "share"],
         rows,
     )

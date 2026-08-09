@@ -35,6 +35,8 @@ export type SolarInputMetric = {
   supplier_hhi_brazil: number;
   top_supplier: SolarSupplier | null;
   suppliers: SolarSupplier[];
+  top_destination: SolarSupplier | null;
+  destinations: SolarSupplier[];
   monthly_trade: SolarMonthlyTrade[];
   domestic_production_value_usd_comparable: number | null;
   domestic_production_value_brl: number | null;

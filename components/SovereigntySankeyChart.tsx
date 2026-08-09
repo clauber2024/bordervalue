@@ -157,7 +157,7 @@ export function SovereigntySankeyChart({
     ? "Nenhum insumo desta cadeia registra exportação relevante no período mapeado — a perspectiva de importações continua disponível na pílula ao lado."
     : "Nenhum produto conceitual disponível para compor o fluxo de soberania.";
   const scopeNote = perspective === "exports"
-    ? 'Este diagrama ilustra a distribuição da pauta exportada, do ativo nacional de origem até o beneficiamento doméstico. A espessura das bandas reflete o valor FOB exportado (ComexStat/MDIC). A base de dados atual não discrimina o país de destino por operação — por isso a etapa final aparece agregada em "Mercado Internacional", sem quebra por país (Europa/EUA/Japão).'
+    ? 'Este diagrama ilustra a distribuição da pauta exportada, do ativo nacional de origem até o principal país comprador de cada insumo. A espessura das bandas reflete o valor FOB exportado (ComexStat/MDIC). Cada insumo é conectado ao seu principal destino declarado na base — mercados com participação abaixo de 0,1% do total exportado são agrupados em "Outros Mercados".'
     : "Este diagrama ilustra a distribuição da pauta importada e a concentração geográfica de fornecedores por categoria de bem. A espessura das bandas reflete o valor FOB importado, e não uma sequência de transformação industrial doméstica.";
 
   return (
@@ -247,8 +247,8 @@ export function SovereigntySankeyChart({
         ) : null}
 
         <div
-          className="w-full overflow-x-auto transition-[height] duration-500 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-800 [&::-webkit-scrollbar-thumb:hover]:bg-zinc-700"
-          style={{ height: effectiveHeight, scrollbarColor: "#27272a transparent", scrollbarWidth: "thin" }}
+          className="w-full overflow-x-auto transition-[height] duration-500 [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-700/40 [&::-webkit-scrollbar-thumb:hover]:bg-zinc-700/70"
+          style={{ height: effectiveHeight, scrollbarColor: "rgba(82,82,91,0.4) transparent", scrollbarWidth: "thin" }}
         >
           {/* Fixed min-width keeps node-column spacing (and thus label room)
               constant regardless of viewport, and stable across perspective
@@ -311,7 +311,7 @@ export function SovereigntySankeyChart({
             label="Direção"
             value={
               perspective === "exports"
-                ? "O fluxo parte dos ativos nacionais (matéria-prima e beneficiamento no Brasil) até o mercado internacional."
+                ? "O fluxo parte dos ativos nacionais (matéria-prima e beneficiamento no Brasil) até o principal país comprador de cada insumo."
                 : "O fluxo parte da origem estrangeira até a aplicação industrial no Brasil."
             }
           />
@@ -401,10 +401,11 @@ function renderNode(
   const isDimmed = activeFlowId !== null && !focusedNodeIds.has(payload.id);
   const highlightStroke = payload.chokepoint ? "#ef4444" : payload.lowCarbon ? "#10b981" : null;
   const highlightFilter = payload.chokepoint
-    ? "drop-shadow(0 0 12px rgba(239,68,68,0.55))"
+    ? "brightness(1.1) drop-shadow(0 0 12px rgba(239,68,68,0.55))"
     : payload.lowCarbon
       ? "drop-shadow(0 0 12px rgba(16,185,129,0.5))"
       : "drop-shadow(0 8px 18px rgba(0,0,0,0.36))";
+  const fillOpacity = payload.kind === "destination" && payload.tone === "exports" ? 0.72 : 0.92;
 
   return (
     <motion.g
@@ -435,7 +436,7 @@ function renderNode(
         height={Math.max(height, 8)}
         rx={5}
         fill={flagPalette ? `url(#${gradientId})` : fill}
-        fillOpacity={0.92}
+        fillOpacity={fillOpacity}
         stroke={highlightStroke ?? fill}
         strokeOpacity={1}
         strokeWidth={isSelected ? 2.8 : 1.6}
@@ -497,13 +498,17 @@ function renderLink({
 ) {
   const strokeWidth = Math.max(linkWidth, 1.4);
   const path = `M${sourceX},${sourceY} C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}`;
-  const opacity = payload.alphaApplied && payload.alpha < 1 ? 0.38 : 0.5;
   const selectedNodeId = activeFlowId?.startsWith("node:") ? activeFlowId.slice(5) : null;
   const selectedLinkId = activeFlowId?.startsWith("flow:") ? activeFlowId.slice(5) : null;
-  const isSelected = selectedNodeId
+  // isHighlighted drives the two-state opacity model below: a quiet 0.05
+  // resting network (cuts the red/green haze when nothing is selected) that
+  // snaps up to 0.8 on the active path, instead of the previous three-tier
+  // gradient that kept every idle link visible enough to blur together.
+  const isHighlighted = selectedNodeId
     ? payload.source.id === selectedNodeId || payload.target.id === selectedNodeId || focusedHighlightIds.has(payload.highlightId)
     : selectedLinkId === payload.highlightId || focusedHighlightIds.has(payload.highlightId);
-  const isDimmed = activeFlowId !== null && !isSelected;
+  const isDimmed = activeFlowId !== null && !isHighlighted;
+  const restingOpacity = payload.alphaApplied && payload.alpha < 1 ? 0.03 : 0.05;
 
   return (
     <g>
@@ -511,9 +516,9 @@ function renderLink({
         d={path}
         fill="none"
         stroke={payload.color ?? "#22d3ee"}
-        strokeWidth={isSelected ? strokeWidth * 1.18 : strokeWidth}
+        strokeWidth={isHighlighted ? strokeWidth * 1.18 : strokeWidth}
         initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: isSelected ? 0.52 : isDimmed ? 0.025 : 0.15 }}
+        animate={{ pathLength: 1, opacity: isHighlighted ? 0.5 : isDimmed ? 0.02 : restingOpacity }}
         transition={{ pathLength: { duration: 0.9, ease: "easeInOut" }, opacity: { duration: 0.2 } }}
         strokeLinecap="butt"
         pointerEvents="none"
@@ -522,12 +527,12 @@ function renderLink({
         d={path}
         fill="none"
         stroke={payload.color ?? (payload.alphaApplied && payload.alpha < 1 ? "#a7f3d0" : "#67e8f9")}
-        strokeWidth={Math.max(strokeWidth * (isSelected ? 0.78 : 0.55), isSelected ? 2.4 : 1)}
+        strokeWidth={Math.max(strokeWidth * (isHighlighted ? 0.78 : 0.55), isHighlighted ? 2.4 : 1)}
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{
           pathLength: 1,
-          opacity: isSelected ? 0.95 : isDimmed ? 0.06 : opacity,
-          strokeWidth: Math.max(strokeWidth * (isSelected ? 0.78 : 0.55), isSelected ? 2.4 : 1),
+          opacity: isHighlighted ? 0.8 : isDimmed ? 0.03 : restingOpacity,
+          strokeWidth: Math.max(strokeWidth * (isHighlighted ? 0.78 : 0.55), isHighlighted ? 2.4 : 1),
         }}
         transition={{ pathLength: { duration: 1.05, ease: "easeInOut" }, opacity: { duration: 0.2 }, strokeWidth: { duration: 0.2 } }}
         strokeLinecap="butt"
@@ -1123,7 +1128,25 @@ function buildExportsTopology(
 
   const totalExports = exportableInputs.reduce((sum, input) => sum + input.exports_value_usd, 0);
   const orderedInputs = [...exportableInputs].sort((left, right) => right.exports_value_usd - left.exports_value_usd);
-  const destinationIndex = ensureNode("destination:mercado-internacional", "Mercado Internacional", "destination");
+
+  // Mirrors the long-tail collapse on the imports/supplier side: destination
+  // countries under 0.1% of the chain's total exports become a single
+  // "Outros Mercados" node instead of visual noise. Falls back to a generic
+  // label when an input has no top_destination (e.g. no EXP rows reached
+  // 2026 for it even though exports_value_usd > 0 from an earlier period).
+  const destinationTotals = new Map<string, number>();
+  exportableInputs.forEach((input) => {
+    const destName = input.top_destination?.country_name ?? "Destino não informado";
+    destinationTotals.set(destName, (destinationTotals.get(destName) ?? 0) + Math.max(input.exports_value_usd, 0));
+  });
+  const LONG_TAIL_SHARE_THRESHOLD = 0.001;
+  const OTHER_MARKETS_LABEL = "Outros Mercados";
+  const longTailDestinations = new Set(
+    [...destinationTotals.entries()]
+      .filter(([, value]) => value / Math.max(totalExports, 1) < LONG_TAIL_SHARE_THRESHOLD)
+      .map(([name]) => name),
+  );
+  const resolveDestinationName = (name: string) => (longTailDestinations.has(name) ? OTHER_MARKETS_LABEL : name);
 
   const stageTotals = new Map<string, { index: number; value: number; raw: number; lowCarbon: boolean }>();
   let lowCarbonCount = 0;
@@ -1161,22 +1184,39 @@ function buildExportsTopology(
     stageTotals.set(input.stage, total);
   });
 
-  nodes[destinationIndex].rawValue = totalExports;
-  nodes[destinationIndex].share = 1;
-
+  // Terminal layer: real per-destination-country nodes, mirroring the
+  // supplier (origin-country) layer on the imports side -- no synthetic
+  // "world market" node sits on top of them, same as the imports topology
+  // doesn't sit a "world supply" node below its supplier layer. A stage can
+  // fan out to more than one destination when its inputs' top buyers differ
+  // (e.g. Quartzo and Si-GM selling to different countries), so this groups
+  // by destination within each stage instead of a single stage-wide edge.
   stageTotals.forEach((total, stage) => {
-    if (total.lowCarbon) nodes[destinationIndex].lowCarbon = true;
     const stageColor = routeColoring
       ? routeClassColor(dominantRouteFromInputs(exportableInputs, stage))
       : exportAccentColor(total.lowCarbon);
-    links.push({
-      id: `export-stage-destination:${stage}`, highlightId: `export-stage:${stage}`,
-      source: total.index, target: destinationIndex, value: total.value, rawValue: total.raw,
-      tone: "exports", color: stageColor,
-      alpha: 1, alphaApplied: false, supplierName: "Produção nacional (Brasil)",
-      productName: "Mercado Internacional",
-      flowLabel: `${executiveStageLabel(stage)} → Mercado Internacional`,
-      share: total.raw / Math.max(totalExports, 1),
+    const stageDestinationTotals = new Map<string, number>();
+    exportableInputs
+      .filter((input) => input.stage === stage)
+      .forEach((input) => {
+        const destName = resolveDestinationName(input.top_destination?.country_name ?? "Destino não informado");
+        stageDestinationTotals.set(destName, (stageDestinationTotals.get(destName) ?? 0) + Math.max(input.exports_value_usd, 0));
+      });
+
+    stageDestinationTotals.forEach((destRaw, destName) => {
+      const destinationIndex = ensureNode(`destination:${destName}`, destName, "destination");
+      nodes[destinationIndex].rawValue = (nodes[destinationIndex].rawValue ?? 0) + destRaw;
+      nodes[destinationIndex].share = (nodes[destinationIndex].rawValue ?? 0) / Math.max(totalExports, 1);
+      if (total.lowCarbon) nodes[destinationIndex].lowCarbon = true;
+      links.push({
+        id: `export-stage-destination:${stage}:${destName}`, highlightId: `export-stage:${stage}`,
+        source: total.index, target: destinationIndex, value: visualFlowValue(destRaw), rawValue: destRaw,
+        tone: "exports", color: stageColor,
+        alpha: 1, alphaApplied: false, supplierName: "Produção nacional (Brasil)",
+        productName: destName,
+        flowLabel: `${executiveStageLabel(stage)} → ${destName}`,
+        share: destRaw / Math.max(totalExports, 1),
+      });
     });
   });
 
