@@ -1054,9 +1054,28 @@ function buildImportsTopology(
     : isTransitionFuelChain
       ? "Usos finais dos combustíveis de transição"
       : realFinalProductName ?? chainName ?? "Sistema solar fotovoltaico";
+  // Early/base-material stages (extração, processamento -- physical order
+  // <= 2, e.g. "Base mineral", "Silício metalúrgico") don't continue on to
+  // the finished-system node in the generic (non-fertilizer, non-transition
+  // -fuel) path. Collapsing them into the same terminal node as fully
+  // assembled imports (e.g. Módulos fotovoltaicos) implied a "base mineral
+  // -> finished module" import jump that isn't real -- these are barely-
+  // imported domestic inputs, not part of the finished-goods chokepoint
+  // story. They terminate at a separate "Insumos de Base" sink instead.
+  const isGenericChain = !isFertilizerChain && !isTransitionFuelChain;
+  const BASE_MATERIAL_STAGE_ORDER_THRESHOLD = 2;
+  const BASE_MATERIAL_LABEL = "Insumos de Base (uso industrial doméstico)";
+  const isBaseMaterialStage = (stage: string) =>
+    isGenericChain && stagePhysicalOrder(`stage:${stage}`) <= BASE_MATERIAL_STAGE_ORDER_THRESHOLD;
+
+  const finishedSystemRawValue = isGenericChain
+    ? [...stageTotals.entries()]
+        .filter(([stage]) => !isBaseMaterialStage(stage))
+        .reduce((sum, [, total]) => sum + total.raw, 0)
+    : solarImportTotal;
   const finalIndex = ensureNode("product:chain-system", finalSystemName, "product");
-  nodes[finalIndex].rawValue = solarImportTotal;
-  nodes[finalIndex].share = 1;
+  nodes[finalIndex].rawValue = finishedSystemRawValue;
+  nodes[finalIndex].share = finishedSystemRawValue / Math.max(solarImportTotal, 1);
   const integrationIndex = isFertilizerChain
     ? ensureNode("integration:fertilizer-production", "Produção e formulação de fertilizantes", "stage")
     : finalIndex;
@@ -1067,12 +1086,15 @@ function buildImportsTopology(
 
   stageTotals.forEach((total, stage) => {
     const destinationName = isTransitionFuelChain ? transitionFuelDestination(stage) : null;
+    const isBaseMaterial = isBaseMaterialStage(stage);
     const destinationIndex = destinationName
       ? ensureNode(`destination:${stage}`, destinationName, "destination")
-      : integrationIndex;
-    if (destinationName) {
-      nodes[destinationIndex].rawValue = total.raw;
-      nodes[destinationIndex].share = total.raw / Math.max(solarImportTotal, 1);
+      : isBaseMaterial
+        ? ensureNode("destination:insumos-de-base", BASE_MATERIAL_LABEL, "destination")
+        : integrationIndex;
+    if (destinationName || isBaseMaterial) {
+      nodes[destinationIndex].rawValue = (nodes[destinationIndex].rawValue ?? 0) + total.raw;
+      nodes[destinationIndex].share = (nodes[destinationIndex].rawValue ?? 0) / Math.max(solarImportTotal, 1);
       if (total.chokepoint) nodes[destinationIndex].chokepoint = true;
     } else if (total.chokepoint) {
       nodes[integrationIndex].chokepoint = true;
@@ -1080,15 +1102,20 @@ function buildImportsTopology(
     const stageColor = routeColoring
       ? routeClassColor(dominantRouteFromInputs(solarInputs, stage))
       : total.chokepoint ? "#ef4444" : "#f59e0b";
+    const targetName = isFertilizerChain
+      ? "Produção e formulação de fertilizantes"
+      : destinationName ?? (isBaseMaterial ? BASE_MATERIAL_LABEL : finalSystemName);
     links.push({
       id: `stage-final:${stage}`, highlightId: `stage:${stage}`,
       source: total.index, target: destinationIndex, value: total.value, rawValue: total.raw,
       tone: "imports", color: stageColor,
       alpha: 1, alphaApplied: false, supplierName: "Múltiplas origens",
-      productName: isFertilizerChain ? "Produção e formulação de fertilizantes" : destinationName ?? finalSystemName,
-      flowLabel: `${executiveStageLabel(stage)} → ${isFertilizerChain ? "Produção e formulação" : destinationName ?? finalSystemName}`,
+      productName: targetName,
+      flowLabel: `${executiveStageLabel(stage)} → ${targetName}`,
       share: total.raw / Math.max(solarImportTotal, 1),
     });
+    // Base-material stages terminate at their sink on purpose -- no link
+    // onward to finalIndex, which is the whole point of the split above.
     if (destinationName) {
       links.push({
         id: `destination-final:${stage}`, highlightId: `destination:${stage}`,
@@ -1101,7 +1128,7 @@ function buildImportsTopology(
     }
   });
 
-  if ([...stageTotals.values()].some((total) => total.chokepoint)) {
+  if ([...stageTotals.entries()].some(([stage, total]) => total.chokepoint && !isBaseMaterialStage(stage))) {
     nodes[finalIndex].chokepoint = true;
   }
 
