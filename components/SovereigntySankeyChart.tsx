@@ -1632,6 +1632,46 @@ function reorderSankeyNodes(data: SankeyChartData): SankeyChartData {
   return { nodes: newNodes, links, summary: data.summary };
 }
 
+// Recharts derives each link's React key from `link-${source}-${target}-
+// ${value}` (see recharts' Sankey renderLinks) -- so two DISTINCT link
+// entries that happen to connect the same node PAIR collide into duplicate
+// keys and log "two children with the same key" (React can't tell them
+// apart, and only renders one). This happens whenever several small inputs
+// collapse into the same long-tail bucket node (e.g. "Outros Insumos" /
+// "Outros Fornecedores") AND also land on the same downstream sink via a
+// tier-bypass branch (critical/final import routing, or the exports
+// destination/"Uso Interno" bypass) -- each collapsed input still pushes
+// its own link instead of being folded into the one edge that visually
+// represents that node pair, unlike the stageTotals/stageDestinationTotals
+// aggregations elsewhere in these builders, which already merge correctly.
+// Run once at the very end so every builder gets this guarantee regardless
+// of which branch produced the parallel links, instead of hunting down and
+// hand-aggregating every bypass site individually.
+function mergeParallelLinks(links: SankeyLinkDatum[]): SankeyLinkDatum[] {
+  const groups = new Map<string, SankeyLinkDatum[]>();
+  links.forEach((link) => {
+    const key = `${link.source}:${link.target}`;
+    const group = groups.get(key);
+    if (group) group.push(link);
+    else groups.set(key, [link]);
+  });
+
+  return Array.from(groups.entries()).map(([key, group]) => {
+    if (group.length === 1) return group[0];
+    const [first] = group;
+    return {
+      ...first,
+      id: `merged:${key}`,
+      highlightId: `merged:${key}`,
+      value: group.reduce((sum, link) => sum + link.value, 0),
+      rawValue: group.reduce((sum, link) => sum + link.rawValue, 0),
+      share: group.reduce((sum, link) => sum + (link.share ?? 0), 0),
+      alphaApplied: group.some((link) => link.alphaApplied),
+      alpha: Math.min(...group.map((link) => link.alpha)),
+    };
+  });
+}
+
 // Threshold (share of imports / global capacity concentrated in China) above
 // which a node/link is flagged as a sovereignty chokepoint and gets the
 // pulsing red treatment in the Imports perspective.
@@ -2063,7 +2103,8 @@ function buildImportsTopology(
     highlightLabel: "Gargalos ≥ 90% China",
   };
 
-  return { ...reorderSankeyNodes({ nodes, links }), summary };
+  const reordered = reorderSankeyNodes({ nodes, links });
+  return { ...reordered, links: mergeParallelLinks(reordered.links), summary };
 }
 
 // Perspectiva B -- "Inserção e Exportações": ativo nacional (matéria-prima /
@@ -2309,7 +2350,8 @@ function buildExportsTopology(
     highlightLabel: "Rotas de baixo carbono",
   };
 
-  return { ...reorderSankeyNodes({ nodes, links }), summary };
+  const reordered = reorderSankeyNodes({ nodes, links });
+  return { ...reordered, links: mergeParallelLinks(reordered.links), summary };
 }
 
 // Fallback usado apenas quando a página ainda não carregou `solarInputs`
