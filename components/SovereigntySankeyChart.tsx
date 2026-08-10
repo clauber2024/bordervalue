@@ -27,6 +27,11 @@ type SankeyNodeDatum = {
   // -- not recomputed from scratch when the detail panel renders, so there
   // is one source of truth for "what does this number add up to."
   contributions?: { label: string; amount: number }[];
+  // Only set on exports-perspective input nodes while the route-coloring
+  // lens is on (see buildExportsTopology) -- drives reorderSankeyNodes'
+  // vertical grouping so same-colored bands cluster together instead of
+  // interleaving with the rest of the column.
+  routeClass?: ProductionRouteClass;
 };
 
 type SankeyLinkDatum = {
@@ -965,9 +970,22 @@ function renderLink({
     : selectedLinkId === payload.highlightId || focusedHighlightIds.has(payload.highlightId);
   const isDimmed = !forceFullOpacity && filterActive && !isHighlighted;
   const restingOpacity = forceFullOpacity ? 1 : payload.alphaApplied && payload.alpha < 1 ? 0.03 : 0.05;
+  // Same lighter-top/darker-bottom vertical gradient technique the
+  // country-flag node fills already use (countryFlagPalette below) --
+  // gives every band the same "lit from above" sheen instead of a flat
+  // single-tone stroke, route-colored or not.
+  const baseColor = payload.color ?? (payload.alphaApplied && payload.alpha < 1 ? "#a7f3d0" : "#67e8f9");
+  const gradientId = `link-gradient-${safeSvgId(payload.highlightId)}`;
 
   return (
     <g>
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={shadeHexColor(baseColor, 0.32)} />
+          <stop offset="55%" stopColor={baseColor} />
+          <stop offset="100%" stopColor={shadeHexColor(baseColor, -0.22)} />
+        </linearGradient>
+      </defs>
       <motion.path
         d={path}
         fill="none"
@@ -982,7 +1000,7 @@ function renderLink({
       <motion.path
         d={path}
         fill="none"
-        stroke={payload.color ?? (payload.alphaApplied && payload.alpha < 1 ? "#a7f3d0" : "#67e8f9")}
+        stroke={`url(#${gradientId})`}
         strokeWidth={Math.max(strokeWidth * (isHighlighted ? 0.78 : 0.55), isHighlighted ? 2.4 : 1)}
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{
@@ -1061,6 +1079,26 @@ function buildRouteClassFocusContext(routeClass: ProductionRouteClass | null, da
     if (targetId) nodeIds.add(targetId);
   });
   return { nodeIds, highlightIds };
+}
+
+// Tints (positive) or shades (negative) a #rrggbb color toward white/black
+// by `percent` (0-1). Used to build the same lighter-to-darker vertical
+// gradient the country-flag node fills already use (see countryFlagPalette
+// below), so link bands share that "lit from above" texture instead of a
+// flat single-tone stroke.
+function shadeHexColor(hex: string, percent: number): string {
+  const clean = hex.replace("#", "");
+  const num = parseInt(clean, 16);
+  const target = percent < 0 ? 0 : 255;
+  const p = Math.min(Math.abs(percent), 1);
+  const channel = (shift: number) => {
+    const value = (num >> shift) & 0xff;
+    return Math.round((target - value) * p) + value;
+  };
+  const r = channel(16);
+  const g = channel(8);
+  const b = channel(0);
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
 }
 
 function safeSvgId(value: string) {
@@ -1609,11 +1647,13 @@ function reorderSankeyNodes(data: SankeyChartData): SankeyChartData {
   slotsByKind.forEach((slots, kind) => {
     if (slots.length < 2) return;
     const ordered = [...slots]
-      .sort((a, b) =>
-        kind === "stage"
-          ? stagePhysicalOrder(a.node.id) - stagePhysicalOrder(b.node.id)
-          : (b.node.rawValue ?? 0) - (a.node.rawValue ?? 0),
-      )
+      .sort((a, b) => {
+        if (kind === "stage") return stagePhysicalOrder(a.node.id) - stagePhysicalOrder(b.node.id);
+        const routeRankA = a.node.routeClass ? ROUTE_CLASS_RANK[a.node.routeClass] : -1;
+        const routeRankB = b.node.routeClass ? ROUTE_CLASS_RANK[b.node.routeClass] : -1;
+        if (routeRankA !== routeRankB) return routeRankA - routeRankB;
+        return (b.node.rawValue ?? 0) - (a.node.rawValue ?? 0);
+      })
       .map(({ node }) => node);
     slots.forEach(({ index: slot }, i) => {
       newNodes[slot] = ordered[i];
@@ -1718,6 +1758,14 @@ export const ROUTE_CLASS_LABELS: Record<ProductionRouteClass, string> = {
   untapped_potential: "Potencial não realizado",
   undetermined: "Rota indeterminada",
 };
+
+// Vertical grouping key for reorderSankeyNodes when the route-coloring lens
+// is on: same-category nodes sort together (matching this fixed legend
+// order) instead of being interleaved by raw value alone, so same-colored
+// bands land close to each other instead of crossing all over the chart.
+const ROUTE_CLASS_RANK: Record<ProductionRouteClass, number> = Object.fromEntries(
+  (Object.keys(ROUTE_CLASS_LABELS) as ProductionRouteClass[]).map((key, index) => [key, index]),
+) as Record<ProductionRouteClass, number>;
 
 function routeClassColor(routeClass?: ProductionRouteClass | null): string {
   return routeClass ? ROUTE_CLASS_COLORS[routeClass] : ROUTE_CLASS_COLORS.undetermined;
@@ -2217,6 +2265,10 @@ function buildExportsTopology(
     nodes[inputNode].rawValue = (nodes[inputNode].rawValue ?? 0) + rawValue;
     nodes[inputNode].share = (nodes[inputNode].rawValue ?? 0) / Math.max(totalProductionBasis, 1);
     if (isLowCarbon) nodes[inputNode].lowCarbon = true;
+    // Only tag while the lens is actually on -- reorderSankeyNodes only
+    // groups by this when it's present, so the default (uncolored) layout
+    // stays exactly as it was.
+    if (routeColoring) nodes[inputNode].routeClass = input.production_route_class;
     addContribution(nodes, inputNode, input.label, rawValue);
 
     // Same rule as the imports side: only extração/processamento (order <=
