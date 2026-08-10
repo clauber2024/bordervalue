@@ -184,7 +184,10 @@ export function SovereigntySankeyChart({
     highlightLabel: "Fluxos com Alpha",
   };
   const activeFlowId = selectedFlowId ?? hoveredFlowId;
-  const focusContext = useMemo(() => buildFocusContext(activeFlowId, sankeyData), [activeFlowId, sankeyData]);
+  const selectedNodeFlowId = selectedFlowId?.startsWith("node:") ? selectedFlowId : null;
+  const routeLensFullOpacity = routeColoring && perspective === "exports" && selectedNodeFlowId === null;
+  const opacityFlowId = routeColoring && perspective === "exports" ? selectedNodeFlowId : activeFlowId;
+  const focusContext = useMemo(() => buildFocusContext(opacityFlowId, sankeyData), [opacityFlowId, sankeyData]);
   // Detail panel below the chart (same pattern as AipnetSystemsFlow's
   // selected-node aside) instead of a clickable element inside the
   // recharts Tooltip -- no precedent in this codebase for interactive
@@ -428,15 +431,16 @@ export function SovereigntySankeyChart({
                       nameKey="name"
                       node={(props: SankeyNodeRenderProps) => renderNode(
                         props,
-                        activeFlowId,
+                        opacityFlowId,
                         focusContext.nodeIds,
                         handleSelectFlow,
                         (id) => setHoveredFlowId(id),
                       )}
                       link={(props: SankeyLinkRenderProps) => renderLink(
                         props,
-                        activeFlowId,
+                        opacityFlowId,
                         focusContext.highlightIds,
+                        routeLensFullOpacity,
                         handleSelectFlow,
                         (id) => setHoveredFlowId(id),
                       )}
@@ -771,6 +775,7 @@ function renderLink({
 }: SankeyLinkRenderProps,
   activeFlowId: string | null,
   focusedHighlightIds: Set<string>,
+  forceFullOpacity: boolean,
   onSelect: (id: string) => void,
   onHover: (id: string | null) => void,
 ) {
@@ -785,8 +790,8 @@ function renderLink({
   const isHighlighted = selectedNodeId
     ? payload.source.id === selectedNodeId || payload.target.id === selectedNodeId || focusedHighlightIds.has(payload.highlightId)
     : selectedLinkId === payload.highlightId || focusedHighlightIds.has(payload.highlightId);
-  const isDimmed = activeFlowId !== null && !isHighlighted;
-  const restingOpacity = payload.alphaApplied && payload.alpha < 1 ? 0.03 : 0.05;
+  const isDimmed = !forceFullOpacity && activeFlowId !== null && !isHighlighted;
+  const restingOpacity = forceFullOpacity ? 1 : payload.alphaApplied && payload.alpha < 1 ? 0.03 : 0.05;
 
   return (
     <g>
