@@ -1,5 +1,6 @@
 export { AipnetFlowChart } from "./AipnetFlowChart";
 export { AipnetSystemsFlow } from "./AipnetSystemsFlow";
+export { CarbonFootprintIndustrialBlock, computeCarbonRouteExposure } from "./CarbonFootprintIndustrialBlock";
 export { ChainDashboard } from "./ChainDashboard";
 export { ChainSelectionLanding } from "./ChainSelectionLanding";
 export { ChainImpactTreemap } from "./ChainImpactTreemap";

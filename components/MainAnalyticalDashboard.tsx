@@ -18,6 +18,7 @@ import {
 import { type AipnetFlow } from "./AipnetFlowChart";
 import { AipnetSystemsFlow } from "./AipnetSystemsFlow";
 import type { AipnetAnalysisFocus } from "./AipnetSystemsFlow";
+import { CarbonFootprintIndustrialBlock } from "./CarbonFootprintIndustrialBlock";
 import { ChainSelectionLanding } from "./ChainSelectionLanding";
 import { ExecutiveMainHero, type ExecutiveMainKpi, type ExecutiveTopAlert } from "./ExecutiveMainHero";
 import { ExecutiveMetadataFooter, type ExecutiveMetadata } from "./ExecutiveMetadataFooter";
@@ -558,6 +559,19 @@ export default function MainAnalyticalDashboard() {
                   title="Fluxo AIPNET por produto conceitual"
                 />
               </ExpandableAnalyticsPanel>
+
+              {solarSovereignty?.inputs.length ? (
+                <ExpandableAnalyticsPanel
+                  title="Exposição de carbono da pauta importada"
+                  subtitle="Distribuição real por rota produtiva declarada, cruzada com o contexto energético nacional (BEN/EPE)"
+                >
+                  <CarbonFootprintIndustrialBlock
+                    solarInputs={solarSovereignty.inputs}
+                    energyContext={energyContext}
+                    chainName={selectedChainMetadata?.name ?? solarSovereignty?.chain_name}
+                  />
+                </ExpandableAnalyticsPanel>
+              ) : null}
 
               {nibMatrixProducts.length ? (
                 <div ref={nibRef} className="scroll-mt-40 md:scroll-mt-28">

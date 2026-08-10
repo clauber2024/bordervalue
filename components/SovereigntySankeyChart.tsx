@@ -136,7 +136,12 @@ export function SovereigntySankeyChart({
   const sankeyData = useMemo<SankeyChartData>(() => {
     if (solarInputs.length) {
       return perspective === "imports"
-        ? buildImportsTopology(solarInputs, chainName, routeColoring)
+        // Production-route classification (fóssil/transição/baixo carbono)
+        // doesn't add decision-relevant signal for a vulnerability/
+        // concentration reading, so Importações always shows severity-by-
+        // concentration color -- the toggle only exists on Exportações,
+        // where it pairs naturally with the "baixo carbono" framing.
+        ? buildImportsTopology(solarInputs, chainName, false)
         : buildExportsTopology(solarInputs, routeColoring);
     }
     return buildProductTopology(products, perspective);
@@ -204,14 +209,13 @@ export function SovereigntySankeyChart({
           </p>
         </div>
 
-        {solarInputs.length ? (
+        {solarInputs.length && perspective === "exports" ? (
           <div className="mb-4 flex flex-col gap-3 rounded-xl border border-white/[0.07] bg-white/[0.025] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Lente opcional</p>
               <p className="mt-1 text-[10px] leading-4 text-zinc-500">
-                Classifica cada {perspective === "imports" ? "insumo importado" : "ativo exportado"} pela rota produtiva
-                dominante (fóssil, transição, baixo carbono ou potencial não realizado), independente da direção do
-                comércio.
+                Classifica cada ativo exportado pela rota produtiva dominante (fóssil, transição, baixo carbono ou
+                potencial não realizado), independente da direção do comércio.
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 <button
@@ -242,8 +246,8 @@ export function SovereigntySankeyChart({
               </div>
             ) : (
               <div className="flex items-center gap-2 text-[10px] text-zinc-500">
-                <span className={`h-2 w-12 rounded-full bg-gradient-to-r ${perspective === "imports" ? "from-amber-400 via-orange-500 to-red-500" : "from-emerald-300 via-emerald-400 to-emerald-600"}`} />
-                {perspective === "imports" ? "baixa → alta concentração chinesa" : "exportação parcial → predominância nacional"}
+                <span className="h-2 w-12 rounded-full bg-gradient-to-r from-emerald-300 via-emerald-400 to-emerald-600" />
+                exportação parcial → predominância nacional
               </div>
             )}
           </div>
@@ -325,7 +329,7 @@ export function SovereigntySankeyChart({
           <ReadingPill
             label="Cor"
             value={
-              routeColoring
+              perspective === "exports" && routeColoring
                 ? "A cor classifica a rota produtiva dominante: vermelho é fóssil, âmbar é transição em curso, verde é baixo carbono predominante, azul é potencial não realizado e cinza é indeterminada."
                 : perspective === "exports"
                   ? "Verde-esmeralda em toda a rede; tom mais vibrante nos ativos com rota produtiva de baixo carbono predominante (ex.: Si-GM nacional). O nó Uso Interno aparece em cinza, por não ser um país comprador."
@@ -400,7 +404,17 @@ function renderNode(
     : payload.criticalImport
       ? "#ef4444"
       : nodeFill(payload.kind, payload.tone);
-  const flagPalette = payload.kind === "supplier" ? countryFlagPalette(payload.name) : null;
+  // Export-perspective destination nodes are real buyer countries (same
+  // treatment as import-side suppliers) -- except the ones that aren't a
+  // country at all: "Uso Interno" (domesticUse), the long-tail "Outros
+  // Mercados" bucket, and the "Destino não informado" fallback.
+  const isCountryDestination =
+    payload.kind === "destination" &&
+    payload.tone === "exports" &&
+    !payload.domesticUse &&
+    payload.name !== "Outros Mercados" &&
+    payload.name !== "Destino não informado";
+  const flagPalette = payload.kind === "supplier" || isCountryDestination ? countryFlagPalette(payload.name) : null;
   const gradientId = `country-${safeSvgId(payload.id)}`;
   const labelX = x + width + 10;
   const labelY = y + Math.max(height / 2, 8);
@@ -635,6 +649,16 @@ function countryFlagPalette(countryName: string): [string, string, string] {
   if (country.includes("bolivia")) return ["#d52b1e", "#f9e300", "#007934"];
   if (country.includes("trinidad") || country.includes("tobago")) return ["#da1a35", "#ffffff", "#000000"];
   if (country.includes("peru")) return ["#d91023", "#ffffff", "#d91023"];
+  if (country.includes("mexico")) return ["#006847", "#ffffff", "#ce1126"];
+  if (country.includes("chile")) return ["#0039a3", "#ffffff", "#d52b1e"];
+  if (country.includes("paraguai") || country.includes("paraguay")) return ["#d52b1e", "#ffffff", "#0038a8"];
+  if (country.includes("uruguai") || country.includes("uruguay")) return ["#0038a8", "#ffffff", "#0038a8"];
+  if (country.includes("colombia")) return ["#fcd116", "#003893", "#ce1126"];
+  if (country.includes("singapura") || country.includes("singapore")) return ["#ed2939", "#ffffff", "#ffffff"];
+  if (country.includes("india")) return ["#ff9933", "#ffffff", "#138808"];
+  if (country.includes("holanda") || country.includes("paises baixos") || country.includes("netherlands")) return ["#ae1c28", "#ffffff", "#21468b"];
+  if (country.includes("portugal")) return ["#006600", "#006600", "#ff0000"];
+  if (country.includes("reino unido") || country.includes("united kingdom")) return ["#012169", "#ffffff", "#c8102e"];
   return ["#0e7490", "#67e8f9", "#155e75"];
 }
 
@@ -915,7 +939,10 @@ function exportAccentColor(isLowCarbon: boolean) {
 // buyer countries even though it now shares the same width/share scale.
 const DOMESTIC_USE_COLOR = "#71717a";
 
-const ROUTE_CLASS_COLORS: Record<ProductionRouteClass, string> = {
+// Exported so other components (e.g. CarbonFootprintIndustrialBlock) reuse
+// the same color/label dictionary instead of hardcoding a second copy that
+// can drift out of sync with this one.
+export const ROUTE_CLASS_COLORS: Record<ProductionRouteClass, string> = {
   fossil_dominant: "#f87171",
   transition_underway: "#f59e0b",
   low_carbon_dominant: "#34d399",
@@ -923,7 +950,7 @@ const ROUTE_CLASS_COLORS: Record<ProductionRouteClass, string> = {
   undetermined: "#71717a",
 };
 
-const ROUTE_CLASS_LABELS: Record<ProductionRouteClass, string> = {
+export const ROUTE_CLASS_LABELS: Record<ProductionRouteClass, string> = {
   fossil_dominant: "Fóssil dominante",
   transition_underway: "Transição em curso",
   low_carbon_dominant: "Baixo carbono predominante",
