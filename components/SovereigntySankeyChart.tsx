@@ -22,6 +22,11 @@ type SankeyNodeDatum = {
   lowCarbon?: boolean;
   domesticUse?: boolean;
   criticalImport?: boolean;
+  // Which individual solarInputs (by label) roll up into this node's
+  // rawValue, tracked at build time by whichever builder created the node
+  // -- not recomputed from scratch when the detail panel renders, so there
+  // is one source of truth for "what does this number add up to."
+  contributions?: { label: string; amount: number }[];
 };
 
 type SankeyLinkDatum = {
@@ -184,6 +189,7 @@ export function SovereigntySankeyChart({
         share: node.share,
         tone: node.tone,
         dataSource: dataSourceLabel(node.tone, node.domesticUse),
+        methodology: nodeMethodology(node.kind, node.tone, node.id, node.domesticUse),
         routeClass: undefined as ProductionRouteClass | undefined,
         routeRationale: undefined as string | undefined,
         dataGapReason: undefined as string | undefined,
@@ -194,6 +200,7 @@ export function SovereigntySankeyChart({
         focusNodeId: node.id,
         focusStage: resolveFocusStage(node.id, solarInputs),
         focusInput: relatedInput?.label,
+        contributions: node.contributions,
       };
     }
     if (selectedLinkDatum) {
@@ -206,6 +213,7 @@ export function SovereigntySankeyChart({
         share: link.share,
         tone: link.tone,
         dataSource: dataSourceLabel(link.tone, link.domesticUse),
+        methodology: `Valor FOB ${link.tone === "exports" ? "exportado" : "importado"} (ComexStat/MDIC) deste fluxo específico, entre as duas etapas indicadas no título.`,
         routeClass: link.routeClass,
         routeRationale: link.routeRationale,
         dataGapReason: link.dataGapReason,
@@ -216,6 +224,7 @@ export function SovereigntySankeyChart({
         focusNodeId: link.highlightId,
         focusStage: resolveFocusStage(link.highlightId, solarInputs),
         focusInput: link.productName,
+        contributions: undefined as SankeyNodeDatum["contributions"],
       };
     }
     return null;
@@ -410,6 +419,10 @@ export function SovereigntySankeyChart({
                   <Info className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
                   <span>Fonte oficial: {detailSubject.dataSource}</span>
                 </div>
+                <p className="mt-2 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs leading-relaxed text-zinc-400">
+                  <span className="font-semibold text-zinc-300">Como este número é calculado: </span>
+                  {detailSubject.methodology}
+                </p>
                 {detailSubject.routeRationale ? (
                   <p className="mt-3 rounded-md border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs leading-relaxed text-zinc-300">
                     {detailSubject.routeRationale}
@@ -431,6 +444,25 @@ export function SovereigntySankeyChart({
                 ) : null}
                 {detailSubject.domesticUse ? (
                   <p className="mt-2 text-xs leading-relaxed text-zinc-400">Ficou no Brasil em vez de ser exportado — não é um país comprador.</p>
+                ) : null}
+                {detailSubject.contributions && detailSubject.contributions.length > 1 ? (
+                  <div className="mt-4 border-t border-white/[0.06] pt-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                      Detalhamento de composição
+                    </p>
+                    <ul className="mt-2 max-h-40 space-y-1.5 overflow-y-auto pr-1">
+                      {[...detailSubject.contributions]
+                        .sort((a, b) => b.amount - a.amount)
+                        .map((item) => (
+                          <li key={item.label} className="flex items-center justify-between gap-3 text-xs text-zinc-300">
+                            <span className="truncate">{item.label}</span>
+                            <span className="shrink-0 font-mono text-zinc-400">
+                              {usdCompact.format(item.amount)} · {percent.format(item.amount / Math.max(detailSubject.amount, 1))}
+                            </span>
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
                 ) : null}
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
@@ -466,7 +498,7 @@ function PerspectiveSwitch({ perspective, onChange }: { perspective: Perspective
   ];
 
   return (
-    <div className="relative inline-flex items-center gap-1.5 rounded-2xl border border-white/10 bg-zinc-950/60 p-1.5 backdrop-blur-2xl">
+    <div className="relative inline-flex items-center gap-1 rounded-2xl border border-white/15 bg-zinc-950/80 p-1.5 shadow-inner shadow-black/40 backdrop-blur-2xl">
       {options.map((option) => {
         const active = perspective === option.key;
         return (
@@ -475,26 +507,24 @@ function PerspectiveSwitch({ perspective, onChange }: { perspective: Perspective
             type="button"
             onClick={() => onChange(option.key)}
             aria-pressed={active}
-            className={`relative z-10 rounded-xl px-4 py-2.5 text-left text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
-              active
-                ? option.key === "imports" ? "text-red-100" : "text-emerald-100"
-                : "text-zinc-400 hover:text-zinc-100"
+            className={`relative z-10 rounded-xl px-4 py-2.5 text-left text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
+              active ? "text-white" : "text-zinc-300 hover:text-white"
             }`}
           >
             {active ? (
               <motion.span
                 layoutId="perspective-pill-bg"
                 transition={{ type: "spring", stiffness: 380, damping: 32 }}
-                className={`absolute inset-0 -z-10 rounded-xl border ${
+                className={`absolute inset-0 -z-10 rounded-xl border-2 ${
                   option.key === "imports"
-                    ? "border-red-400/40 bg-red-500/15 shadow-[0_0_20px_rgba(239,68,68,0.25)]"
-                    : "border-emerald-400/40 bg-emerald-500/15 shadow-[0_0_20px_rgba(16,185,129,0.25)]"
+                    ? "border-red-400/80 bg-gradient-to-br from-red-500/60 to-red-600/35 shadow-[0_0_26px_rgba(239,68,68,0.5)]"
+                    : "border-emerald-400/80 bg-gradient-to-br from-emerald-500/60 to-emerald-600/35 shadow-[0_0_26px_rgba(16,185,129,0.5)]"
                 }`}
               />
             ) : null}
             <span className="relative block leading-tight">
               {option.label}
-              <span className="ml-1 font-normal opacity-70">({option.sublabel})</span>
+              <span className="ml-1 font-normal opacity-80">({option.sublabel})</span>
             </span>
           </button>
         );
@@ -918,6 +948,21 @@ function visualFlowValue(value: number) {
   return Math.max(Math.pow(Math.log10(value + 10), 3), 1);
 }
 
+// Records that `amount` of `label` (a specific solarInputs entry) rolls up
+// into node `index`, merging into an existing entry for the same label
+// instead of duplicating it (e.g. a supplier node accumulates one entry
+// per distinct input, not one per link that touches it).
+function addContribution(nodes: SankeyNodeDatum[], index: number, label: string, amount: number) {
+  if (amount <= 0) return;
+  const list = nodes[index].contributions ?? (nodes[index].contributions = []);
+  const existing = list.find((item) => item.label === label);
+  if (existing) {
+    existing.amount += amount;
+  } else {
+    list.push({ label, amount });
+  }
+}
+
 function executiveStageLabel(stage: string) {
   return ({
     extracao: "Base mineral",
@@ -957,6 +1002,45 @@ function nodeKindLabel(kind: SankeyNodeDatum["kind"]) {
       return "Destino";
     case "product":
       return "Sistema final";
+    default:
+      return "";
+  }
+}
+
+// Explains HOW the number on the node was calculated -- not just where it
+// came from (dataSourceLabel already covers that). The two aggregate sinks
+// (insumos-de-base / insumos-criticos) get their exact real routing rule
+// spelled out since they're the ones that fan in multiple NCMs/insumos;
+// everything else gets a generic sentence for its node kind.
+function nodeMethodology(
+  kind: SankeyNodeDatum["kind"],
+  tone: Perspective,
+  nodeId: string | undefined,
+  domesticUse?: boolean,
+): string {
+  const verb = tone === "exports" ? "exportado" : "importado";
+  if (nodeId === "destination:insumos-de-base") {
+    return 'Soma do valor FOB importado (ComexStat/MDIC) das NCMs classificadas sob o grupo de insumos de base: etapas de extração/processamento com atividade doméstica confirmada, mais insumos de estágios posteriores sem concentração global de fornecimento identificada (ver "Detalhamento de composição" abaixo).';
+  }
+  if (nodeId === "destination:insumos-criticos") {
+    return "Soma do valor FOB importado (ComexStat/MDIC) das NCMs classificadas como insumos críticos: concentração global de fornecimento identificada e sem produção nacional confirmada nesta etapa.";
+  }
+  if (domesticUse) {
+    return "Produção nacional comparável (PRODLIST/IBGE) que não foi exportada no período — produção total do insumo menos o valor exportado (ComexStat/MDIC) de cada um.";
+  }
+  switch (kind) {
+    case "supplier":
+      return `Soma do valor FOB ${verb} (ComexStat/MDIC) de todos os insumos desta cadeia cujo principal país de origem é este.`;
+    case "input":
+      return `Valor FOB ${verb} (ComexStat/MDIC) deste insumo específico no período mapeado.`;
+    case "stage":
+      return `Soma do valor FOB ${verb} (ComexStat/MDIC) dos insumos desta cadeia classificados nesta etapa produtiva.`;
+    case "destination":
+      return tone === "exports"
+        ? "Soma do valor exportado (ComexStat/MDIC) desta cadeia cujo principal país comprador é este destino."
+        : "Soma do valor FOB importado (ComexStat/MDIC) roteado para este agrupamento (ver \"Detalhamento de composição\" abaixo).";
+    case "product":
+      return `Soma do valor FOB ${verb} (ComexStat/MDIC) dos insumos que chegam à etapa final desta cadeia.`;
     default:
       return "";
   }
@@ -1286,6 +1370,16 @@ function buildImportsTopology(
   if (isFertilizerChain) {
     nodes[integrationIndex].rawValue = solarImportTotal;
     nodes[integrationIndex].share = 1;
+    solarInputs.forEach((input) => {
+      addContribution(nodes, integrationIndex, input.label, Math.max(input.imports_value_usd, 0));
+      addContribution(nodes, finalIndex, input.label, Math.max(input.imports_value_usd, 0));
+    });
+  } else if (!isGenericChain) {
+    // Transition-fuel chains: finalIndex == finishedSystemRawValue == solarImportTotal
+    // directly (no separate integration hop), so the finished-system node's
+    // composition is simply every input in the chain.
+    solarInputs.forEach((input) =>
+      addContribution(nodes, finalIndex, input.label, Math.max(input.imports_value_usd, 0)));
   }
 
   let chokepointInputCount = 0;
@@ -1321,9 +1415,11 @@ function buildImportsTopology(
     nodes[source].rawValue = (nodes[source].rawValue ?? 0) + rawValue;
     nodes[source].share = (nodes[source].rawValue ?? 0) / Math.max(solarImportTotal, 1);
     if (isSupplierChokepoint) nodes[source].chokepoint = true;
+    addContribution(nodes, source, input.label, rawValue);
     nodes[inputNode].rawValue = (nodes[inputNode].rawValue ?? 0) + rawValue;
     nodes[inputNode].share = (nodes[inputNode].rawValue ?? 0) / Math.max(solarImportTotal, 1);
     if (isChokepoint) nodes[inputNode].chokepoint = true;
+    addContribution(nodes, inputNode, input.label, rawValue);
 
     links.push({
       id: `supplier-input:${input.input_id}`, highlightId: input.input_id,
@@ -1365,6 +1461,7 @@ function buildImportsTopology(
         if (isChokepoint) nodes[targetIndex].chokepoint = true;
         if (tier === "critical") nodes[targetIndex].criticalImport = true;
       }
+      addContribution(nodes, targetIndex, input.label, rawValue);
       links.push({
         id: `input-final:${input.input_id}`, highlightId: input.input_id,
         source: inputNode, target: targetIndex, value, rawValue, tone: "imports", color,
@@ -1383,6 +1480,7 @@ function buildImportsTopology(
     nodes[stageNode].rawValue = (nodes[stageNode].rawValue ?? 0) + rawValue;
     nodes[stageNode].share = (nodes[stageNode].rawValue ?? 0) / Math.max(solarImportTotal, 1);
     if (isChokepoint) nodes[stageNode].chokepoint = true;
+    addContribution(nodes, stageNode, input.label, rawValue);
 
     links.push({
       id: `input-stage:${input.input_id}`, highlightId: input.input_id,
@@ -1415,6 +1513,9 @@ function buildImportsTopology(
       nodes[destinationIndex].rawValue = (nodes[destinationIndex].rawValue ?? 0) + total.raw;
       nodes[destinationIndex].share = (nodes[destinationIndex].rawValue ?? 0) / Math.max(solarImportTotal, 1);
       if (total.chokepoint) nodes[destinationIndex].chokepoint = true;
+      solarInputs
+        .filter((input) => input.stage === stage)
+        .forEach((input) => addContribution(nodes, destinationIndex, input.label, Math.max(input.imports_value_usd, 0)));
     } else if (total.chokepoint) {
       nodes[integrationIndex].chokepoint = true;
     }
@@ -1592,6 +1693,7 @@ function buildExportsTopology(
     nodes[inputNode].rawValue = (nodes[inputNode].rawValue ?? 0) + rawValue;
     nodes[inputNode].share = (nodes[inputNode].rawValue ?? 0) / Math.max(totalProductionBasis, 1);
     if (isLowCarbon) nodes[inputNode].lowCarbon = true;
+    addContribution(nodes, inputNode, input.label, rawValue);
 
     // Same rule as the imports side: only extração/processamento (order <=
     // BASE_MATERIAL_STAGE_ORDER_THRESHOLD) have confirmed real domestic
@@ -1609,6 +1711,7 @@ function buildExportsTopology(
         nodes[destinationIndex].rawValue = (nodes[destinationIndex].rawValue ?? 0) + exportsRaw;
         nodes[destinationIndex].share = (nodes[destinationIndex].rawValue ?? 0) / Math.max(totalProductionBasis, 1);
         if (isLowCarbon) nodes[destinationIndex].lowCarbon = true;
+        addContribution(nodes, destinationIndex, input.label, exportsRaw);
         links.push({
           id: `export-input-final:${input.input_id}`, highlightId: input.input_id,
           source: inputNode, target: destinationIndex, value: visualFlowValue(exportsRaw), rawValue: exportsRaw,
@@ -1625,6 +1728,7 @@ function buildExportsTopology(
         nodes[usoInternoIndex].share = (nodes[usoInternoIndex].rawValue ?? 0) / Math.max(totalProductionBasis, 1);
         nodes[usoInternoIndex].domesticUse = true;
         if (isLowCarbon) nodes[usoInternoIndex].lowCarbon = true;
+        addContribution(nodes, usoInternoIndex, input.label, domesticUse);
         links.push({
           id: `export-input-final:${input.input_id}:uso-interno`, highlightId: input.input_id,
           source: inputNode, target: usoInternoIndex, value: visualFlowValue(domesticUse), rawValue: domesticUse,
@@ -1643,6 +1747,7 @@ function buildExportsTopology(
     nodes[stageNode].rawValue = (nodes[stageNode].rawValue ?? 0) + rawValue;
     nodes[stageNode].share = (nodes[stageNode].rawValue ?? 0) / Math.max(totalProductionBasis, 1);
     if (isLowCarbon) nodes[stageNode].lowCarbon = true;
+    addContribution(nodes, stageNode, input.label, rawValue);
 
     links.push({
       id: `export-input-stage:${input.input_id}`, highlightId: input.input_id,
@@ -1680,9 +1785,13 @@ function buildExportsTopology(
       .forEach((input) => {
         const destName = resolveDestinationName(input.top_destination?.country_name ?? "Destino não informado");
         stageDestinationTotals.set(destName, (stageDestinationTotals.get(destName) ?? 0) + Math.max(input.exports_value_usd, 0));
+        const destinationIndex = ensureNode(`destination:${destName}`, destName, "destination");
+        addContribution(nodes, destinationIndex, input.label, Math.max(input.exports_value_usd, 0));
         const domesticUse = domesticUseByInput.get(input.input_id) ?? 0;
         if (domesticUse > 0) {
           stageDestinationTotals.set(DOMESTIC_USE_LABEL, (stageDestinationTotals.get(DOMESTIC_USE_LABEL) ?? 0) + domesticUse);
+          const usoInternoIndex = ensureNode("destination:uso-interno", DOMESTIC_USE_LABEL, "destination");
+          addContribution(nodes, usoInternoIndex, input.label, domesticUse);
         }
       });
 
