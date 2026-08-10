@@ -181,15 +181,23 @@ export function SovereigntySankeyChart({
     if (selectedNodeDatum) {
       const node = selectedNodeDatum;
       const relatedInput = node.kind === "input" ? solarInputs.find((item) => `input:${item.input_id}` === node.id) : undefined;
+      const kindLabel = nodeKindLabel(node.kind);
       return {
         key: node.id,
         title: node.name,
-        kindLabel: nodeKindLabel(node.kind),
+        kindLabel,
         amount: node.rawValue ?? 0,
         share: node.share,
         tone: node.tone,
         dataSource: dataSourceLabel(node.tone, node.domesticUse),
         methodology: nodeMethodology(node.kind, node.tone, node.id, node.domesticUse),
+        formula: calculationFormula(node.tone, node.domesticUse),
+        evidence: evidenceSources(node.tone, node.domesticUse),
+        executiveSummary: routeExecutiveSummary({
+          title: node.name, amount: node.rawValue ?? 0, share: node.share, tone: node.tone, kindLabel,
+          domesticUse: node.domesticUse, routeClass: relatedInput?.production_route_class,
+          chokepoint: node.chokepoint, criticalImport: node.criticalImport, lowCarbon: node.lowCarbon,
+        }),
         routeClass: undefined as ProductionRouteClass | undefined,
         routeRationale: undefined as string | undefined,
         dataGapReason: undefined as string | undefined,
@@ -205,15 +213,23 @@ export function SovereigntySankeyChart({
     }
     if (selectedLinkDatum) {
       const link = selectedLinkDatum;
+      const kindLabel = link.tone === "exports" ? "Ativo" : "Origem";
+      const title = link.flowLabel ?? link.productName;
       return {
         key: link.id,
-        title: link.flowLabel ?? link.productName,
-        kindLabel: link.tone === "exports" ? "Ativo" : "Origem",
+        title,
+        kindLabel,
         amount: link.rawValue,
         share: link.share,
         tone: link.tone,
         dataSource: dataSourceLabel(link.tone, link.domesticUse),
         methodology: `Valor FOB ${link.tone === "exports" ? "exportado" : "importado"} (ComexStat/MDIC) deste fluxo específico, entre as duas etapas indicadas no título.`,
+        formula: calculationFormula(link.tone, link.domesticUse),
+        evidence: evidenceSources(link.tone, link.domesticUse),
+        executiveSummary: routeExecutiveSummary({
+          title, amount: link.rawValue, share: link.share, tone: link.tone, kindLabel,
+          domesticUse: link.domesticUse, routeClass: link.routeClass,
+        }),
         routeClass: link.routeClass,
         routeRationale: link.routeRationale,
         dataGapReason: link.dataGapReason,
@@ -415,14 +431,33 @@ export function SovereigntySankeyChart({
                     <span className="text-zinc-500">{percent.format(detailSubject.share)} da rede</span>
                   ) : null}
                 </div>
-                <div className="mt-3 flex items-center gap-1.5 text-[11px] text-amber-300/90">
-                  <Info className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
-                  <span>Fonte oficial: {detailSubject.dataSource}</span>
-                </div>
-                <p className="mt-2 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs leading-relaxed text-zinc-400">
+                <p className="mt-3 rounded-md border border-cyan-300/15 bg-cyan-400/[0.04] px-3 py-2 text-xs leading-relaxed text-zinc-200">
+                  <span className="font-semibold text-cyan-200">Análise executiva: </span>
+                  {detailSubject.executiveSummary}
+                </p>
+
+                <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                  Memória de cálculo
+                </p>
+                <p className="mt-1.5 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs leading-relaxed text-zinc-400">
                   <span className="font-semibold text-zinc-300">Como este número é calculado: </span>
                   {detailSubject.methodology}
                 </p>
+                <p className="mt-1.5 rounded-md border border-white/[0.06] bg-black/20 px-3 py-2 font-mono text-[11px] leading-relaxed text-zinc-500">
+                  {detailSubject.formula}
+                </p>
+
+                <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                  Evidências e fontes oficiais
+                </p>
+                <ul className="mt-1.5 space-y-1">
+                  {detailSubject.evidence.map((source) => (
+                    <li key={source} className="flex items-start gap-1.5 text-[11px] leading-relaxed text-amber-300/90">
+                      <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+                      <span>{source}</span>
+                    </li>
+                  ))}
+                </ul>
                 {detailSubject.routeRationale ? (
                   <p className="mt-3 rounded-md border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs leading-relaxed text-zinc-300">
                     {detailSubject.routeRationale}
@@ -1055,6 +1090,80 @@ function nodeMethodology(
 function dataSourceLabel(tone: Perspective, domesticUse?: boolean): string {
   if (domesticUse) return "PRODLIST/IBGE (produção) + ComexStat/MDIC (exportações)";
   return tone === "exports" ? "ComexStat/MDIC (exportações)" : "ComexStat/MDIC (importações)";
+}
+
+// The literal expression behind the number, distinct from the plain-
+// language methodology sentence above -- "how it's calculated" as a formula,
+// not prose. Exports carry an optional PRODLIST term because domestic-use
+// nodes/links genuinely add a second source into the same total; imports
+// never do (no domestic-retention concept on that side).
+function calculationFormula(tone: Perspective, domesticUse?: boolean): string {
+  const verb = tone === "exports" ? "exportado" : "importado";
+  const base = `Valor FOB ${verb} (ComexStat/MDIC)`;
+  const numerator = tone === "exports"
+    ? `${base} + parcela retida no mercado interno (PRODLIST/IBGE, quando aplicável)`
+    : base;
+  return domesticUse
+    ? `Produção total comparável (PRODLIST/IBGE) − valor FOB exportado (ComexStat/MDIC) = parcela retida`
+    : `${numerator} ÷ total da rede na perspectiva selecionada = participação (%) exibida acima`;
+}
+
+// Which official bases were actually consulted for THIS figure, as a list
+// instead of one packed sentence -- same underlying facts as
+// dataSourceLabel, just broken out per source so each can carry its own
+// scope note in the UI.
+function evidenceSources(tone: Perspective, domesticUse?: boolean): string[] {
+  const sources = [
+    tone === "exports"
+      ? "ComexStat/MDIC — fluxo de exportação declarado (valor FOB, por NCM)"
+      : "ComexStat/MDIC — fluxo de importação declarado (valor FOB, por NCM)",
+  ];
+  if (domesticUse) {
+    sources.push("PRODLIST/IBGE — produção industrial comparável (capacidade nacional declarada)");
+  }
+  return sources;
+}
+
+// Interpretive paragraph synthesizing the flags/fields already computed for
+// this node or link into one sentence-level reading -- no field here is
+// invented for the summary; every clause gates on a real value already
+// present on the subject (amount, share, tone, routeClass, chokepoint,
+// criticalImport, lowCarbon, domesticUse).
+function routeExecutiveSummary(subject: {
+  title: string;
+  amount: number;
+  share?: number;
+  tone: Perspective;
+  kindLabel: string;
+  domesticUse?: boolean;
+  routeClass?: ProductionRouteClass;
+  chokepoint?: boolean;
+  criticalImport?: boolean;
+  lowCarbon?: boolean;
+}): string {
+  const shareText = subject.share !== undefined
+    ? ` (${percent.format(subject.share)} da rede na perspectiva selecionada)`
+    : "";
+  let sentence = `"${subject.title}" moveu ${usdCompact.format(subject.amount)}${shareText} no período mapeado pelo comércio exterior brasileiro.`;
+
+  if (subject.domesticUse) {
+    sentence += " Esta parcela ficou retida no mercado interno em vez de ser exportada — não representa um comprador estrangeiro confirmado.";
+  } else if (subject.tone === "exports") {
+    sentence += " Representa produção nacional colocada em mercado comprador confirmado pelos registros de comércio exterior.";
+  } else {
+    sentence += ` Representa dependência de fornecimento externo para ${subject.kindLabel.toLowerCase()}.`;
+  }
+
+  if (subject.chokepoint) {
+    sentence += " Este fluxo está associado a uma concentração de fornecimento ≥ 90% de origem chinesa.";
+  }
+  if (subject.criticalImport) {
+    sentence += " Não há produção nacional confirmada para este insumo nesta etapa.";
+  }
+  if (subject.lowCarbon || subject.routeClass === "low_carbon_dominant") {
+    sentence += " Rota produtiva de baixo carbono predominante confirmada para este ativo.";
+  }
+  return sentence;
 }
 
 // Resolves a Sankey node id or link highlightId back to the display stage
