@@ -197,13 +197,28 @@ export function SovereigntySankeyChart({
     highlightLabel: "Fluxos com Alpha",
   };
   const activeFlowId = selectedFlowId ?? hoveredFlowId;
+  const selectedNodeFlowId = selectedFlowId?.startsWith("node:") ? selectedFlowId : null;
+  // In the route-coloring lens (exports only), mere hovering or clicking a
+  // LINK shouldn't dim the rest of the chart -- the color already carries
+  // the signal there. Only an explicit NODE click, or the legend's
+  // route-class filter below, isolates a subset in that mode; everywhere
+  // else any active hover/click dims as usual.
+  const opacityFlowId = routeColoring && perspective === "exports" ? selectedNodeFlowId : activeFlowId;
   const focusContext = useMemo(
     () => selectedRouteClass
       ? buildRouteClassFocusContext(selectedRouteClass, sankeyData)
-      : buildFocusContext(activeFlowId, sankeyData),
-    [activeFlowId, sankeyData, selectedRouteClass],
+      : buildFocusContext(opacityFlowId, sankeyData),
+    [opacityFlowId, sankeyData, selectedRouteClass],
   );
-  const filterActive = activeFlowId !== null || selectedRouteClass !== null;
+  const filterActive = opacityFlowId !== null || selectedRouteClass !== null;
+  // Links rest at a low 0.05 baseline opacity by design (see renderLink)
+  // to cut clutter until something is highlighted -- but that defeats the
+  // point of the route-coloring lens, whose whole purpose is to show every
+  // link's color classification at a glance. Boost the baseline to full
+  // opacity there, but only while nothing is actively isolating a subset
+  // (a node click or the legend's route-class filter should still dim
+  // everything else as normal).
+  const routeLensRestingFull = routeColoring && perspective === "exports" && !filterActive;
   // Detail panel below the chart (same pattern as AipnetSystemsFlow's
   // selected-node aside) instead of a clickable element inside the
   // recharts Tooltip -- no precedent in this codebase for interactive
@@ -464,7 +479,7 @@ export function SovereigntySankeyChart({
                       nameKey="name"
                       node={(props: SankeyNodeRenderProps) => renderNode(
                         props,
-                        activeFlowId,
+                        opacityFlowId,
                         filterActive,
                         focusContext.nodeIds,
                         handleSelectFlow,
@@ -472,9 +487,10 @@ export function SovereigntySankeyChart({
                       )}
                       link={(props: SankeyLinkRenderProps) => renderLink(
                         props,
-                        activeFlowId,
+                        opacityFlowId,
                         filterActive,
                         focusContext.highlightIds,
+                        routeLensRestingFull,
                         handleSelectFlow,
                         (id) => setHoveredFlowId(id),
                       )}
@@ -819,6 +835,7 @@ function renderLink({
   activeFlowId: string | null,
   filterActive: boolean,
   focusedHighlightIds: Set<string>,
+  forceFullOpacity: boolean,
   onSelect: (id: string) => void,
   onHover: (id: string | null) => void,
 ) {
@@ -833,8 +850,8 @@ function renderLink({
   const isHighlighted = selectedNodeId
     ? payload.source.id === selectedNodeId || payload.target.id === selectedNodeId || focusedHighlightIds.has(payload.highlightId)
     : selectedLinkId === payload.highlightId || focusedHighlightIds.has(payload.highlightId);
-  const isDimmed = filterActive && !isHighlighted;
-  const restingOpacity = payload.alphaApplied && payload.alpha < 1 ? 0.03 : 0.05;
+  const isDimmed = !forceFullOpacity && filterActive && !isHighlighted;
+  const restingOpacity = forceFullOpacity ? 1 : payload.alphaApplied && payload.alpha < 1 ? 0.03 : 0.05;
 
   return (
     <g>
