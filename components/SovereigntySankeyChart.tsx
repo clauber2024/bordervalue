@@ -87,6 +87,8 @@ type SankeyTooltipProps = {
   }>;
 };
 
+export type SankeyAnalysisFocus = { nodeId: string; stage: string; input?: string };
+
 export type SovereigntySankeyChartProps = {
   data?: ProdutoConceitual[];
   dado?: ProdutoConceitual;
@@ -95,6 +97,7 @@ export type SovereigntySankeyChartProps = {
   title?: string;
   solarInputs?: SolarInputMetric[];
   chainName?: string;
+  onAnalysisFocus?: (focus: SankeyAnalysisFocus) => void;
 };
 
 const shell =
@@ -126,6 +129,7 @@ export function SovereigntySankeyChart({
   title = "Fluxo comercial por produto conceitual",
   solarInputs = [],
   chainName,
+  onAnalysisFocus,
 }: SovereigntySankeyChartProps) {
   const [perspective, setPerspective] = useState<Perspective>("imports");
   const [routeColoring, setRouteColoring] = useState(false);
@@ -156,6 +160,66 @@ export function SovereigntySankeyChart({
   };
   const activeFlowId = selectedFlowId ?? hoveredFlowId;
   const focusContext = useMemo(() => buildFocusContext(activeFlowId, sankeyData), [activeFlowId, sankeyData]);
+  // Detail panel below the chart (same pattern as AipnetSystemsFlow's
+  // selected-node aside) instead of a clickable element inside the
+  // recharts Tooltip -- no precedent in this codebase for interactive
+  // content surviving a Tooltip's mouseleave-driven dismissal. Only
+  // CLICKED selection opens it (selectedFlowId, not the hover-merged
+  // activeFlowId), so hovering around doesn't pop it open/closed.
+  const selectedNodeId = selectedFlowId?.startsWith("node:") ? selectedFlowId.slice(5) : null;
+  const selectedLinkHighlightId = selectedFlowId?.startsWith("flow:") ? selectedFlowId.slice(5) : null;
+  const selectedNodeDatum = selectedNodeId ? sankeyData.nodes.find((node) => node.id === selectedNodeId) ?? null : null;
+  const selectedLinkDatum = selectedLinkHighlightId
+    ? sankeyData.links.find((link) => link.highlightId === selectedLinkHighlightId) ?? null
+    : null;
+  const detailSubject = useMemo(() => {
+    if (selectedNodeDatum) {
+      const node = selectedNodeDatum;
+      const relatedInput = node.kind === "input" ? solarInputs.find((item) => `input:${item.input_id}` === node.id) : undefined;
+      return {
+        key: node.id,
+        title: node.name,
+        kindLabel: nodeKindLabel(node.kind),
+        amount: node.rawValue ?? 0,
+        share: node.share,
+        tone: node.tone,
+        dataSource: dataSourceLabel(node.tone, node.domesticUse),
+        routeClass: undefined as ProductionRouteClass | undefined,
+        routeRationale: undefined as string | undefined,
+        dataGapReason: undefined as string | undefined,
+        chokepoint: node.chokepoint,
+        lowCarbon: node.lowCarbon,
+        criticalImport: node.criticalImport,
+        domesticUse: node.domesticUse,
+        focusNodeId: node.id,
+        focusStage: resolveFocusStage(node.id, solarInputs),
+        focusInput: relatedInput?.label,
+      };
+    }
+    if (selectedLinkDatum) {
+      const link = selectedLinkDatum;
+      return {
+        key: link.id,
+        title: link.flowLabel ?? link.productName,
+        kindLabel: link.tone === "exports" ? "Ativo" : "Origem",
+        amount: link.rawValue,
+        share: link.share,
+        tone: link.tone,
+        dataSource: dataSourceLabel(link.tone, link.domesticUse),
+        routeClass: link.routeClass,
+        routeRationale: link.routeRationale,
+        dataGapReason: link.dataGapReason,
+        chokepoint: undefined as boolean | undefined,
+        lowCarbon: undefined as boolean | undefined,
+        criticalImport: undefined as boolean | undefined,
+        domesticUse: link.domesticUse,
+        focusNodeId: link.highlightId,
+        focusStage: resolveFocusStage(link.highlightId, solarInputs),
+        focusInput: link.productName,
+      };
+    }
+    return null;
+  }, [selectedNodeDatum, selectedLinkDatum, solarInputs]);
   const activeInputCount = sankeyData.nodes.filter((node) => node.kind === "input").length;
   const effectiveHeight = solarInputs.length && activeInputCount
     ? Math.max(height, activeInputCount * 58 + 180)
@@ -220,7 +284,14 @@ export function SovereigntySankeyChart({
               <div className="mt-2 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => setRouteColoring((value) => !value)}
+                  onClick={() => {
+                    // A held click-selection (selectedFlowId) keeps every
+                    // OTHER link's isDimmed opacity low regardless of
+                    // colorMode -- toggling the lens without clearing it
+                    // made the whole new palette look permanently dimmed.
+                    setRouteColoring((value) => !value);
+                    setSelectedFlowId(null);
+                  }}
                   aria-pressed={routeColoring}
                   className={`rounded-lg border px-3 py-1.5 text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
                     routeColoring ? "border-violet-300/30 bg-violet-400/10 text-violet-100" : "border-white/10 bg-zinc-950/50 text-zinc-400 hover:text-white"
@@ -313,35 +384,76 @@ export function SovereigntySankeyChart({
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-3 px-1 text-xs md:grid-cols-2 xl:grid-cols-4">
-          <ReadingPill
-            label="Direção"
-            value={
-              perspective === "exports"
-                ? "O fluxo parte dos ativos nacionais (matéria-prima e beneficiamento no Brasil) até o principal país comprador de cada insumo, ou até Uso Interno para a parcela retida no país."
-                : "O fluxo parte da origem estrangeira até a aplicação industrial no Brasil."
-            }
-          />
-          <ReadingPill
-            label="Espessura"
-            value="A largura usa transformação logarítmica do valor FOB para tornar fluxos menores visíveis; não deve ser interpretada como proporção linear. O valor real está no tooltip."
-          />
-          <ReadingPill
-            label="Cor"
-            value={
-              perspective === "exports" && routeColoring
-                ? "A cor classifica a rota produtiva dominante: vermelho é fóssil, âmbar é transição em curso, verde é baixo carbono predominante, azul é potencial não realizado e cinza é indeterminada."
-                : perspective === "exports"
-                  ? "Verde-esmeralda em toda a rede; tom mais vibrante nos ativos com rota produtiva de baixo carbono predominante (ex.: Si-GM nacional). O nó Uso Interno aparece em cinza, por não ser um país comprador."
-                  : "De âmbar a vermelho conforme a concentração de origem chinesa; vermelho pulsante marca gargalos com concentração ≥ 90%."
-            }
-          />
-          <ReadingPill
-            label="Interação"
-            value="Passe o mouse para ver valores e participação. Clique em uma banda ou nó para destacar o caminho; clique novamente ou use Limpar destaque para restaurar a rede."
-          />
-        </div>
-        <p className="mt-3 px-1 text-[10px] leading-4 text-zinc-600">Códigos técnicos permanecem restritos à gaveta de rastreabilidade.</p>
+        {detailSubject ? (
+          <motion.aside
+            key={detailSubject.key}
+            initial={{ opacity: 0, height: 0, y: -8 }}
+            animate={{ opacity: 1, height: "auto", y: 0 }}
+            transition={{ duration: 0.24 }}
+            className="relative mt-4 overflow-hidden rounded-2xl border border-cyan-300/20 bg-zinc-950/75 p-5 shadow-2xl backdrop-blur-xl"
+          >
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="min-w-0 max-w-2xl">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">
+                  {detailSubject.kindLabel} selecionado(a) · detalhe da rota
+                </p>
+                <h4 className="mt-1 text-lg font-bold text-white">{detailSubject.title}</h4>
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
+                  <span className={`font-mono font-semibold ${detailSubject.tone === "exports" ? "text-emerald-300" : "text-cyan-300"}`}>
+                    {usdLong.format(detailSubject.amount)}
+                  </span>
+                  {detailSubject.share !== undefined ? (
+                    <span className="text-zinc-500">{percent.format(detailSubject.share)} da rede</span>
+                  ) : null}
+                </div>
+                <div className="mt-3 flex items-center gap-1.5 text-[11px] text-amber-300/90">
+                  <Info className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+                  <span>Fonte oficial: {detailSubject.dataSource}</span>
+                </div>
+                {detailSubject.routeRationale ? (
+                  <p className="mt-3 rounded-md border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs leading-relaxed text-zinc-300">
+                    {detailSubject.routeRationale}
+                  </p>
+                ) : null}
+                {detailSubject.dataGapReason ? (
+                  <p className="mt-2 rounded-md border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2 text-xs leading-relaxed text-amber-200/90">
+                    {detailSubject.dataGapReason}
+                  </p>
+                ) : null}
+                {detailSubject.chokepoint ? (
+                  <p className="mt-2 text-xs leading-relaxed text-red-300">⚠ Gargalo de concentração ≥ 90% de origem chinesa.</p>
+                ) : null}
+                {detailSubject.criticalImport ? (
+                  <p className="mt-2 text-xs leading-relaxed text-red-300">⚠ Sem produção nacional confirmada nesta etapa.</p>
+                ) : null}
+                {detailSubject.lowCarbon ? (
+                  <p className="mt-2 text-xs leading-relaxed text-emerald-300">Rota produtiva de baixo carbono predominante.</p>
+                ) : null}
+                {detailSubject.domesticUse ? (
+                  <p className="mt-2 text-xs leading-relaxed text-zinc-400">Ficou no Brasil em vez de ser exportado — não é um país comprador.</p>
+                ) : null}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onAnalysisFocus?.({ nodeId: detailSubject.focusNodeId, stage: detailSubject.focusStage, input: detailSubject.focusInput })}
+                    className="inline-flex items-center gap-2 rounded-lg border border-cyan-300/20 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                  >
+                    Ver diagnóstico desta etapa
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFlowId(null)}
+                    className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                  >
+                    Fechar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.aside>
+        ) : null}
+
+        <p className="mt-4 px-1 text-[10px] leading-4 text-zinc-600">Códigos técnicos permanecem restritos à gaveta de rastreabilidade.</p>
       </div>
     </section>
   );
@@ -707,6 +819,7 @@ function FlowTooltip({ active, payload }: SankeyTooltipProps) {
             Parcela da produção doméstica que não foi exportada (produção comparável menos exportações do período). Não é um país comprador.
           </p>
         ) : null}
+        <p className="mt-3 text-[10px] text-zinc-600">Fonte: {dataSourceLabel(node.tone, node.domesticUse)}</p>
       </div>
     );
   }
@@ -750,6 +863,7 @@ function FlowTooltip({ active, payload }: SankeyTooltipProps) {
         <p className="rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-2 leading-5 text-zinc-300">
           {reductionCopy}
         </p>
+        <p className="text-[10px] text-zinc-600">Fonte: {dataSourceLabel(link.tone, link.domesticUse)}</p>
       </div>
     </div>
   );
@@ -762,15 +876,6 @@ function MetricPill({ label, value }: { label: string; value: string }) {
         {label}
       </span>
       <strong className="mt-1 block truncate text-sm font-semibold text-zinc-100">{value}</strong>
-    </div>
-  );
-}
-
-function ReadingPill({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-zinc-800/70 bg-white/[0.035] px-3 py-3">
-      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-cyan-300">{label}</p>
-      <p className="mt-2 leading-5 text-zinc-300">{value}</p>
     </div>
   );
 }
@@ -857,6 +962,33 @@ function nodeKindLabel(kind: SankeyNodeDatum["kind"]) {
   }
 }
 
+// Real, structurally-derivable attribution, not invented per node: every
+// import/export flow in this Sankey traces back to Comex Stat/MDIC customs
+// records; "Uso Interno" additionally draws on domestic_production_value_
+// usd_comparable, which comes from the PRODLIST bridge (see
+// PRODLIST_COMPARABLE_INPUTS in build_solar_sovereignty_metrics.py) joined
+// against IBGE/MDIC production indicators -- not a separate, unlinked claim.
+function dataSourceLabel(tone: Perspective, domesticUse?: boolean): string {
+  if (domesticUse) return "PRODLIST/IBGE (produção) + ComexStat/MDIC (exportações)";
+  return tone === "exports" ? "ComexStat/MDIC (exportações)" : "ComexStat/MDIC (importações)";
+}
+
+// Resolves a Sankey node id or link highlightId back to the display stage
+// label MainAnalyticalDashboard's onAnalysisFocus handler expects (matches
+// sectorStageLabel there field-for-field) -- so clicking a Sankey node/link
+// and clicking an AipnetSystemsFlow node land on the same filtered view.
+function resolveFocusStage(rawId: string, solarInputs: SolarInputMetric[]): string {
+  const stageKey = rawId.startsWith("stage:")
+    ? rawId.slice(6)
+    : rawId.startsWith("export-stage:")
+      ? rawId.slice(13)
+      : null;
+  if (stageKey) return executiveStageLabel(stageKey);
+  const inputId = rawId.startsWith("input:") ? rawId.slice(6) : rawId;
+  const input = solarInputs.find((item) => item.input_id === inputId);
+  return input ? executiveStageLabel(input.stage) : "";
+}
+
 function nodeFill(kind: SankeyNodeDatum["kind"], tone: Perspective) {
   if (tone === "imports") {
     if (kind === "supplier") return "#38bdf8";
@@ -892,19 +1024,33 @@ function stagePhysicalOrder(nodeId: string): number {
   return STAGE_PHYSICAL_ORDER[key] ?? 99;
 }
 
-function reorderStageNodes(data: SankeyChartData): SankeyChartData {
-  const stageSlots = data.nodes
-    .map((node, index) => ({ node, index }))
-    .filter(({ node }) => node.kind === "stage");
-  if (stageSlots.length < 2) return data;
-
-  const orderedStageNodes = [...stageSlots]
-    .sort((a, b) => stagePhysicalOrder(a.node.id) - stagePhysicalOrder(b.node.id))
-    .map(({ node }) => node);
+// Recharts (sort={false}) stacks same-column nodes in array order, so this
+// reindexes each column once at the end of a topology build: "stage" nodes
+// keep the physical production sequence (extração before refino before
+// produto final -- STAGE_PHYSICAL_ORDER), every other kind sorts by value
+// descending so the largest flows in each column line up straight across
+// the network instead of criss-crossing through smaller ones drawn first.
+function reorderSankeyNodes(data: SankeyChartData): SankeyChartData {
+  const slotsByKind = new Map<SankeyNodeDatum["kind"], { node: SankeyNodeDatum; index: number }[]>();
+  data.nodes.forEach((node, index) => {
+    const list = slotsByKind.get(node.kind) ?? [];
+    list.push({ node, index });
+    slotsByKind.set(node.kind, list);
+  });
 
   const newNodes = [...data.nodes];
-  stageSlots.forEach(({ index: slot }, i) => {
-    newNodes[slot] = orderedStageNodes[i];
+  slotsByKind.forEach((slots, kind) => {
+    if (slots.length < 2) return;
+    const ordered = [...slots]
+      .sort((a, b) =>
+        kind === "stage"
+          ? stagePhysicalOrder(a.node.id) - stagePhysicalOrder(b.node.id)
+          : (b.node.rawValue ?? 0) - (a.node.rawValue ?? 0),
+      )
+      .map(({ node }) => node);
+    slots.forEach(({ index: slot }, i) => {
+      newNodes[slot] = ordered[i];
+    });
   });
 
   const idByOldIndex = data.nodes.map((node) => node.id);
@@ -923,6 +1069,14 @@ function reorderStageNodes(data: SankeyChartData): SankeyChartData {
 // which a node/link is flagged as a sovereignty chokepoint and gets the
 // pulsing red treatment in the Imports perspective.
 const CHOKEPOINT_THRESHOLD = 0.9;
+
+// Physical order (see STAGE_PHYSICAL_ORDER) up to which a stage has
+// confirmed real domestic activity worth drawing as its own "Etapa
+// produtiva" node -- extração/processamento only. Shared between imports
+// and exports so a stage like "Refino solar" (no domestic refining
+// capacity in either direction of trade) doesn't get a real-looking
+// intermediate node on one perspective and correctly skip it on the other.
+const BASE_MATERIAL_STAGE_ORDER_THRESHOLD = 2;
 
 function importAccentColor(chinaShare: number) {
   if (chinaShare >= CHOKEPOINT_THRESHOLD) return "#ef4444";
@@ -1028,6 +1182,26 @@ function buildImportsTopology(
   );
   const resolveSupplierName = (name: string) => (longTailSuppliers.has(name) ? OTHER_SUPPLIERS_LABEL : name);
 
+  // Inputs under 0.5% of the chain's total imports AND carrying no
+  // chokepoint signal collapse into a single "Outros Insumos" node --
+  // but a real concentration risk (e.g. Wafers at a small dollar amount
+  // but 97% China) must never disappear into that bucket just because its
+  // FOB value is small. Severity, not dollar size, is what this tool
+  // exists to surface, so chokepoint inputs are always exempt regardless
+  // of value.
+  const INPUT_LONG_TAIL_SHARE_THRESHOLD = 0.005;
+  const OTHER_INPUTS_LABEL = "Outros Insumos";
+  const collapsibleInputIds = new Set(
+    solarInputs
+      .filter((input) => {
+        const chinaShare = input.global_china_share ?? input.china_share_brazilian_imports ?? 0;
+        if (chinaShare >= CHOKEPOINT_THRESHOLD) return false;
+        const share = Math.max(input.imports_value_usd, 0) / Math.max(solarImportTotal, 1);
+        return share < INPUT_LONG_TAIL_SHARE_THRESHOLD;
+      })
+      .map((input) => input.input_id),
+  );
+
   const orderedSolarInputs = [...solarInputs].sort((left, right) =>
     (supplierTotals.get(right.top_supplier?.country_name ?? "Origem não informada") ?? 0)
     - (supplierTotals.get(left.top_supplier?.country_name ?? "Origem não informada") ?? 0)
@@ -1088,7 +1262,6 @@ function buildImportsTopology(
   // terminal node as the finished system, implying domestic integration
   // ("Brasil refina e aplica em módulos") that isn't real.
   const isGenericChain = !isFertilizerChain && !isTransitionFuelChain;
-  const BASE_MATERIAL_STAGE_ORDER_THRESHOLD = 2;
   const BASE_MATERIAL_LABEL = "Insumos de Base (uso industrial doméstico)";
   const CRITICAL_IMPORT_LABEL = "Insumos Críticos Importados (sem produção nacional)";
   const maxStageOrder = Math.max(0, ...solarInputs.map((input) => stagePhysicalOrder(`stage:${input.stage}`)));
@@ -1139,7 +1312,9 @@ function buildImportsTopology(
     if (isChokepoint) chokepointInputCount += 1;
     const value = visualFlowValue(rawValue);
     const source = ensureNode(`supplier:${supplierName}`, supplierName, "supplier");
-    const inputNode = ensureNode(`input:${input.input_id}`, input.label, "input");
+    const inputNode = collapsibleInputIds.has(input.input_id)
+      ? ensureNode("input:outros-insumos", OTHER_INPUTS_LABEL, "input")
+      : ensureNode(`input:${input.input_id}`, input.label, "input");
     const color = routeColoring ? routeClassColor(input.production_route_class) : importAccentColor(chinaShare);
     const share = rawValue / Math.max(solarImportTotal, 1);
 
@@ -1304,7 +1479,7 @@ function buildImportsTopology(
     highlightLabel: "Gargalos ≥ 90% China",
   };
 
-  return { ...reorderStageNodes({ nodes, links }), summary };
+  return { ...reorderSankeyNodes({ nodes, links }), summary };
 }
 
 // Perspectiva B -- "Inserção e Exportações": ativo nacional (matéria-prima /
@@ -1361,6 +1536,24 @@ function buildExportsTopology(
     0,
   );
 
+  // Mirrors the imports side's input collapse: exportable inputs under 0.5%
+  // of the production basis AND without a low-carbon-advantage signal
+  // collapse into "Outros Insumos" -- but a real low-carbon input (the
+  // "Valor Ambiental" story this perspective exists to tell, e.g. Si-GM)
+  // is always exempt regardless of how small its dollar value is.
+  const EXPORT_INPUT_LONG_TAIL_SHARE_THRESHOLD = 0.005;
+  const OTHER_EXPORT_INPUTS_LABEL = "Outros Insumos";
+  const collapsibleExportInputIds = new Set(
+    exportableInputs
+      .filter((input) => {
+        if (input.production_route_class === "low_carbon_dominant") return false;
+        const raw = input.exports_value_usd + (domesticUseByInput.get(input.input_id) ?? 0);
+        const share = raw / Math.max(totalProductionBasis, 1);
+        return share < EXPORT_INPUT_LONG_TAIL_SHARE_THRESHOLD;
+      })
+      .map((input) => input.input_id),
+  );
+
   // Mirrors the long-tail collapse on the imports/supplier side: destination
   // countries under 0.1% of the chain's total exports become a single
   // "Outros Mercados" node instead of visual noise. Falls back to a generic
@@ -1386,21 +1579,70 @@ function buildExportsTopology(
 
   orderedInputs.forEach((input) => {
     const domesticUse = domesticUseByInput.get(input.input_id) ?? 0;
-    const rawValue = Math.max(input.exports_value_usd, 0) + domesticUse;
+    const exportsRaw = Math.max(input.exports_value_usd, 0);
+    const rawValue = exportsRaw + domesticUse;
     const isLowCarbon = input.production_route_class === "low_carbon_dominant";
     if (isLowCarbon) lowCarbonCount += 1;
-    const value = visualFlowValue(rawValue);
-    const inputNode = ensureNode(`input:${input.input_id}`, input.label, "input");
-    const stageName = executiveStageLabel(input.stage);
-    const stageNode = ensureNode(`stage:${input.stage}`, stageName, "stage");
+    const inputNode = collapsibleExportInputIds.has(input.input_id)
+      ? ensureNode("input:outros-insumos", OTHER_EXPORT_INPUTS_LABEL, "input")
+      : ensureNode(`input:${input.input_id}`, input.label, "input");
     const color = routeColoring ? routeClassColor(input.production_route_class) : exportAccentColor(isLowCarbon);
     const share = rawValue / Math.max(totalProductionBasis, 1);
 
-    [inputNode, stageNode].forEach((index) => {
-      nodes[index].rawValue = (nodes[index].rawValue ?? 0) + rawValue;
-      nodes[index].share = (nodes[index].rawValue ?? 0) / Math.max(totalProductionBasis, 1);
-      if (isLowCarbon) nodes[index].lowCarbon = true;
-    });
+    nodes[inputNode].rawValue = (nodes[inputNode].rawValue ?? 0) + rawValue;
+    nodes[inputNode].share = (nodes[inputNode].rawValue ?? 0) / Math.max(totalProductionBasis, 1);
+    if (isLowCarbon) nodes[inputNode].lowCarbon = true;
+
+    // Same rule as the imports side: only extração/processamento (order <=
+    // BASE_MATERIAL_STAGE_ORDER_THRESHOLD) have confirmed real domestic
+    // activity worth an "Etapa produtiva" node. Brazil doesn't refine
+    // solar-grade polysilicon or slice wafers at any scale, so a residual
+    // Polissilício/Wafers export (re-export/trading-company volume, not
+    // domestic output) skipping straight to its destination country
+    // instead of through a fake "Refino solar" hop.
+    const hasRealDomesticStage = stagePhysicalOrder(`stage:${input.stage}`) <= BASE_MATERIAL_STAGE_ORDER_THRESHOLD;
+
+    if (!hasRealDomesticStage) {
+      if (exportsRaw > 0) {
+        const destName = resolveDestinationName(input.top_destination?.country_name ?? "Destino não informado");
+        const destinationIndex = ensureNode(`destination:${destName}`, destName, "destination");
+        nodes[destinationIndex].rawValue = (nodes[destinationIndex].rawValue ?? 0) + exportsRaw;
+        nodes[destinationIndex].share = (nodes[destinationIndex].rawValue ?? 0) / Math.max(totalProductionBasis, 1);
+        if (isLowCarbon) nodes[destinationIndex].lowCarbon = true;
+        links.push({
+          id: `export-input-final:${input.input_id}`, highlightId: input.input_id,
+          source: inputNode, target: destinationIndex, value: visualFlowValue(exportsRaw), rawValue: exportsRaw,
+          tone: "exports", color,
+          alpha: 1, alphaApplied: false, supplierName: "Produção nacional (Brasil)", productName: destName,
+          flowLabel: `${input.label} → ${destName}`, share: exportsRaw / Math.max(totalProductionBasis, 1),
+          routeClass: input.production_route_class, routeRationale: input.production_route_rationale,
+          dataGapReason: input.data_gap_reason ?? undefined,
+        });
+      }
+      if (domesticUse > 0) {
+        const usoInternoIndex = ensureNode("destination:uso-interno", DOMESTIC_USE_LABEL, "destination");
+        nodes[usoInternoIndex].rawValue = (nodes[usoInternoIndex].rawValue ?? 0) + domesticUse;
+        nodes[usoInternoIndex].share = (nodes[usoInternoIndex].rawValue ?? 0) / Math.max(totalProductionBasis, 1);
+        nodes[usoInternoIndex].domesticUse = true;
+        if (isLowCarbon) nodes[usoInternoIndex].lowCarbon = true;
+        links.push({
+          id: `export-input-final:${input.input_id}:uso-interno`, highlightId: input.input_id,
+          source: inputNode, target: usoInternoIndex, value: visualFlowValue(domesticUse), rawValue: domesticUse,
+          tone: "exports", color: DOMESTIC_USE_COLOR,
+          alpha: 1, alphaApplied: false, supplierName: "Produção nacional (Brasil)", productName: DOMESTIC_USE_LABEL,
+          flowLabel: `${input.label} → ${DOMESTIC_USE_LABEL}`, share: domesticUse / Math.max(totalProductionBasis, 1),
+          domesticUse: true,
+        });
+      }
+      return;
+    }
+
+    const value = visualFlowValue(rawValue);
+    const stageName = executiveStageLabel(input.stage);
+    const stageNode = ensureNode(`stage:${input.stage}`, stageName, "stage");
+    nodes[stageNode].rawValue = (nodes[stageNode].rawValue ?? 0) + rawValue;
+    nodes[stageNode].share = (nodes[stageNode].rawValue ?? 0) / Math.max(totalProductionBasis, 1);
+    if (isLowCarbon) nodes[stageNode].lowCarbon = true;
 
     links.push({
       id: `export-input-stage:${input.input_id}`, highlightId: input.input_id,
@@ -1475,7 +1717,7 @@ function buildExportsTopology(
     highlightLabel: "Rotas de baixo carbono",
   };
 
-  return { ...reorderStageNodes({ nodes, links }), summary };
+  return { ...reorderSankeyNodes({ nodes, links }), summary };
 }
 
 // Fallback usado apenas quando a página ainda não carregou `solarInputs`

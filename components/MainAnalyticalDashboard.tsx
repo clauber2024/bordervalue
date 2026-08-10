@@ -557,6 +557,7 @@ export default function MainAnalyticalDashboard() {
                   chainName={selectedChainMetadata?.name ?? solarSovereignty?.chain_name}
                   height={620}
                   title="Fluxo AIPNET por produto conceitual"
+                  onAnalysisFocus={handleAipnetAnalysisFocus}
                 />
               </ExpandableAnalyticsPanel>
 
