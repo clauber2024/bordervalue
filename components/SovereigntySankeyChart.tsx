@@ -21,6 +21,7 @@ type SankeyNodeDatum = {
   chokepoint?: boolean;
   lowCarbon?: boolean;
   domesticUse?: boolean;
+  criticalImport?: boolean;
 };
 
 type SankeyLinkDatum = {
@@ -393,7 +394,12 @@ function renderNode(
   onSelect: (id: string) => void,
   onHover: (id: string | null) => void,
 ) {
-  const fill = payload.domesticUse ? DOMESTIC_USE_COLOR : nodeFill(payload.kind, payload.tone);
+  const isRedFlagged = payload.chokepoint || payload.criticalImport;
+  const fill = payload.domesticUse
+    ? DOMESTIC_USE_COLOR
+    : payload.criticalImport
+      ? "#ef4444"
+      : nodeFill(payload.kind, payload.tone);
   const flagPalette = payload.kind === "supplier" ? countryFlagPalette(payload.name) : null;
   const gradientId = `country-${safeSvgId(payload.id)}`;
   const labelX = x + width + 10;
@@ -401,8 +407,8 @@ function renderNode(
   const selectionId = `node:${payload.id}`;
   const isSelected = activeFlowId === selectionId;
   const isDimmed = activeFlowId !== null && !focusedNodeIds.has(payload.id);
-  const highlightStroke = payload.chokepoint ? "#ef4444" : payload.lowCarbon ? "#10b981" : null;
-  const highlightFilter = payload.chokepoint
+  const highlightStroke = isRedFlagged ? "#ef4444" : payload.lowCarbon ? "#10b981" : null;
+  const highlightFilter = isRedFlagged
     ? "brightness(1.1) drop-shadow(0 0 12px rgba(239,68,68,0.55))"
     : payload.lowCarbon
       ? "drop-shadow(0 0 12px rgba(16,185,129,0.5))"
@@ -444,14 +450,14 @@ function renderNode(
         strokeWidth={isSelected ? 2.8 : 1.6}
         style={{ filter: highlightFilter }}
         animate={
-          payload.chokepoint
+          isRedFlagged
             ? { strokeWidth: [1.8, 3.2, 1.8], opacity: [1, 0.82, 1] }
             : payload.lowCarbon
               ? { opacity: [1, 0.88, 1] }
               : undefined
         }
         transition={
-          payload.chokepoint
+          isRedFlagged
             ? { duration: 2.2, repeat: Infinity, ease: "easeInOut" }
             : payload.lowCarbon
               ? { duration: 3.2, repeat: Infinity, ease: "easeInOut" }
@@ -479,6 +485,15 @@ function renderNode(
           {payload.kind === "destination" || payload.kind === "product"
             ? "⚠ AFETADO POR GARGALO A MONTANTE"
             : "⚠ CONCENTRAÇÃO ≥ 90% CHINA"}
+        </text>
+      ) : payload.criticalImport ? (
+        <text x={labelX} y={labelY + 24} fill="#fca5a5" fontSize={9} fontWeight={700} letterSpacing={0.4}>
+          {/* Distinct from the chokepoint badge on purpose: this sink can
+              hold stages whose own china-share sits under the 90% badge
+              threshold (e.g. Polissilício at 85% global) but still have no
+              confirmed domestic production -- "concentração ≥90%" would be
+              a number this node doesn't actually have. */}
+          ⚠ SEM PRODUÇÃO NACIONAL CONFIRMADA
         </text>
       ) : payload.lowCarbon ? (
         <text x={labelX} y={labelY + 24} fill="#6ee7b7" fontSize={9} fontWeight={700} letterSpacing={0.4}>
@@ -651,6 +666,11 @@ function FlowTooltip({ active, payload }: SankeyTooltipProps) {
             {node.kind === "destination" || node.kind === "product"
               ? "Depende de uma etapa a montante com concentração ≥ 90% de origem chinesa — este nó em si não tem essa concentração própria."
               : "Concentração ≥ 90% de origem chinesa neste elo."}
+          </p>
+        ) : null}
+        {node.criticalImport ? (
+          <p className="mt-3 rounded-md border border-red-500/25 bg-red-500/10 px-2.5 py-2 leading-5 text-red-200">
+            Sem produção nacional confirmada nesta etapa — 100% dependente de fornecimento estrangeiro, mesmo quando a concentração por país fica abaixo de 90%.
           </p>
         ) : null}
         {node.lowCarbon ? (
@@ -1054,23 +1074,43 @@ function buildImportsTopology(
     : isTransitionFuelChain
       ? "Usos finais dos combustíveis de transição"
       : realFinalProductName ?? chainName ?? "Sistema solar fotovoltaico";
-  // Early/base-material stages (extração, processamento -- physical order
-  // <= 2, e.g. "Base mineral", "Silício metalúrgico") don't continue on to
-  // the finished-system node in the generic (non-fertilizer, non-transition
-  // -fuel) path. Collapsing them into the same terminal node as fully
-  // assembled imports (e.g. Módulos fotovoltaicos) implied a "base mineral
-  // -> finished module" import jump that isn't real -- these are barely-
-  // imported domestic inputs, not part of the finished-goods chokepoint
-  // story. They terminate at a separate "Insumos de Base" sink instead.
+  // Generic (non-fertilizer, non-transition-fuel) chains split into three
+  // terminal groups instead of collapsing every stage into one finished-
+  // system node -- confirmed against the silicio chain's own data:
+  //   - Base (order <= 2, extração/processamento, e.g. "Base mineral",
+  //     "Silício metalúrgico"): genuinely domestic-capable raw material.
+  //   - Critical imports (order between base and final, e.g. "Refino
+  //     solar", "Componentes avançados"): no confirmed domestic capacity.
+  //     "Refino solar" specifically bundles real refined product with
+  //     import-classified support chemicals (Hidrogênio de alta pureza,
+  //     Ácido clorídrico -- see SOLAR_INPUTS in
+  //     build_solar_sovereignty_metrics.py) at near-zero volume, and
+  //     Polissilício's own global_china_share (0.85) sits just under the
+  //     0.9 chokepoint badge threshold despite there being no domestic
+  //     refining capacity -- so this tier is decided by stage position,
+  //     not the chokepoint flag, to avoid missing cases like this one.
+  //   - Final (the last stage present, e.g. "produto_final"/"Módulos
+  //     fotovoltaicos"): the only tier that reaches the finished-system
+  //     node -- this is genuinely the assembled/final good.
+  // Letting Base or Critical stages flow to the same terminal node as the
+  // finished system implied domestic integration ("Brasil refina e aplica
+  // em módulos") that isn't real.
   const isGenericChain = !isFertilizerChain && !isTransitionFuelChain;
   const BASE_MATERIAL_STAGE_ORDER_THRESHOLD = 2;
   const BASE_MATERIAL_LABEL = "Insumos de Base (uso industrial doméstico)";
+  const CRITICAL_IMPORT_LABEL = "Insumos Críticos Importados (sem produção nacional)";
+  const maxStageOrder = Math.max(0, ...[...stageTotals.keys()].map((stage) => stagePhysicalOrder(`stage:${stage}`)));
   const isBaseMaterialStage = (stage: string) =>
     isGenericChain && stagePhysicalOrder(`stage:${stage}`) <= BASE_MATERIAL_STAGE_ORDER_THRESHOLD;
+  const isCriticalImportStage = (stage: string) => {
+    if (!isGenericChain) return false;
+    const order = stagePhysicalOrder(`stage:${stage}`);
+    return order > BASE_MATERIAL_STAGE_ORDER_THRESHOLD && order < maxStageOrder;
+  };
 
   const finishedSystemRawValue = isGenericChain
     ? [...stageTotals.entries()]
-        .filter(([stage]) => !isBaseMaterialStage(stage))
+        .filter(([stage]) => !isBaseMaterialStage(stage) && !isCriticalImportStage(stage))
         .reduce((sum, [, total]) => sum + total.raw, 0)
     : solarImportTotal;
   const finalIndex = ensureNode("product:chain-system", finalSystemName, "product");
@@ -1087,24 +1127,29 @@ function buildImportsTopology(
   stageTotals.forEach((total, stage) => {
     const destinationName = isTransitionFuelChain ? transitionFuelDestination(stage) : null;
     const isBaseMaterial = isBaseMaterialStage(stage);
+    const isCriticalImport = isCriticalImportStage(stage);
+    const isDivertedSink = isBaseMaterial || isCriticalImport;
+    const sinkLabel = isBaseMaterial ? BASE_MATERIAL_LABEL : CRITICAL_IMPORT_LABEL;
+    const sinkId = isBaseMaterial ? "destination:insumos-de-base" : "destination:insumos-criticos";
     const destinationIndex = destinationName
       ? ensureNode(`destination:${stage}`, destinationName, "destination")
-      : isBaseMaterial
-        ? ensureNode("destination:insumos-de-base", BASE_MATERIAL_LABEL, "destination")
+      : isDivertedSink
+        ? ensureNode(sinkId, sinkLabel, "destination")
         : integrationIndex;
-    if (destinationName || isBaseMaterial) {
+    if (destinationName || isDivertedSink) {
       nodes[destinationIndex].rawValue = (nodes[destinationIndex].rawValue ?? 0) + total.raw;
       nodes[destinationIndex].share = (nodes[destinationIndex].rawValue ?? 0) / Math.max(solarImportTotal, 1);
       if (total.chokepoint) nodes[destinationIndex].chokepoint = true;
+      if (isCriticalImport) nodes[destinationIndex].criticalImport = true;
     } else if (total.chokepoint) {
       nodes[integrationIndex].chokepoint = true;
     }
     const stageColor = routeColoring
       ? routeClassColor(dominantRouteFromInputs(solarInputs, stage))
-      : total.chokepoint ? "#ef4444" : "#f59e0b";
+      : (total.chokepoint || isCriticalImport) ? "#ef4444" : "#f59e0b";
     const targetName = isFertilizerChain
       ? "Produção e formulação de fertilizantes"
-      : destinationName ?? (isBaseMaterial ? BASE_MATERIAL_LABEL : finalSystemName);
+      : destinationName ?? (isDivertedSink ? sinkLabel : finalSystemName);
     links.push({
       id: `stage-final:${stage}`, highlightId: `stage:${stage}`,
       source: total.index, target: destinationIndex, value: total.value, rawValue: total.raw,
@@ -1114,8 +1159,9 @@ function buildImportsTopology(
       flowLabel: `${executiveStageLabel(stage)} → ${targetName}`,
       share: total.raw / Math.max(solarImportTotal, 1),
     });
-    // Base-material stages terminate at their sink on purpose -- no link
-    // onward to finalIndex, which is the whole point of the split above.
+    // Base-material and critical-import stages terminate at their sink on
+    // purpose -- no link onward to finalIndex, which is the whole point of
+    // the split above.
     if (destinationName) {
       links.push({
         id: `destination-final:${stage}`, highlightId: `destination:${stage}`,
@@ -1128,7 +1174,7 @@ function buildImportsTopology(
     }
   });
 
-  if ([...stageTotals.entries()].some(([stage, total]) => total.chokepoint && !isBaseMaterialStage(stage))) {
+  if ([...stageTotals.entries()].some(([stage, total]) => total.chokepoint && !isBaseMaterialStage(stage) && !isCriticalImportStage(stage))) {
     nodes[finalIndex].chokepoint = true;
   }
 
