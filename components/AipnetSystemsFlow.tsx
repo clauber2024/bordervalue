@@ -571,39 +571,6 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus }: { c
       </motion.div>
       </AnimatePresence>
 
-      {currentChain.parallelInputs?.length ? (
-        <div className="relative mt-8">
-          <div className="mb-4 flex items-center gap-2">
-            <Component className="h-4 w-4 text-amber-400" />
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-300">
-              Insumos e Subcomponentes Paralelos
-            </h3>
-          </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            {currentChain.parallelInputs.map((item) => {
-              const ParallelIcon = item.icon;
-              return (
-                <div
-                  key={item.id}
-                  className="flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-zinc-900/40 p-5 backdrop-blur-xl transition hover:border-white/20"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="rounded-xl border border-zinc-700/60 bg-zinc-800/80 p-2.5 text-zinc-300">
-                      <ParallelIcon className="h-5 w-5" />
-                    </div>
-                    <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${parallelRiskClass[item.risk]}`}>
-                      {parallelRiskLabel[item.risk]}
-                    </span>
-                  </div>
-                  <h4 className="mt-4 text-sm font-bold text-white">{item.name}</h4>
-                  <p className="mt-1.5 text-xs leading-5 text-zinc-400">{item.description}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
-
       <AnimatePresence mode="wait">
         {selectedNode ? (
           <motion.aside
@@ -683,6 +650,42 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus }: { c
           </motion.aside>
         ) : null}
       </AnimatePresence>
+
+      {/* Renders after the selected-stage detail panel, not before it --
+          this is a complement/unfold of the chain's parallel dependencies,
+          not the primary content the user should read first. */}
+      {currentChain.parallelInputs?.length ? (
+        <div className="relative mt-8">
+          <div className="mb-4 flex items-center gap-2">
+            <Component className="h-4 w-4 text-amber-400" />
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-300">
+              Insumos e Subcomponentes Paralelos
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {currentChain.parallelInputs.map((item) => {
+              const ParallelIcon = item.icon;
+              return (
+                <div
+                  key={item.id}
+                  className="flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-zinc-900/40 p-5 backdrop-blur-xl transition hover:border-white/20"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="rounded-xl border border-zinc-700/60 bg-zinc-800/80 p-2.5 text-zinc-300">
+                      <ParallelIcon className="h-5 w-5" />
+                    </div>
+                    <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${parallelRiskClass[item.risk]}`}>
+                      {parallelRiskLabel[item.risk]}
+                    </span>
+                  </div>
+                  <h4 className="mt-4 text-sm font-bold text-white">{item.name}</h4>
+                  <p className="mt-1.5 text-xs leading-5 text-zinc-400">{item.description}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       {topExposure ? (
         <div className="relative mt-10 flex flex-col gap-4 rounded-2xl border border-red-500/25 bg-zinc-950/65 p-5 sm:flex-row sm:items-center sm:justify-between">
