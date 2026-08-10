@@ -1074,44 +1074,46 @@ function buildImportsTopology(
     : isTransitionFuelChain
       ? "Usos finais dos combustíveis de transição"
       : realFinalProductName ?? chainName ?? "Sistema solar fotovoltaico";
-  // Generic (non-fertilizer, non-transition-fuel) chains split into three
-  // terminal groups instead of collapsing every stage into one finished-
-  // system node -- confirmed against the silicio chain's own data:
+  // Generic (non-fertilizer, non-transition-fuel) chains route each INPUT
+  // (not each whole stage) into one of three terminal groups -- confirmed
+  // against the silicio chain's own data:
   //   - Base (order <= 2, extração/processamento, e.g. "Base mineral",
   //     "Silício metalúrgico"): genuinely domestic-capable raw material.
-  //   - Critical imports (order between base and final, e.g. "Refino
-  //     solar", "Componentes avançados"): no confirmed domestic capacity.
-  //     "Refino solar" specifically bundles real refined product with
-  //     import-classified support chemicals (Hidrogênio de alta pureza,
-  //     Ácido clorídrico -- see SOLAR_INPUTS in
-  //     build_solar_sovereignty_metrics.py) at near-zero volume, and
-  //     Polissilício's own global_china_share (0.85) sits just under the
-  //     0.9 chokepoint badge threshold despite there being no domestic
-  //     refining capacity -- so this tier is decided by stage position,
-  //     not the chokepoint flag, to avoid missing cases like this one.
+  //     Also catches inputs from later stages that have no sourced global
+  //     concentration figure (e.g. Hidrogênio de alta pureza, Ácido
+  //     clorídrico -- generic industrial chemicals whose NCM basket isn't
+  //     solar-exclusive, see SOLAR_INPUTS in
+  //     build_solar_sovereignty_metrics.py) -- these are support material
+  //     for a process, not a verified monopoly risk.
+  //   - Critical imports (middle stages, but only inputs that DO carry a
+  //     sourced global_china_share, e.g. Polissilício at 0.85 -- just
+  //     under the 0.9 chokepoint badge threshold -- and Wafers at 0.95):
+  //     no confirmed domestic capacity for that specific input.
   //   - Final (the last stage present, e.g. "produto_final"/"Módulos
   //     fotovoltaicos"): the only tier that reaches the finished-system
   //     node -- this is genuinely the assembled/final good.
-  // Letting Base or Critical stages flow to the same terminal node as the
-  // finished system implied domestic integration ("Brasil refina e aplica
-  // em módulos") that isn't real.
+  // Routing whole stages together previously let a stage's dominant
+  // chokepoint input (e.g. Wafers) drag along its low-risk neighbors (a
+  // support chemical with a different-country supplier) into the same
+  // "critical" framing, and let Base/Critical inputs reach the same
+  // terminal node as the finished system, implying domestic integration
+  // ("Brasil refina e aplica em módulos") that isn't real.
   const isGenericChain = !isFertilizerChain && !isTransitionFuelChain;
   const BASE_MATERIAL_STAGE_ORDER_THRESHOLD = 2;
   const BASE_MATERIAL_LABEL = "Insumos de Base (uso industrial doméstico)";
   const CRITICAL_IMPORT_LABEL = "Insumos Críticos Importados (sem produção nacional)";
-  const maxStageOrder = Math.max(0, ...[...stageTotals.keys()].map((stage) => stagePhysicalOrder(`stage:${stage}`)));
-  const isBaseMaterialStage = (stage: string) =>
-    isGenericChain && stagePhysicalOrder(`stage:${stage}`) <= BASE_MATERIAL_STAGE_ORDER_THRESHOLD;
-  const isCriticalImportStage = (stage: string) => {
-    if (!isGenericChain) return false;
-    const order = stagePhysicalOrder(`stage:${stage}`);
-    return order > BASE_MATERIAL_STAGE_ORDER_THRESHOLD && order < maxStageOrder;
+  const maxStageOrder = Math.max(0, ...solarInputs.map((input) => stagePhysicalOrder(`stage:${input.stage}`)));
+  const importRoutingTier = (input: SolarInputMetric): "base" | "critical" | "final" => {
+    const order = stagePhysicalOrder(`stage:${input.stage}`);
+    if (order <= BASE_MATERIAL_STAGE_ORDER_THRESHOLD) return "base";
+    if (order >= maxStageOrder) return "final";
+    return input.global_china_share !== null ? "critical" : "base";
   };
 
   const finishedSystemRawValue = isGenericChain
-    ? [...stageTotals.entries()]
-        .filter(([stage]) => !isBaseMaterialStage(stage) && !isCriticalImportStage(stage))
-        .reduce((sum, [, total]) => sum + total.raw, 0)
+    ? solarInputs
+        .filter((input) => importRoutingTier(input) === "final")
+        .reduce((sum, input) => sum + Math.max(input.imports_value_usd, 0), 0)
     : solarImportTotal;
   const finalIndex = ensureNode("product:chain-system", finalSystemName, "product");
   nodes[finalIndex].rawValue = finishedSystemRawValue;
@@ -1126,43 +1128,23 @@ function buildImportsTopology(
 
   stageTotals.forEach((total, stage) => {
     const destinationName = isTransitionFuelChain ? transitionFuelDestination(stage) : null;
-    const isBaseMaterial = isBaseMaterialStage(stage);
-    const isCriticalImport = isCriticalImportStage(stage);
-    const isDivertedSink = isBaseMaterial || isCriticalImport;
-    const sinkLabel = isBaseMaterial ? BASE_MATERIAL_LABEL : CRITICAL_IMPORT_LABEL;
-    const sinkId = isBaseMaterial ? "destination:insumos-de-base" : "destination:insumos-criticos";
-    const destinationIndex = destinationName
-      ? ensureNode(`destination:${stage}`, destinationName, "destination")
-      : isDivertedSink
-        ? ensureNode(sinkId, sinkLabel, "destination")
-        : integrationIndex;
-    if (destinationName || isDivertedSink) {
-      nodes[destinationIndex].rawValue = (nodes[destinationIndex].rawValue ?? 0) + total.raw;
-      nodes[destinationIndex].share = (nodes[destinationIndex].rawValue ?? 0) / Math.max(solarImportTotal, 1);
-      if (total.chokepoint) nodes[destinationIndex].chokepoint = true;
-      if (isCriticalImport) nodes[destinationIndex].criticalImport = true;
-    } else if (total.chokepoint) {
-      nodes[integrationIndex].chokepoint = true;
-    }
-    const stageColor = routeColoring
-      ? routeClassColor(dominantRouteFromInputs(solarInputs, stage))
-      : (total.chokepoint || isCriticalImport) ? "#ef4444" : "#f59e0b";
-    const targetName = isFertilizerChain
-      ? "Produção e formulação de fertilizantes"
-      : destinationName ?? (isDivertedSink ? sinkLabel : finalSystemName);
-    links.push({
-      id: `stage-final:${stage}`, highlightId: `stage:${stage}`,
-      source: total.index, target: destinationIndex, value: total.value, rawValue: total.raw,
-      tone: "imports", color: stageColor,
-      alpha: 1, alphaApplied: false, supplierName: "Múltiplas origens",
-      productName: targetName,
-      flowLabel: `${executiveStageLabel(stage)} → ${targetName}`,
-      share: total.raw / Math.max(solarImportTotal, 1),
-    });
-    // Base-material and critical-import stages terminate at their sink on
-    // purpose -- no link onward to finalIndex, which is the whole point of
-    // the split above.
     if (destinationName) {
+      const destinationIndex = ensureNode(`destination:${stage}`, destinationName, "destination");
+      nodes[destinationIndex].rawValue = total.raw;
+      nodes[destinationIndex].share = total.raw / Math.max(solarImportTotal, 1);
+      if (total.chokepoint) nodes[destinationIndex].chokepoint = true;
+      const stageColor = routeColoring
+        ? routeClassColor(dominantRouteFromInputs(solarInputs, stage))
+        : total.chokepoint ? "#ef4444" : "#f59e0b";
+      links.push({
+        id: `stage-final:${stage}`, highlightId: `stage:${stage}`,
+        source: total.index, target: destinationIndex, value: total.value, rawValue: total.raw,
+        tone: "imports", color: stageColor,
+        alpha: 1, alphaApplied: false, supplierName: "Múltiplas origens",
+        productName: destinationName,
+        flowLabel: `${executiveStageLabel(stage)} → ${destinationName}`,
+        share: total.raw / Math.max(solarImportTotal, 1),
+      });
       links.push({
         id: `destination-final:${stage}`, highlightId: `destination:${stage}`,
         source: destinationIndex, target: finalIndex, value: total.value, rawValue: total.raw,
@@ -1171,10 +1153,80 @@ function buildImportsTopology(
         productName: finalSystemName, flowLabel: `${destinationName} → ${finalSystemName}`,
         share: total.raw / Math.max(solarImportTotal, 1),
       });
+      return;
     }
+
+    if (isFertilizerChain) {
+      if (total.chokepoint) nodes[integrationIndex].chokepoint = true;
+      const stageColor = routeColoring
+        ? routeClassColor(dominantRouteFromInputs(solarInputs, stage))
+        : total.chokepoint ? "#ef4444" : "#f59e0b";
+      links.push({
+        id: `stage-final:${stage}`, highlightId: `stage:${stage}`,
+        source: total.index, target: integrationIndex, value: total.value, rawValue: total.raw,
+        tone: "imports", color: stageColor,
+        alpha: 1, alphaApplied: false, supplierName: "Múltiplas origens",
+        productName: "Produção e formulação de fertilizantes",
+        flowLabel: `${executiveStageLabel(stage)} → Produção e formulação`,
+        share: total.raw / Math.max(solarImportTotal, 1),
+      });
+      return;
+    }
+
+    // Generic chain: fan this stage's inputs out by their individual
+    // routing tier instead of moving the whole stage as one block -- a
+    // stage can straddle two tiers (e.g. "Refino solar" carries both
+    // Polissilício/critical and Ácido clorídrico/base).
+    const stageInputs = solarInputs.filter((input) => input.stage === stage);
+    const tierRaw = new Map<"base" | "critical" | "final", number>();
+    const tierChokepoint = new Map<"base" | "critical" | "final", boolean>();
+    stageInputs.forEach((input) => {
+      const tier = importRoutingTier(input);
+      const rawValue = Math.max(input.imports_value_usd, 0);
+      tierRaw.set(tier, (tierRaw.get(tier) ?? 0) + rawValue);
+      const chinaShare = input.global_china_share ?? input.china_share_brazilian_imports ?? 0;
+      if (chinaShare >= CHOKEPOINT_THRESHOLD) tierChokepoint.set(tier, true);
+    });
+
+    tierRaw.forEach((raw, tier) => {
+      const targetIndex = tier === "final"
+        ? finalIndex
+        : tier === "critical"
+          ? ensureNode("destination:insumos-criticos", CRITICAL_IMPORT_LABEL, "destination")
+          : ensureNode("destination:insumos-de-base", BASE_MATERIAL_LABEL, "destination");
+      const targetName = tier === "final" ? finalSystemName : tier === "critical" ? CRITICAL_IMPORT_LABEL : BASE_MATERIAL_LABEL;
+      if (tier !== "final") {
+        nodes[targetIndex].rawValue = (nodes[targetIndex].rawValue ?? 0) + raw;
+        nodes[targetIndex].share = (nodes[targetIndex].rawValue ?? 0) / Math.max(solarImportTotal, 1);
+        if (tierChokepoint.get(tier)) nodes[targetIndex].chokepoint = true;
+        if (tier === "critical") nodes[targetIndex].criticalImport = true;
+      }
+      const tierInputs = stageInputs.filter((input) => importRoutingTier(input) === tier);
+      const stageColor = routeColoring
+        ? routeClassColor(dominantRouteFromInputs(tierInputs))
+        : (tierChokepoint.get(tier) || tier === "critical") ? "#ef4444" : "#f59e0b";
+      links.push({
+        id: `stage-final:${stage}:${tier}`, highlightId: `stage:${stage}`,
+        source: total.index, target: targetIndex, value: visualFlowValue(raw), rawValue: raw,
+        tone: "imports", color: stageColor,
+        alpha: 1, alphaApplied: false, supplierName: "Múltiplas origens",
+        productName: targetName,
+        flowLabel: `${executiveStageLabel(stage)} → ${targetName}`,
+        share: raw / Math.max(solarImportTotal, 1),
+      });
+      // Base/critical tiers terminate at their sink on purpose -- no link
+      // onward to finalIndex, which is the whole point of the split above.
+    });
   });
 
-  if ([...stageTotals.entries()].some(([stage, total]) => total.chokepoint && !isBaseMaterialStage(stage) && !isCriticalImportStage(stage))) {
+  const finalIndexChokepoint = isGenericChain
+    ? solarInputs.some((input) => {
+        if (importRoutingTier(input) !== "final") return false;
+        const chinaShare = input.global_china_share ?? input.china_share_brazilian_imports ?? 0;
+        return chinaShare >= CHOKEPOINT_THRESHOLD;
+      })
+    : [...stageTotals.values()].some((total) => total.chokepoint);
+  if (finalIndexChokepoint) {
     nodes[finalIndex].chokepoint = true;
   }
 
