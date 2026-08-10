@@ -181,14 +181,19 @@ export function NIBMatrixChart({
         <div className="bg-emerald-400/[0.06] px-3 py-2.5 text-emerald-200">Déficit baixo · Competitiva</div>
       </div>
 
+      {/* Legend used to float absolutely inside the plot area (top-right),
+          covering real data points in that quadrant. Rendered as a normal
+          flow row above the chart instead, so nothing overlaps the axes or
+          the scatter points. */}
+      <div className="mx-4 mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[10.5px] leading-tight text-zinc-400 sm:mx-6">
+        <MatrixLegend color="#f87171" label="Atrair nova capacidade" />
+        <MatrixLegend color="#fbbf24" label="Modernizar e expandir" />
+        <MatrixLegend color="#34d399" label="Posição competitiva" />
+        <MatrixLegend color="#38bdf8" label="Monitorar" />
+        <MatrixLegend color="#c084fc" label="Substituir / descarbonizar" />
+      </div>
+
       <div className="relative h-[470px] min-h-[380px] w-full px-2 py-2 sm:px-4">
-        <div className="pointer-events-none absolute right-3 top-3 z-10 flex max-w-[13rem] flex-col gap-1.5 rounded-lg border border-zinc-800/70 bg-zinc-950/85 px-3 py-2.5 text-[10.5px] leading-tight text-zinc-300 shadow-lg backdrop-blur-md sm:right-5">
-          <MatrixLegend color="#f87171" label="Atrair nova capacidade" />
-          <MatrixLegend color="#fbbf24" label="Modernizar e expandir" />
-          <MatrixLegend color="#34d399" label="Posição competitiva" />
-          <MatrixLegend color="#38bdf8" label="Monitorar" />
-          <MatrixLegend color="#c084fc" label="Substituir / descarbonizar" />
-        </div>
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 38, right: 54, bottom: 70, left: 92 }}>
             <CartesianGrid stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
@@ -264,7 +269,11 @@ export function NIBMatrixChart({
       {hasCapacityCoverage && (
       <div className="space-y-2 border-t border-zinc-800/60 px-4 py-4 sm:px-6">
         {matrixData.map((item) => (
-          <details key={`${item.produto_nome}-${item.matrixOrdinal}`} className="group overflow-hidden rounded-lg border border-zinc-800/60 bg-white/[0.025]">
+          <details
+            key={`${item.produto_nome}-${item.matrixOrdinal}`}
+            className="group overflow-hidden rounded-lg border border-l-4 border-zinc-800/60 bg-white/[0.025]"
+            style={{ borderLeftColor: getPointColor(item) }}
+          >
             <summary className="flex cursor-pointer list-none items-start gap-3 px-3 py-3 [&::-webkit-details-marker]:hidden">
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-zinc-950" style={{ backgroundColor: getPointColor(item) }}>
                 {item.matrixOrdinal}
