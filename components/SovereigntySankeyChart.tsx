@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Info } from "lucide-react";
+import { Info, X } from "lucide-react";
 import { ResponsiveContainer, Sankey, Tooltip } from "recharts";
 import type { ProdutoConceitual } from "../types/border-value";
 import type { ProductionRouteClass, SolarInputMetric } from "../types/solar-sovereignty";
@@ -317,6 +317,24 @@ export function SovereigntySankeyChart({
     }
     return null;
   }, [selectedNodeDatum, selectedLinkDatum, solarInputs, referencePeriod]);
+  // Drill-down data behind the two clickable header metric pills -- real
+  // input lists, not fabricated: "Insumos mapeados" is every input actually
+  // considered for this perspective (exports side pre-filters to
+  // exports_value_usd > 0, mirroring buildExportsTopology's own
+  // exportableInputs filter so the drawer's count matches the pill's).
+  // "Gargalos"/"Rotas" mirrors the same threshold each perspective's
+  // topology builder uses for its own chokepoint/lowCarbon flags.
+  const [metricsDrawer, setMetricsDrawer] = useState<"mapped" | "highlight" | null>(null);
+  const mappedInputsList = useMemo(
+    () => perspective === "exports" ? solarInputs.filter((input) => input.exports_value_usd > 0) : solarInputs,
+    [perspective, solarInputs],
+  );
+  const highlightInputsList = useMemo(
+    () => perspective === "exports"
+      ? mappedInputsList.filter((input) => input.production_route_class === "low_carbon_dominant")
+      : mappedInputsList.filter((input) => (input.global_china_share ?? input.china_share_brazilian_imports ?? 0) >= CHOKEPOINT_THRESHOLD),
+    [perspective, mappedInputsList],
+  );
   const activeInputCount = sankeyData.nodes.filter((node) => node.kind === "input").length;
   const effectiveHeight = solarInputs.length && activeInputCount
     ? Math.max(height, activeInputCount * 58 + 180)
@@ -353,8 +371,16 @@ export function SovereigntySankeyChart({
 
         <div className="mt-4 grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
           <MetricPill label={perspective === "exports" ? "Exportações" : "Importações"} value={usdCompact.format(summary.totalValue)} />
-          <MetricPill label={perspective === "exports" ? "Ativos nacionais mapeados" : "Insumos mapeados"} value={String(summary.inputCount)} />
-          <MetricPill label={summary.highlightLabel} value={String(summary.highlightCount)} />
+          <MetricPill
+            label={perspective === "exports" ? "Ativos nacionais mapeados" : "Insumos mapeados"}
+            value={String(summary.inputCount)}
+            onClick={mappedInputsList.length ? () => setMetricsDrawer("mapped") : undefined}
+          />
+          <MetricPill
+            label={summary.highlightLabel}
+            value={String(summary.highlightCount)}
+            onClick={highlightInputsList.length ? () => setMetricsDrawer("highlight") : undefined}
+          />
         </div>
       </header>
 
@@ -638,6 +664,93 @@ export function SovereigntySankeyChart({
           </motion.aside>
         ) : null}
       </div>
+
+      {metricsDrawer ? (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            onClick={() => setMetricsDrawer(null)}
+            aria-hidden
+          />
+          <motion.aside
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-white/10 bg-zinc-950/95 shadow-2xl backdrop-blur-xl"
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-white/[0.08] px-5 py-4">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">
+                  {metricsDrawer === "mapped"
+                    ? perspective === "exports" ? "Ativos nacionais mapeados" : "Insumos mapeados"
+                    : summary.highlightLabel}
+                </p>
+                <h4 className="mt-1 text-lg font-bold text-white">
+                  {metricsDrawer === "mapped" ? mappedInputsList.length : highlightInputsList.length} itens
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMetricsDrawer(null)}
+                className="rounded-lg border border-white/10 bg-white/[0.04] p-2 text-zinc-400 transition hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                aria-label="Fechar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-4">
+              {(metricsDrawer === "mapped" ? mappedInputsList : highlightInputsList)
+                .slice()
+                .sort((left, right) => {
+                  const rightValue = perspective === "exports" ? right.exports_value_usd : right.imports_value_usd;
+                  const leftValue = perspective === "exports" ? left.exports_value_usd : left.imports_value_usd;
+                  return rightValue - leftValue;
+                })
+                .map((input) => {
+                  const value = perspective === "exports" ? input.exports_value_usd : input.imports_value_usd;
+                  const share = value / Math.max(summary.totalValue, 1);
+                  const chinaShare = input.global_china_share ?? input.china_share_brazilian_imports;
+                  return (
+                    <div
+                      key={input.input_id}
+                      className="mb-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3.5"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-white">{input.label}</p>
+                          <p className="mt-0.5 text-[11px] text-zinc-500">{executiveStageLabel(input.stage)}</p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="font-mono text-sm font-semibold text-cyan-200">{usdCompact.format(value)}</p>
+                          <p className="text-[11px] text-zinc-500">{percent.format(share)}</p>
+                        </div>
+                      </div>
+                      {metricsDrawer === "highlight" ? (
+                        perspective === "exports" ? (
+                          input.production_route_rationale ? (
+                            <p className="mt-2 border-t border-white/[0.06] pt-2 text-[11px] leading-relaxed text-emerald-200/90">
+                              {input.production_route_rationale}
+                            </p>
+                          ) : null
+                        ) : (
+                          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-white/[0.06] pt-2 text-[11px] text-red-200/90">
+                            {input.top_supplier?.country_name ? (
+                              <span>Principal fornecedor: {input.top_supplier.country_name}</span>
+                            ) : null}
+                            {chinaShare !== null && chinaShare !== undefined ? (
+                              <span className="font-mono">Concentração: {percent.format(chinaShare)}</span>
+                            ) : null}
+                          </div>
+                        )
+                      ) : null}
+                    </div>
+                  );
+                })}
+            </div>
+          </motion.aside>
+        </>
+      ) : null}
     </section>
   );
 }
@@ -1082,14 +1195,30 @@ function FlowTooltip({ active, payload }: SankeyTooltipProps) {
   );
 }
 
-function MetricPill({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-zinc-800/70 bg-white/[0.04] px-3 py-2">
+function MetricPill({ label, value, onClick }: { label: string; value: string; onClick?: () => void }) {
+  const content = (
+    <>
       <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
         {label}
       </span>
       <strong className="mt-1 block truncate text-sm font-semibold text-zinc-100">{value}</strong>
-    </div>
+    </>
+  );
+  if (!onClick) {
+    return (
+      <div className="rounded-lg border border-zinc-800/70 bg-white/[0.04] px-3 py-2">
+        {content}
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-lg border border-zinc-800/70 bg-white/[0.04] px-3 py-2 text-left transition hover:border-cyan-300/30 hover:bg-cyan-400/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+    >
+      {content}
+    </button>
   );
 }
 

@@ -511,6 +511,24 @@ export default function MainAnalyticalDashboard() {
 
           <AipnetSystemsFlow chainId={selectedChain} inputs={solarSovereignty?.inputs} onAnalysisFocus={handleAipnetAnalysisFocus} />
 
+          {/* Primary entry panel for the executive read -- was previously
+              buried inside the readingMode==="analytical"-gated
+              "Aprofundamento analítico" section below, collapsed by
+              default, so it needed a mode switch plus a click to even see.
+              Moved ahead of the dependency bar chart and opened by
+              default; the bar chart is the supporting complement, not the
+              lead. */}
+          <ExpandableAnalyticsPanel title="Fluxo de soberania por produto" subtitle="Rede de fornecedores, produto e capacidade nacional" defaultOpen>
+            <SovereigntySankeyChart
+              dado={radarProduct ?? premiumProducts[0]}
+              solarInputs={solarSovereignty?.inputs}
+              chainName={selectedChainMetadata?.name ?? solarSovereignty?.chain_name}
+              height={620}
+              title="Fluxo AIPNET por produto conceitual"
+              onAnalysisFocus={handleAipnetAnalysisFocus}
+            />
+          </ExpandableAnalyticsPanel>
+
             <div ref={diagnosticRef} className="scroll-mt-6">
               <ExecutiveVulnerabilityChart
                 data={executiveVulnerabilityData}
@@ -549,17 +567,6 @@ export default function MainAnalyticalDashboard() {
                   <ProportionalityToggle dado={proportionalityProduct} />
                 </ExpandableAnalyticsPanel>
               ) : null}
-
-              <ExpandableAnalyticsPanel title="Fluxo de soberania por produto" subtitle="Rede de fornecedores, produto e capacidade nacional">
-                <SovereigntySankeyChart
-                  dado={radarProduct ?? premiumProducts[0]}
-                  solarInputs={solarSovereignty?.inputs}
-                  chainName={selectedChainMetadata?.name ?? solarSovereignty?.chain_name}
-                  height={620}
-                  title="Fluxo AIPNET por produto conceitual"
-                  onAnalysisFocus={handleAipnetAnalysisFocus}
-                />
-              </ExpandableAnalyticsPanel>
 
               {solarSovereignty?.inputs.length ? (
                 <ExpandableAnalyticsPanel
