@@ -177,6 +177,10 @@ export function SovereigntySankeyChart({
   const selectedLinkDatum = selectedLinkHighlightId
     ? sankeyData.links.find((link) => link.highlightId === selectedLinkHighlightId) ?? null
     : null;
+  // All inputs in a chain response share one reference_period (see
+  // build_solar_sovereignty_metrics.py) -- reading it off the first entry
+  // is the real value for the whole chain, not a per-node guess.
+  const referencePeriod = solarInputs[0]?.reference_period;
   const detailSubject = useMemo(() => {
     if (selectedNodeDatum) {
       const node = selectedNodeDatum;
@@ -192,7 +196,7 @@ export function SovereigntySankeyChart({
         dataSource: dataSourceLabel(node.tone, node.domesticUse),
         methodology: nodeMethodology(node.kind, node.tone, node.id, node.domesticUse),
         formula: calculationFormula(node.tone, node.domesticUse),
-        evidence: evidenceSources(node.tone, node.domesticUse),
+        evidence: evidenceSources(node.tone, node.domesticUse, referencePeriod),
         executiveSummary: routeExecutiveSummary({
           title: node.name, amount: node.rawValue ?? 0, share: node.share, tone: node.tone, kindLabel,
           domesticUse: node.domesticUse, routeClass: relatedInput?.production_route_class,
@@ -225,7 +229,7 @@ export function SovereigntySankeyChart({
         dataSource: dataSourceLabel(link.tone, link.domesticUse),
         methodology: `Valor FOB ${link.tone === "exports" ? "exportado" : "importado"} (ComexStat/MDIC) deste fluxo específico, entre as duas etapas indicadas no título.`,
         formula: calculationFormula(link.tone, link.domesticUse),
-        evidence: evidenceSources(link.tone, link.domesticUse),
+        evidence: evidenceSources(link.tone, link.domesticUse, referencePeriod),
         executiveSummary: routeExecutiveSummary({
           title, amount: link.rawValue, share: link.share, tone: link.tone, kindLabel,
           domesticUse: link.domesticUse, routeClass: link.routeClass,
@@ -244,7 +248,7 @@ export function SovereigntySankeyChart({
       };
     }
     return null;
-  }, [selectedNodeDatum, selectedLinkDatum, solarInputs]);
+  }, [selectedNodeDatum, selectedLinkDatum, solarInputs, referencePeriod]);
   const activeInputCount = sankeyData.nodes.filter((node) => node.kind === "input").length;
   const effectiveHeight = solarInputs.length && activeInputCount
     ? Math.max(height, activeInputCount * 58 + 180)
@@ -1108,18 +1112,35 @@ function calculationFormula(tone: Perspective, domesticUse?: boolean): string {
     : `${numerator} ÷ total da rede na perspectiva selecionada = participação (%) exibida acima`;
 }
 
+// Same "YYYY-Hn" -> "Mês-Mês YYYY" convention already used by
+// ChainSelectionLanding's formatPeriod -- kept as a local copy since this
+// file has no shared formatting module, but must render the same real
+// value (e.g. build_solar_sovereignty_metrics.py's "2026-H1"), not a
+// separate invented date range. Falls back to the raw string for any
+// period that doesn't match the H1/H2 convention (e.g. a bare year),
+// rather than hiding or guessing at it.
+function formatReferencePeriod(referencePeriod: string): string {
+  const match = /^(\d{4})-H([12])$/.exec(referencePeriod);
+  if (!match) return referencePeriod;
+  const [, year, half] = match;
+  return half === "1" ? `Jan-Jun ${year}` : `Jul-Dez ${year}`;
+}
+
 // Which official bases were actually consulted for THIS figure, as a list
 // instead of one packed sentence -- same underlying facts as
 // dataSourceLabel, just broken out per source so each can carry its own
-// scope note in the UI.
-function evidenceSources(tone: Perspective, domesticUse?: boolean): string[] {
+// scope note in the UI. Each source line also carries the exact extraction
+// window it was pulled from -- omitted (not guessed) when the chain's
+// response didn't provide one.
+function evidenceSources(tone: Perspective, domesticUse?: boolean, referencePeriod?: string): string[] {
+  const periodTag = referencePeriod ? ` [Recorte: ${formatReferencePeriod(referencePeriod)}]` : "";
   const sources = [
-    tone === "exports"
+    (tone === "exports"
       ? "ComexStat/MDIC — fluxo de exportação declarado (valor FOB, por NCM)"
-      : "ComexStat/MDIC — fluxo de importação declarado (valor FOB, por NCM)",
+      : "ComexStat/MDIC — fluxo de importação declarado (valor FOB, por NCM)") + periodTag,
   ];
   if (domesticUse) {
-    sources.push("PRODLIST/IBGE — produção industrial comparável (capacidade nacional declarada)");
+    sources.push(`PRODLIST/IBGE — produção industrial comparável (capacidade nacional declarada)${periodTag}`);
   }
   return sources;
 }
