@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Info } from "lucide-react";
 import { ResponsiveContainer, Sankey, Tooltip } from "recharts";
@@ -140,6 +140,26 @@ export function SovereigntySankeyChart({
   const [routeColoring, setRouteColoring] = useState(false);
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
   const [hoveredFlowId, setHoveredFlowId] = useState<string | null>(null);
+  // Toggle-off (clicking the already-selected node/link again) has to clear
+  // hoveredFlowId too, not just selectedFlowId -- activeFlowId falls back to
+  // hoveredFlowId when selectedFlowId is null, and the cursor is still
+  // sitting on that exact element right after the click that toggled it
+  // off, so without this the chart looked "stuck" dimmed: the one element
+  // under the cursor stayed highlighted and everything else stayed dark
+  // until the mouse physically left it.
+  const clearFlowSelection = useCallback(() => {
+    setSelectedFlowId(null);
+    setHoveredFlowId(null);
+  }, []);
+  const handleSelectFlow = useCallback((id: string) => {
+    setSelectedFlowId((current) => {
+      if (current === id) {
+        setHoveredFlowId(null);
+        return null;
+      }
+      return id;
+    });
+  }, []);
   const products = useMemo(() => (dado ? [dado] : data ?? []), [data, dado]);
 
   const sankeyData = useMemo<SankeyChartData>(() => {
@@ -193,7 +213,9 @@ export function SovereigntySankeyChart({
         amount: node.rawValue ?? 0,
         share: node.share,
         tone: node.tone,
+        subjectKind: "node" as const,
         dataSource: dataSourceLabel(node.tone, node.domesticUse),
+        glossary: nodeGlossary(node.kind, node.tone, node.id),
         methodology: nodeMethodology(node.kind, node.tone, node.id, node.domesticUse),
         formula: calculationFormula(node.tone, node.domesticUse),
         evidence: evidenceSources(node.tone, node.domesticUse, referencePeriod),
@@ -209,6 +231,12 @@ export function SovereigntySankeyChart({
         lowCarbon: node.lowCarbon,
         criticalImport: node.criticalImport,
         domesticUse: node.domesticUse,
+        chokepointNote: node.chokepoint
+          ? chokepointGlossaryNote(node.kind === "destination" || node.kind === "product")
+          : undefined,
+        criticalImportNote: node.criticalImport ? CRITICAL_IMPORT_GLOSSARY_NOTE : undefined,
+        lowCarbonNote: node.lowCarbon ? LOW_CARBON_GLOSSARY_NOTE : undefined,
+        domesticUseNote: node.domesticUse ? DOMESTIC_USE_GLOSSARY_NOTE : undefined,
         focusNodeId: node.id,
         focusStage: resolveFocusStage(node.id, solarInputs),
         focusInput: relatedInput?.label,
@@ -226,7 +254,9 @@ export function SovereigntySankeyChart({
         amount: link.rawValue,
         share: link.share,
         tone: link.tone,
+        subjectKind: "route" as const,
         dataSource: dataSourceLabel(link.tone, link.domesticUse),
+        glossary: routeGlossary(link.tone),
         methodology: `Valor FOB ${link.tone === "exports" ? "exportado" : "importado"} (ComexStat/MDIC) deste fluxo específico, entre as duas etapas indicadas no título.`,
         formula: calculationFormula(link.tone, link.domesticUse),
         evidence: evidenceSources(link.tone, link.domesticUse, referencePeriod),
@@ -241,6 +271,10 @@ export function SovereigntySankeyChart({
         lowCarbon: undefined as boolean | undefined,
         criticalImport: undefined as boolean | undefined,
         domesticUse: link.domesticUse,
+        chokepointNote: undefined as string | undefined,
+        criticalImportNote: undefined as string | undefined,
+        lowCarbonNote: link.routeClass === "low_carbon_dominant" ? LOW_CARBON_GLOSSARY_NOTE : undefined,
+        domesticUseNote: link.domesticUse ? DOMESTIC_USE_GLOSSARY_NOTE : undefined,
         focusNodeId: link.highlightId,
         focusStage: resolveFocusStage(link.highlightId, solarInputs),
         focusInput: link.productName,
@@ -300,6 +334,19 @@ export function SovereigntySankeyChart({
           <p className="leading-relaxed">
             <strong className="font-semibold text-zinc-200">Nota de Escopo Comercial (ComexStat/MDIC):</strong> {scopeNote}
           </p>
+          {/* Was previously only rendered inside the exports-only "Lente
+              opcional" box below, so a selection made on the Importações
+              perspective had no visible reset control -- moved here so it
+              shows in both perspectives whenever a selection is active. */}
+          {selectedFlowId ? (
+            <button
+              type="button"
+              onClick={clearFlowSelection}
+              className="ml-auto shrink-0 rounded-lg border border-white/15 bg-zinc-950/50 px-3 py-1.5 text-xs font-semibold text-zinc-300 transition hover:border-white/30 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+            >
+              Limpar destaque
+            </button>
+          ) : null}
         </div>
 
         {solarInputs.length && perspective === "exports" ? (
@@ -319,7 +366,7 @@ export function SovereigntySankeyChart({
                     // colorMode -- toggling the lens without clearing it
                     // made the whole new palette look permanently dimmed.
                     setRouteColoring((value) => !value);
-                    setSelectedFlowId(null);
+                    clearFlowSelection();
                   }}
                   aria-pressed={routeColoring}
                   className={`rounded-lg border px-3 py-1.5 text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
@@ -328,11 +375,6 @@ export function SovereigntySankeyChart({
                 >
                   Colorir por rota produtiva
                 </button>
-                {selectedFlowId ? (
-                  <button type="button" onClick={() => setSelectedFlowId(null)} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-400 transition hover:text-white">
-                    Limpar destaque
-                  </button>
-                ) : null}
               </div>
             </div>
             {routeColoring ? (
@@ -388,14 +430,14 @@ export function SovereigntySankeyChart({
                         props,
                         activeFlowId,
                         focusContext.nodeIds,
-                        (id) => setSelectedFlowId((current) => current === id ? null : id),
+                        handleSelectFlow,
                         (id) => setHoveredFlowId(id),
                       )}
                       link={(props: SankeyLinkRenderProps) => renderLink(
                         props,
                         activeFlowId,
                         focusContext.highlightIds,
-                        (id) => setSelectedFlowId((current) => current === id ? null : id),
+                        handleSelectFlow,
                         (id) => setHoveredFlowId(id),
                       )}
                       nodePadding={24}
@@ -435,7 +477,36 @@ export function SovereigntySankeyChart({
                     <span className="text-zinc-500">{percent.format(detailSubject.share)} da rede</span>
                   ) : null}
                 </div>
-                <p className="mt-3 rounded-md border border-cyan-300/15 bg-cyan-400/[0.04] px-3 py-2 text-xs leading-relaxed text-zinc-200">
+                {/* TOPO: glossário conceitual -- o "o que é", antes de qualquer número. */}
+                <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                  {detailSubject.subjectKind === "route" ? "O que esta rota representa?" : "O que este nó representa?"}
+                </p>
+                <p className="mt-1.5 rounded-md border border-violet-300/15 bg-violet-400/[0.05] px-3 py-2 text-xs leading-relaxed text-zinc-200">
+                  {detailSubject.glossary}
+                </p>
+                {detailSubject.chokepointNote ? (
+                  <p className="mt-1.5 rounded-md border border-red-500/20 bg-red-500/[0.06] px-3 py-2 text-[11px] leading-relaxed text-red-200/90">
+                    <span className="font-semibold">⚠ Gargalo de concentração: </span>{detailSubject.chokepointNote}
+                  </p>
+                ) : null}
+                {detailSubject.criticalImportNote ? (
+                  <p className="mt-1.5 rounded-md border border-red-500/20 bg-red-500/[0.06] px-3 py-2 text-[11px] leading-relaxed text-red-200/90">
+                    <span className="font-semibold">⚠ Insumo crítico: </span>{detailSubject.criticalImportNote}
+                  </p>
+                ) : null}
+                {detailSubject.lowCarbonNote ? (
+                  <p className="mt-1.5 rounded-md border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2 text-[11px] leading-relaxed text-emerald-200/90">
+                    <span className="font-semibold">Baixo carbono: </span>{detailSubject.lowCarbonNote}
+                  </p>
+                ) : null}
+                {detailSubject.domesticUseNote ? (
+                  <p className="mt-1.5 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[11px] leading-relaxed text-zinc-400">
+                    <span className="font-semibold text-zinc-300">Uso interno: </span>{detailSubject.domesticUseNote}
+                  </p>
+                ) : null}
+
+                {/* MEIO: análise executiva (o "quanto") + memória de cálculo (o "como"). */}
+                <p className="mt-4 rounded-md border border-cyan-300/15 bg-cyan-400/[0.04] px-3 py-2 text-xs leading-relaxed text-zinc-200">
                   <span className="font-semibold text-cyan-200">Análise executiva: </span>
                   {detailSubject.executiveSummary}
                 </p>
@@ -450,39 +521,15 @@ export function SovereigntySankeyChart({
                 <p className="mt-1.5 rounded-md border border-white/[0.06] bg-black/20 px-3 py-2 font-mono text-[11px] leading-relaxed text-zinc-500">
                   {detailSubject.formula}
                 </p>
-
-                <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                  Evidências e fontes oficiais
-                </p>
-                <ul className="mt-1.5 space-y-1">
-                  {detailSubject.evidence.map((source) => (
-                    <li key={source} className="flex items-start gap-1.5 text-[11px] leading-relaxed text-amber-300/90">
-                      <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
-                      <span>{source}</span>
-                    </li>
-                  ))}
-                </ul>
                 {detailSubject.routeRationale ? (
-                  <p className="mt-3 rounded-md border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs leading-relaxed text-zinc-300">
+                  <p className="mt-1.5 rounded-md border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs leading-relaxed text-zinc-300">
                     {detailSubject.routeRationale}
                   </p>
                 ) : null}
                 {detailSubject.dataGapReason ? (
-                  <p className="mt-2 rounded-md border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2 text-xs leading-relaxed text-amber-200/90">
+                  <p className="mt-1.5 rounded-md border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2 text-xs leading-relaxed text-amber-200/90">
                     {detailSubject.dataGapReason}
                   </p>
-                ) : null}
-                {detailSubject.chokepoint ? (
-                  <p className="mt-2 text-xs leading-relaxed text-red-300">⚠ Gargalo de concentração ≥ 90% de origem chinesa.</p>
-                ) : null}
-                {detailSubject.criticalImport ? (
-                  <p className="mt-2 text-xs leading-relaxed text-red-300">⚠ Sem produção nacional confirmada nesta etapa.</p>
-                ) : null}
-                {detailSubject.lowCarbon ? (
-                  <p className="mt-2 text-xs leading-relaxed text-emerald-300">Rota produtiva de baixo carbono predominante.</p>
-                ) : null}
-                {detailSubject.domesticUse ? (
-                  <p className="mt-2 text-xs leading-relaxed text-zinc-400">Ficou no Brasil em vez de ser exportado — não é um país comprador.</p>
                 ) : null}
                 {detailSubject.contributions && detailSubject.contributions.length > 1 ? (
                   <div className="mt-4 border-t border-white/[0.06] pt-3">
@@ -503,6 +550,19 @@ export function SovereigntySankeyChart({
                     </ul>
                   </div>
                 ) : null}
+
+                {/* RODAPÉ: evidências, fontes e recorte temporal completo. */}
+                <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                  Evidências e fontes oficiais
+                </p>
+                <ul className="mt-1.5 space-y-1">
+                  {detailSubject.evidence.map((source) => (
+                    <li key={source} className="flex items-start gap-1.5 text-[11px] leading-relaxed text-amber-300/90">
+                      <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+                      <span>{source}</span>
+                    </li>
+                  ))}
+                </ul>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -513,7 +573,7 @@ export function SovereigntySankeyChart({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSelectedFlowId(null)}
+                    onClick={clearFlowSelection}
                     className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
                   >
                     Fechar
@@ -1045,6 +1105,64 @@ function nodeKindLabel(kind: SankeyNodeDatum["kind"]) {
       return "";
   }
 }
+
+// Explains WHAT the node kind is, in plain language -- the card's opening
+// "glossary" block, read before any number. Aggregate sinks and Uso
+// Interno get their own real definition since "Destino" alone doesn't say
+// much for them; everything else gets a definition for its node kind.
+function nodeGlossary(kind: SankeyNodeDatum["kind"], tone: Perspective, nodeId: string | undefined): string {
+  if (nodeId === "destination:insumos-de-base") {
+    return 'Agrupa insumos com atividade produtiva real confirmada no Brasil (extração/processamento) e insumos de estágios posteriores sem concentração global de fornecimento identificada — ou seja, sem sinal de risco de monopólio, ainda que dependam de importação.';
+  }
+  if (nodeId === "destination:insumos-criticos") {
+    return "Agrupa insumos com concentração de fornecimento identificada globalmente e sem produção nacional confirmada nesta etapa — risco de dependência externa, mesmo quando a concentração específica nas importações brasileiras não ultrapassa 90%.";
+  }
+  if (nodeId === "destination:uso-interno") {
+    return "Representa a parcela da produção nacional que ficou no Brasil para uso ou consumo interno em vez de ser exportada — não é um país comprador.";
+  }
+  switch (kind) {
+    case "supplier":
+      return "Identifica o principal país de origem de um insumo ou grupo de insumos desta cadeia, segundo os registros de importação (ComexStat/MDIC).";
+    case "input":
+      return "Representa um insumo, material ou componente específico rastreado nesta cadeia, a partir dos códigos NCM mapeados para ele.";
+    case "stage":
+      return "Agrupa os insumos que passam por uma atividade produtiva real confirmada em território brasileiro (ex.: extração, processamento). Etapas sem produção doméstica comprovada não recebem este nó — o fluxo vai direto do insumo ao seu destino.";
+    case "destination":
+      return tone === "exports"
+        ? "Representa um mercado comprador (país de destino) confirmado nos registros de exportação desta cadeia."
+        : "Agrupa insumos roteados para esta aplicação doméstica, conforme o mapeamento desta cadeia.";
+    case "product":
+      return "Agrupa a oferta de produtos acabados desta cadeia, prontos para uso ou instalação — o último elo antes do consumidor final.";
+    default:
+      return "";
+  }
+}
+
+// Same purpose as nodeGlossary but for a selected ROUTE (link) -- a route
+// has no "kind" of its own, so this is one sentence per perspective
+// instead of a branch per node kind.
+function routeGlossary(tone: Perspective): string {
+  return tone === "exports"
+    ? 'Uma rota representa o fluxo de valor de um ativo nacional até seu destino — do beneficiamento no Brasil até o mercado comprador (ou o "Uso Interno") indicado no título, com base nos registros de exportação do período.'
+    : "Uma rota representa o fluxo de valor de um insumo entre duas etapas desta cadeia — da origem estrangeira até o destino no Brasil indicado no título, com base nos registros de importação do período.";
+}
+
+// Expanded, plain-language readings of each risk/route badge -- the short
+// labels already shown on the node itself (renderNode) stay short by
+// design; this is where the "why it matters" goes. Chokepoint has two
+// readings because destination/product nodes never carry their own
+// concentration figure -- see the matching comment in renderNode.
+function chokepointGlossaryNote(isPropagated: boolean): string {
+  return isPropagated
+    ? "Este nó não tem concentração própria: ele recebe insumos de uma etapa a montante com concentração ≥ 90% de origem chinesa. Uma disputa comercial, sanção ou colapso logístico nesse fornecedor dominante se propagaria até aqui."
+    : "Concentração de fornecimento ≥ 90% de origem chinesa: quase toda a oferta vem de um único país, criando risco de descontinuidade de suprimento em caso de disputa comercial, sanção ou colapso logístico do fornecedor dominante.";
+}
+
+const CRITICAL_IMPORT_GLOSSARY_NOTE = "Sem produção nacional confirmada nesta etapa: 100% da demanda depende de fornecimento estrangeiro, mesmo quando nenhum país isolado ultrapassa 90% de participação — não há capacidade instalada no Brasil para substituir essas importações no curto prazo.";
+
+const LOW_CARBON_GLOSSARY_NOTE = "Rota produtiva de baixo carbono predominante: a produção ou fornecimento predominante deste ativo usa processos ou matriz energética de menor intensidade de carbono, segundo a classificação de rota produtiva desta cadeia.";
+
+const DOMESTIC_USE_GLOSSARY_NOTE = "Esta parcela da produção nacional foi absorvida pelo mercado interno em vez de exportada — não representa um país comprador, e sim consumo/uso doméstico do próprio ativo.";
 
 // Explains HOW the number on the node was calculated -- not just where it
 // came from (dataSourceLabel already covers that). The two aggregate sinks
