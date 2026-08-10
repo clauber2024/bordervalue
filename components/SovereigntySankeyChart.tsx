@@ -1112,10 +1112,10 @@ function nodeKindLabel(kind: SankeyNodeDatum["kind"]) {
 // much for them; everything else gets a definition for its node kind.
 function nodeGlossary(kind: SankeyNodeDatum["kind"], tone: Perspective, nodeId: string | undefined): string {
   if (nodeId === "destination:insumos-de-base") {
-    return 'Agrupa insumos com atividade produtiva real confirmada no Brasil (extração/processamento) e insumos de estágios posteriores sem concentração global de fornecimento identificada — ou seja, sem sinal de risco de monopólio, ainda que dependam de importação.';
+    return 'Matérias-primas e insumos de aplicação industrial ampla e transversal — servem à cadeia produtiva geral do país, não apenas a esta cadeia específica. Reúne tanto etapas com atividade produtiva real confirmada no Brasil (extração/processamento) quanto insumos sem concentração global de fornecimento identificada, ou seja, sem sinal de risco de monopólio apurado.';
   }
   if (nodeId === "destination:insumos-criticos") {
-    return "Agrupa insumos com concentração de fornecimento identificada globalmente e sem produção nacional confirmada nesta etapa — risco de dependência externa, mesmo quando a concentração específica nas importações brasileiras não ultrapassa 90%.";
+    return "Insumos essenciais para esta cadeia sem nenhuma capacidade produtiva instalada no Brasil — dependem inteiramente de fornecimento estrangeiro. Este nó reúne esse risco de dependência externa com a herança de uma concentração de fornecimento identificada globalmente para esses insumos, mesmo quando a concentração específica nas importações brasileiras não ultrapassa o limiar de 90% usado no alerta de gargalo.";
   }
   if (nodeId === "destination:uso-interno") {
     return "Representa a parcela da produção nacional que ficou no Brasil para uso ou consumo interno em vez de ser exportada — não é um país comprador.";
