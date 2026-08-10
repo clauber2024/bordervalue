@@ -20,6 +20,7 @@ type SankeyNodeDatum = {
   share?: number;
   chokepoint?: boolean;
   lowCarbon?: boolean;
+  domesticUse?: boolean;
 };
 
 type SankeyLinkDatum = {
@@ -40,6 +41,7 @@ type SankeyLinkDatum = {
   routeClass?: ProductionRouteClass;
   routeRationale?: string;
   dataGapReason?: string;
+  domesticUse?: boolean;
 };
 
 type SankeyChartData = {
@@ -157,7 +159,7 @@ export function SovereigntySankeyChart({
     ? "Nenhum insumo desta cadeia registra exportação relevante no período mapeado — a perspectiva de importações continua disponível na pílula ao lado."
     : "Nenhum produto conceitual disponível para compor o fluxo de soberania.";
   const scopeNote = perspective === "exports"
-    ? 'Este diagrama ilustra a distribuição da pauta exportada, do ativo nacional de origem até o principal país comprador de cada insumo. A espessura das bandas reflete o valor FOB exportado (ComexStat/MDIC). Cada insumo é conectado ao seu principal destino declarado na base — mercados com participação abaixo de 0,1% do total exportado são agrupados em "Outros Mercados".'
+    ? 'Este diagrama ilustra a distribuição da produção doméstica de cada ativo, do beneficiamento no Brasil até o principal país comprador — ou até "Uso Interno / Consumo Doméstico" (cinza) para a parcela que não foi exportada. A espessura das bandas reflete o valor FOB exportado somado à produção retida no país (ComexStat/MDIC + produção comparável PRODLIST); mercados com participação abaixo de 0,1% do total exportado são agrupados em "Outros Mercados".'
     : "Este diagrama ilustra a distribuição da pauta importada e a concentração geográfica de fornecedores por categoria de bem. A espessura das bandas reflete o valor FOB importado, e não uma sequência de transformação industrial doméstica.";
 
   return (
@@ -311,7 +313,7 @@ export function SovereigntySankeyChart({
             label="Direção"
             value={
               perspective === "exports"
-                ? "O fluxo parte dos ativos nacionais (matéria-prima e beneficiamento no Brasil) até o principal país comprador de cada insumo."
+                ? "O fluxo parte dos ativos nacionais (matéria-prima e beneficiamento no Brasil) até o principal país comprador de cada insumo, ou até Uso Interno para a parcela retida no país."
                 : "O fluxo parte da origem estrangeira até a aplicação industrial no Brasil."
             }
           />
@@ -325,7 +327,7 @@ export function SovereigntySankeyChart({
               routeColoring
                 ? "A cor classifica a rota produtiva dominante: vermelho é fóssil, âmbar é transição em curso, verde é baixo carbono predominante, azul é potencial não realizado e cinza é indeterminada."
                 : perspective === "exports"
-                  ? "Verde-esmeralda em toda a rede; tom mais vibrante nos ativos com rota produtiva de baixo carbono predominante (ex.: Si-GM nacional)."
+                  ? "Verde-esmeralda em toda a rede; tom mais vibrante nos ativos com rota produtiva de baixo carbono predominante (ex.: Si-GM nacional). O nó Uso Interno aparece em cinza, por não ser um país comprador."
                   : "De âmbar a vermelho conforme a concentração de origem chinesa; vermelho pulsante marca gargalos com concentração ≥ 90%."
             }
           />
@@ -391,7 +393,7 @@ function renderNode(
   onSelect: (id: string) => void,
   onHover: (id: string | null) => void,
 ) {
-  const fill = nodeFill(payload.kind, payload.tone);
+  const fill = payload.domesticUse ? DOMESTIC_USE_COLOR : nodeFill(payload.kind, payload.tone);
   const flagPalette = payload.kind === "supplier" ? countryFlagPalette(payload.name) : null;
   const gradientId = `country-${safeSvgId(payload.id)}`;
   const labelX = x + width + 10;
@@ -630,10 +632,14 @@ function FlowTooltip({ active, payload }: SankeyTooltipProps) {
         <p className="mt-1 text-zinc-500">{nodeKindLabel(node.kind)}</p>
         {node.rawValue !== undefined ? (
           <div className="mt-3">
-            <TooltipRow label={node.tone === "exports" ? "Exportações" : "Importações"} value={usdLong.format(node.rawValue)} tone={node.tone === "exports" ? "emerald" : "cyan"} />
+            <TooltipRow
+              label={node.domesticUse ? "Uso interno" : node.tone === "exports" ? "Exportações" : "Importações"}
+              value={usdLong.format(node.rawValue)}
+              tone={node.domesticUse ? "neutral" : node.tone === "exports" ? "emerald" : "cyan"}
+            />
           </div>
         ) : null}
-        {node.share !== undefined ? <div className="mt-2"><TooltipRow label="Participação" value={percent.format(node.share)} tone="emerald" /></div> : null}
+        {node.share !== undefined ? <div className="mt-2"><TooltipRow label="Participação" value={percent.format(node.share)} tone={node.domesticUse ? "neutral" : "emerald"} /></div> : null}
         {node.chokepoint ? (
           <p className="mt-3 rounded-md border border-red-500/25 bg-red-500/10 px-2.5 py-2 leading-5 text-red-200">
             Concentração ≥ 90% de origem chinesa neste elo.
@@ -642,6 +648,11 @@ function FlowTooltip({ active, payload }: SankeyTooltipProps) {
         {node.lowCarbon ? (
           <p className="mt-3 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-2 leading-5 text-emerald-200">
             Rota produtiva de baixo carbono predominante.
+          </p>
+        ) : null}
+        {node.domesticUse ? (
+          <p className="mt-3 rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-2 leading-5 text-zinc-300">
+            Parcela da produção doméstica que não foi exportada (produção comparável menos exportações do período). Não é um país comprador.
           </p>
         ) : null}
       </div>
@@ -658,8 +669,17 @@ function FlowTooltip({ active, payload }: SankeyTooltipProps) {
       <p className="font-semibold text-white">{link.flowLabel ?? link.productName}</p>
       <p className="mt-1 text-zinc-400">{link.tone === "exports" ? "Ativo" : "Origem"}: {link.supplierName}</p>
       <div className="mt-3 space-y-2">
-        <TooltipRow label={link.tone === "exports" ? "Exportações" : "Importações"} value={usdLong.format(link.rawValue)} tone={link.tone === "exports" ? "emerald" : "cyan"} />
-        {link.share !== undefined ? <TooltipRow label="Participação" value={percent.format(link.share)} tone="emerald" /> : null}
+        <TooltipRow
+          label={link.domesticUse ? "Uso interno" : link.tone === "exports" ? "Exportações" : "Importações"}
+          value={usdLong.format(link.rawValue)}
+          tone={link.domesticUse ? "neutral" : link.tone === "exports" ? "emerald" : "cyan"}
+        />
+        {link.share !== undefined ? <TooltipRow label="Participação" value={percent.format(link.share)} tone={link.domesticUse ? "neutral" : "emerald"} /> : null}
+        {link.domesticUse ? (
+          <p className="rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-2 leading-5 text-zinc-300">
+            Ficou no Brasil em vez de ser exportado — não é um fluxo comercial internacional.
+          </p>
+        ) : null}
         {link.routeClass ? (
           <div className="rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-2 leading-5">
             <p className="flex items-center gap-1.5 font-semibold text-zinc-200">
@@ -710,9 +730,9 @@ function TooltipRow({
 }: {
   label: string;
   value: string;
-  tone: "cyan" | "emerald";
+  tone: "cyan" | "emerald" | "neutral";
 }) {
-  const toneClass = tone === "cyan" ? "text-cyan-200" : "text-emerald-200";
+  const toneClass = tone === "cyan" ? "text-cyan-200" : tone === "neutral" ? "text-zinc-300" : "text-emerald-200";
 
   return (
     <div className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3">
@@ -861,6 +881,11 @@ function importAccentColor(chinaShare: number) {
 function exportAccentColor(isLowCarbon: boolean) {
   return isLowCarbon ? "#10b981" : "#34d399";
 }
+
+// Neutral, deliberately not emerald/turquoise: "Uso Interno" isn't a real
+// trading partner, so it shouldn't visually read as one alongside actual
+// buyer countries even though it now shares the same width/share scale.
+const DOMESTIC_USE_COLOR = "#71717a";
 
 const ROUTE_CLASS_COLORS: Record<ProductionRouteClass, string> = {
   fossil_dominant: "#f87171",
@@ -1129,6 +1154,29 @@ function buildExportsTopology(
   const totalExports = exportableInputs.reduce((sum, input) => sum + input.exports_value_usd, 0);
   const orderedInputs = [...exportableInputs].sort((left, right) => right.exports_value_usd - left.exports_value_usd);
 
+  // Domestic use (what stayed in Brazil instead of being exported) only
+  // exists when the input has a PRODLIST-comparable production figure (see
+  // PRODLIST_COMPARABLE_INPUTS in build_solar_sovereignty_metrics.py).
+  // Inputs without one (e.g. Wafers, ~100% imported) get no "Uso Interno"
+  // split -- omitted rather than fabricated.
+  const domesticUseByInput = new Map<string, number>();
+  exportableInputs.forEach((input) => {
+    if (input.domestic_production_value_usd_comparable === null) return;
+    const domesticUse = Math.max(input.domestic_production_value_usd_comparable - input.exports_value_usd, 0);
+    if (domesticUse > 0) domesticUseByInput.set(input.input_id, domesticUse);
+  });
+
+  // Once "Uso Interno" competes with real export destinations for the same
+  // stage's output, width/share need to scale against each input's full
+  // domestic production (exported + what stayed home) -- otherwise "Uso
+  // Interno" would dwarf every country against an inconsistent yardstick.
+  // The "Exportações" header metric (summary.totalValue below) still reads
+  // off totalExports alone; only the node/link geometry uses this basis.
+  const totalProductionBasis = exportableInputs.reduce(
+    (sum, input) => sum + input.exports_value_usd + (domesticUseByInput.get(input.input_id) ?? 0),
+    0,
+  );
+
   // Mirrors the long-tail collapse on the imports/supplier side: destination
   // countries under 0.1% of the chain's total exports become a single
   // "Outros Mercados" node instead of visual noise. Falls back to a generic
@@ -1141,6 +1189,7 @@ function buildExportsTopology(
   });
   const LONG_TAIL_SHARE_THRESHOLD = 0.001;
   const OTHER_MARKETS_LABEL = "Outros Mercados";
+  const DOMESTIC_USE_LABEL = "Uso Interno / Consumo Doméstico";
   const longTailDestinations = new Set(
     [...destinationTotals.entries()]
       .filter(([, value]) => value / Math.max(totalExports, 1) < LONG_TAIL_SHARE_THRESHOLD)
@@ -1152,7 +1201,8 @@ function buildExportsTopology(
   let lowCarbonCount = 0;
 
   orderedInputs.forEach((input) => {
-    const rawValue = Math.max(input.exports_value_usd, 0);
+    const domesticUse = domesticUseByInput.get(input.input_id) ?? 0;
+    const rawValue = Math.max(input.exports_value_usd, 0) + domesticUse;
     const isLowCarbon = input.production_route_class === "low_carbon_dominant";
     if (isLowCarbon) lowCarbonCount += 1;
     const value = visualFlowValue(rawValue);
@@ -1160,11 +1210,11 @@ function buildExportsTopology(
     const stageName = executiveStageLabel(input.stage);
     const stageNode = ensureNode(`stage:${input.stage}`, stageName, "stage");
     const color = routeColoring ? routeClassColor(input.production_route_class) : exportAccentColor(isLowCarbon);
-    const share = rawValue / Math.max(totalExports, 1);
+    const share = rawValue / Math.max(totalProductionBasis, 1);
 
     [inputNode, stageNode].forEach((index) => {
       nodes[index].rawValue = (nodes[index].rawValue ?? 0) + rawValue;
-      nodes[index].share = (nodes[index].rawValue ?? 0) / Math.max(totalExports, 1);
+      nodes[index].share = (nodes[index].rawValue ?? 0) / Math.max(totalProductionBasis, 1);
       if (isLowCarbon) nodes[index].lowCarbon = true;
     });
 
@@ -1191,6 +1241,9 @@ function buildExportsTopology(
   // fan out to more than one destination when its inputs' top buyers differ
   // (e.g. Quartzo and Si-GM selling to different countries), so this groups
   // by destination within each stage instead of a single stage-wide edge.
+  // "Uso Interno" is folded into the same fan-out as one more destination,
+  // not a separate branch before the stage -- beneficiation happens
+  // domestically either way, the split only matters at the very end.
   stageTotals.forEach((total, stage) => {
     const stageColor = routeColoring
       ? routeClassColor(dominantRouteFromInputs(exportableInputs, stage))
@@ -1201,21 +1254,32 @@ function buildExportsTopology(
       .forEach((input) => {
         const destName = resolveDestinationName(input.top_destination?.country_name ?? "Destino não informado");
         stageDestinationTotals.set(destName, (stageDestinationTotals.get(destName) ?? 0) + Math.max(input.exports_value_usd, 0));
+        const domesticUse = domesticUseByInput.get(input.input_id) ?? 0;
+        if (domesticUse > 0) {
+          stageDestinationTotals.set(DOMESTIC_USE_LABEL, (stageDestinationTotals.get(DOMESTIC_USE_LABEL) ?? 0) + domesticUse);
+        }
       });
 
     stageDestinationTotals.forEach((destRaw, destName) => {
-      const destinationIndex = ensureNode(`destination:${destName}`, destName, "destination");
+      const isDomesticUse = destName === DOMESTIC_USE_LABEL;
+      const destinationIndex = ensureNode(
+        isDomesticUse ? "destination:uso-interno" : `destination:${destName}`,
+        destName,
+        "destination",
+      );
       nodes[destinationIndex].rawValue = (nodes[destinationIndex].rawValue ?? 0) + destRaw;
-      nodes[destinationIndex].share = (nodes[destinationIndex].rawValue ?? 0) / Math.max(totalExports, 1);
+      nodes[destinationIndex].share = (nodes[destinationIndex].rawValue ?? 0) / Math.max(totalProductionBasis, 1);
       if (total.lowCarbon) nodes[destinationIndex].lowCarbon = true;
+      if (isDomesticUse) nodes[destinationIndex].domesticUse = true;
       links.push({
         id: `export-stage-destination:${stage}:${destName}`, highlightId: `export-stage:${stage}`,
         source: total.index, target: destinationIndex, value: visualFlowValue(destRaw), rawValue: destRaw,
-        tone: "exports", color: stageColor,
+        tone: "exports", color: isDomesticUse ? DOMESTIC_USE_COLOR : stageColor,
         alpha: 1, alphaApplied: false, supplierName: "Produção nacional (Brasil)",
         productName: destName,
         flowLabel: `${executiveStageLabel(stage)} → ${destName}`,
-        share: destRaw / Math.max(totalExports, 1),
+        share: destRaw / Math.max(totalProductionBasis, 1),
+        domesticUse: isDomesticUse,
       });
     });
   });
