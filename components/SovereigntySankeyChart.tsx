@@ -140,18 +140,26 @@ export function SovereigntySankeyChart({
   const [routeColoring, setRouteColoring] = useState(false);
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
   const [hoveredFlowId, setHoveredFlowId] = useState<string | null>(null);
+  // Legend-click filter (route class) and node/link click-selection are
+  // mutually exclusive -- picking one always clears the other, so the two
+  // dimming mechanisms never have to be merged/reconciled visually.
+  const [selectedRouteClass, setSelectedRouteClass] = useState<ProductionRouteClass | null>(null);
   // Toggle-off (clicking the already-selected node/link again) has to clear
   // hoveredFlowId too, not just selectedFlowId -- activeFlowId falls back to
   // hoveredFlowId when selectedFlowId is null, and the cursor is still
   // sitting on that exact element right after the click that toggled it
   // off, so without this the chart looked "stuck" dimmed: the one element
   // under the cursor stayed highlighted and everything else stayed dark
-  // until the mouse physically left it.
+  // until the mouse physically left it. This is also the shared "reset
+  // everything" used by the global "Limpar destaque" button and the detail
+  // card's "Fechar" button, so it clears the route-class filter too.
   const clearFlowSelection = useCallback(() => {
     setSelectedFlowId(null);
     setHoveredFlowId(null);
+    setSelectedRouteClass(null);
   }, []);
   const handleSelectFlow = useCallback((id: string) => {
+    setSelectedRouteClass(null);
     setSelectedFlowId((current) => {
       if (current === id) {
         setHoveredFlowId(null);
@@ -159,6 +167,11 @@ export function SovereigntySankeyChart({
       }
       return id;
     });
+  }, []);
+  const handleSelectRouteClass = useCallback((routeClass: ProductionRouteClass) => {
+    setSelectedFlowId(null);
+    setHoveredFlowId(null);
+    setSelectedRouteClass((current) => (current === routeClass ? null : routeClass));
   }, []);
   const products = useMemo(() => (dado ? [dado] : data ?? []), [data, dado]);
 
@@ -184,7 +197,13 @@ export function SovereigntySankeyChart({
     highlightLabel: "Fluxos com Alpha",
   };
   const activeFlowId = selectedFlowId ?? hoveredFlowId;
-  const focusContext = useMemo(() => buildFocusContext(activeFlowId, sankeyData), [activeFlowId, sankeyData]);
+  const focusContext = useMemo(
+    () => selectedRouteClass
+      ? buildRouteClassFocusContext(selectedRouteClass, sankeyData)
+      : buildFocusContext(activeFlowId, sankeyData),
+    [activeFlowId, sankeyData, selectedRouteClass],
+  );
+  const filterActive = activeFlowId !== null || selectedRouteClass !== null;
   // Detail panel below the chart (same pattern as AipnetSystemsFlow's
   // selected-node aside) instead of a clickable element inside the
   // recharts Tooltip -- no precedent in this codebase for interactive
@@ -292,7 +311,7 @@ export function SovereigntySankeyChart({
     ? "Nenhum insumo desta cadeia registra exportação relevante no período mapeado — a perspectiva de importações continua disponível na pílula ao lado."
     : "Nenhum produto conceitual disponível para compor o fluxo de soberania.";
   const scopeNote = perspective === "exports"
-    ? 'Este diagrama ilustra a distribuição da produção doméstica de cada ativo, do beneficiamento no Brasil até o principal país comprador — ou até "Uso Interno / Consumo Doméstico" (cinza) para a parcela que não foi exportada. A espessura das bandas reflete o valor FOB exportado somado à produção retida no país (ComexStat/MDIC + produção comparável PRODLIST); mercados com participação abaixo de 0,1% do total exportado são agrupados em "Outros Mercados".'
+    ? 'Este diagrama ilustra a distribuição da produção doméstica de cada ativo, partindo do insumo ou matéria-prima nacional (coluna à esquerda), passando pelas etapas produtivas confirmadas no Brasil, até o principal país comprador — ou até "Uso Interno / Consumo Doméstico" (cinza) para a parcela que não foi exportada. A espessura das bandas reflete o valor FOB exportado somado à produção retida no país (ComexStat/MDIC + produção comparável PRODLIST); mercados com participação abaixo de 0,1% do total exportado são agrupados em "Outros Mercados".'
     : "Este diagrama ilustra a distribuição da pauta importada e a concentração geográfica de fornecedores por categoria de bem. A espessura das bandas reflete o valor FOB importado, e não uma sequência de transformação industrial doméstica.";
 
   return (
@@ -338,7 +357,7 @@ export function SovereigntySankeyChart({
               opcional" box below, so a selection made on the Importações
               perspective had no visible reset control -- moved here so it
               shows in both perspectives whenever a selection is active. */}
-          {selectedFlowId ? (
+          {selectedFlowId || selectedRouteClass ? (
             <button
               type="button"
               onClick={clearFlowSelection}
@@ -378,13 +397,30 @@ export function SovereigntySankeyChart({
               </div>
             </div>
             {routeColoring ? (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-zinc-500">
-                {(Object.keys(ROUTE_CLASS_LABELS) as ProductionRouteClass[]).map((routeClass) => (
-                  <span key={routeClass} className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: ROUTE_CLASS_COLORS[routeClass] }} />
-                    {ROUTE_CLASS_LABELS[routeClass]}
-                  </span>
-                ))}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[10px]">
+                {(Object.keys(ROUTE_CLASS_LABELS) as ProductionRouteClass[]).map((routeClass) => {
+                  const isActive = selectedRouteClass === routeClass;
+                  const isMuted = selectedRouteClass !== null && !isActive;
+                  return (
+                    <button
+                      key={routeClass}
+                      type="button"
+                      onClick={() => handleSelectRouteClass(routeClass)}
+                      aria-pressed={isActive}
+                      title={`Isolar fluxos com rota "${ROUTE_CLASS_LABELS[routeClass]}"`}
+                      className={`flex items-center gap-1.5 rounded-full border px-2 py-1 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
+                        isActive
+                          ? "border-white/30 bg-white/[0.08] text-white"
+                          : isMuted
+                            ? "border-transparent text-zinc-600 hover:text-zinc-400"
+                            : "border-transparent text-zinc-500 hover:border-white/15 hover:text-zinc-300"
+                      }`}
+                    >
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: ROUTE_CLASS_COLORS[routeClass] }} />
+                      {ROUTE_CLASS_LABELS[routeClass]}
+                    </button>
+                  );
+                })}
               </div>
             ) : (
               <div className="flex items-center gap-2 text-[10px] text-zinc-500">
@@ -402,7 +438,7 @@ export function SovereigntySankeyChart({
           {/* Fixed min-width keeps node-column spacing (and thus label room)
               constant regardless of viewport, and stable across perspective
               switches, so the crossfade below never triggers a layout jump. */}
-          <div className="h-full min-w-[1340px]">
+          <div className="h-full min-w-[1360px]">
             {/* No AnimatePresence/exit here on purpose: chokepoint and
                 low-carbon nodes carry their own repeat:Infinity pulse, and
                 those never fire a completion event -- with mode="wait" that
@@ -429,6 +465,7 @@ export function SovereigntySankeyChart({
                       node={(props: SankeyNodeRenderProps) => renderNode(
                         props,
                         activeFlowId,
+                        filterActive,
                         focusContext.nodeIds,
                         handleSelectFlow,
                         (id) => setHoveredFlowId(id),
@@ -436,6 +473,7 @@ export function SovereigntySankeyChart({
                       link={(props: SankeyLinkRenderProps) => renderLink(
                         props,
                         activeFlowId,
+                        filterActive,
                         focusContext.highlightIds,
                         handleSelectFlow,
                         (id) => setHoveredFlowId(id),
@@ -444,7 +482,7 @@ export function SovereigntySankeyChart({
                       nodeWidth={16}
                       linkCurvature={0.55}
                       iterations={48}
-                      margin={{ top: 20, right: 300, bottom: 20, left: 20 }}
+                      margin={{ top: 20, right: 320, bottom: 20, left: 20 }}
                       sort={false}
                     >
                       <Tooltip content={<FlowTooltip />} />
@@ -583,8 +621,6 @@ export function SovereigntySankeyChart({
             </div>
           </motion.aside>
         ) : null}
-
-        <p className="mt-4 px-1 text-[10px] leading-4 text-zinc-600">Códigos técnicos permanecem restritos à gaveta de rastreabilidade.</p>
       </div>
     </section>
   );
@@ -635,6 +671,7 @@ function PerspectiveSwitch({ perspective, onChange }: { perspective: Perspective
 function renderNode(
   { x, y, width, height, payload }: SankeyNodeRenderProps,
   activeFlowId: string | null,
+  filterActive: boolean,
   focusedNodeIds: Set<string>,
   onSelect: (id: string) => void,
   onHover: (id: string | null) => void,
@@ -659,9 +696,14 @@ function renderNode(
   const gradientId = `country-${safeSvgId(payload.id)}`;
   const labelX = x + width + 10;
   const labelY = y + Math.max(height / 2, 8);
+  const labelLines = wrapNodeLabel(payload.name);
+  // Every line below the name (kind/share, badge) shifts down to make room
+  // when the name wraps to two lines, instead of the second line colliding
+  // with them.
+  const labelShift = (labelLines.length - 1) * 13;
   const selectionId = `node:${payload.id}`;
   const isSelected = activeFlowId === selectionId;
-  const isDimmed = activeFlowId !== null && !focusedNodeIds.has(payload.id);
+  const isDimmed = filterActive && !focusedNodeIds.has(payload.id);
   const highlightStroke = isRedFlagged ? "#ef4444" : payload.lowCarbon ? "#10b981" : null;
   const highlightFilter = isRedFlagged
     ? "brightness(1.1) drop-shadow(0 0 12px rgba(239,68,68,0.55))"
@@ -719,20 +761,25 @@ function renderNode(
               : undefined
         }
       />
-      <text x={labelX} y={labelY - 5} fill="#fafafa" fontSize={12} fontWeight={700} dominantBaseline="middle">
-        {/* Native title tooltip carries the untruncated name. compactLabel's
-            34-char cutoff and the chart's min-width scroll wrapper were
-            tuned together (see margin.right below) so even the longest
-            stage/destination names don't collide with the next column. */}
+      <text x={labelX} fill="#fafafa" fontSize={12} fontWeight={700}>
+        {/* Native title tooltip carries the untruncated name too, as a
+            fallback -- wrapNodeLabel splits into up to two lines (see
+            labelShift above) so even the longest stage/destination names
+            (e.g. "Insumos de Base (uso industrial doméstico)") render in
+            full instead of getting cut off with an ellipsis. */}
         <title>{payload.name}</title>
-        {compactLabel(payload.name)}
+        {labelLines.map((line, index) => (
+          <tspan key={index} x={labelX} y={labelY - 5 - labelShift + index * 13} dominantBaseline="middle">
+            {line}
+          </tspan>
+        ))}
       </text>
-      <text x={labelX} y={labelY + 11} fill="#a1a1aa" fontSize={10} fontWeight={500} dominantBaseline="middle">
+      <text x={labelX} y={labelY + 11 + labelShift} fill="#a1a1aa" fontSize={10} fontWeight={500} dominantBaseline="middle">
         {nodeKindLabel(payload.kind)}
         {payload.share !== undefined ? ` · ${percent.format(payload.share)}` : ""}
       </text>
       {payload.chokepoint ? (
-        <text x={labelX} y={labelY + 24} fill="#fca5a5" fontSize={9} fontWeight={700} letterSpacing={0.4}>
+        <text x={labelX} y={labelY + 24 + labelShift} fill="#fca5a5" fontSize={9} fontWeight={700} letterSpacing={0.4}>
           {/* "destination"/"product" nodes never have their own china-share
               figure -- their chokepoint flag is always propagated from an
               upstream stage/input, so the badge must say that, not claim a
@@ -742,7 +789,7 @@ function renderNode(
             : "⚠ CONCENTRAÇÃO ≥ 90% CHINA"}
         </text>
       ) : payload.criticalImport ? (
-        <text x={labelX} y={labelY + 24} fill="#fca5a5" fontSize={9} fontWeight={700} letterSpacing={0.4}>
+        <text x={labelX} y={labelY + 24 + labelShift} fill="#fca5a5" fontSize={9} fontWeight={700} letterSpacing={0.4}>
           {/* Distinct from the chokepoint badge on purpose: this sink can
               hold stages whose own china-share sits under the 90% badge
               threshold (e.g. Polissilício at 85% global) but still have no
@@ -751,7 +798,7 @@ function renderNode(
           ⚠ SEM PRODUÇÃO NACIONAL CONFIRMADA
         </text>
       ) : payload.lowCarbon ? (
-        <text x={labelX} y={labelY + 24} fill="#6ee7b7" fontSize={9} fontWeight={700} letterSpacing={0.4}>
+        <text x={labelX} y={labelY + 24 + labelShift} fill="#6ee7b7" fontSize={9} fontWeight={700} letterSpacing={0.4}>
           ROTA DE BAIXO CARBONO
         </text>
       ) : null}
@@ -770,6 +817,7 @@ function renderLink({
   payload,
 }: SankeyLinkRenderProps,
   activeFlowId: string | null,
+  filterActive: boolean,
   focusedHighlightIds: Set<string>,
   onSelect: (id: string) => void,
   onHover: (id: string | null) => void,
@@ -785,7 +833,7 @@ function renderLink({
   const isHighlighted = selectedNodeId
     ? payload.source.id === selectedNodeId || payload.target.id === selectedNodeId || focusedHighlightIds.has(payload.highlightId)
     : selectedLinkId === payload.highlightId || focusedHighlightIds.has(payload.highlightId);
-  const isDimmed = activeFlowId !== null && !isHighlighted;
+  const isDimmed = filterActive && !isHighlighted;
   const restingOpacity = payload.alphaApplied && payload.alpha < 1 ? 0.03 : 0.05;
 
   return (
@@ -863,6 +911,25 @@ function buildFocusContext(activeFlowId: string | null, data: SankeyChartData) {
     if (targetId) nodeIds.add(targetId);
   });
 
+  return { nodeIds, highlightIds };
+}
+
+// Legend-click filter: unlike buildFocusContext (traces a single selected
+// route through the graph), this isolates every link carrying the given
+// production_route_class, regardless of where it sits in the topology --
+// the legend represents a category, not a path.
+function buildRouteClassFocusContext(routeClass: ProductionRouteClass | null, data: SankeyChartData) {
+  const nodeIds = new Set<string>();
+  const highlightIds = new Set<string>();
+  if (!routeClass) return { nodeIds, highlightIds };
+  data.links.forEach((link) => {
+    if (link.routeClass !== routeClass) return;
+    highlightIds.add(link.highlightId);
+    const sourceId = data.nodes[link.source]?.id;
+    const targetId = data.nodes[link.target]?.id;
+    if (sourceId) nodeIds.add(sourceId);
+    if (targetId) nodeIds.add(targetId);
+  });
   return { nodeIds, highlightIds };
 }
 
@@ -1034,9 +1101,31 @@ function executiveLabel(value: string, fallback: string) {
   return trimmed;
 }
 
-function compactLabel(value: string) {
-  if (value.length <= 34) return value;
-  return `${value.slice(0, 31).trim()}...`;
+// SVG <text> can't reflow on its own, so long node names (e.g. "Insumos de
+// Base (uso industrial doméstico)") need to be split into <tspan> lines
+// manually. A character-count heuristic, not real text measurement --
+// consistent with this file's existing tradeoffs -- tuned against the
+// node label's 12px bold font and the chart's margin.right (see the
+// <Sankey> element). Only wraps to two lines; a label that still overflows
+// the second line gets an ellipsis there instead of a third line, to keep
+// node rows from growing unbounded.
+function wrapNodeLabel(value: string): string[] {
+  const maxCharsPerLine = 30;
+  if (value.length <= maxCharsPerLine) return [value];
+  const words = value.split(" ");
+  let firstLine = "";
+  let splitIndex = 0;
+  for (; splitIndex < words.length; splitIndex += 1) {
+    const candidate = firstLine ? `${firstLine} ${words[splitIndex]}` : words[splitIndex];
+    if (candidate.length > maxCharsPerLine && firstLine) break;
+    firstLine = candidate;
+  }
+  let secondLine = words.slice(splitIndex).join(" ");
+  if (!secondLine) return [firstLine];
+  if (secondLine.length > maxCharsPerLine) {
+    secondLine = `${secondLine.slice(0, maxCharsPerLine - 1).trim()}...`;
+  }
+  return [firstLine, secondLine];
 }
 
 function clampShare(value: number) {
