@@ -472,7 +472,13 @@ function renderNode(
       </text>
       {payload.chokepoint ? (
         <text x={labelX} y={labelY + 24} fill="#fca5a5" fontSize={9} fontWeight={700} letterSpacing={0.4}>
-          ⚠ CONCENTRAÇÃO ≥ 90% CHINA
+          {/* "destination"/"product" nodes never have their own china-share
+              figure -- their chokepoint flag is always propagated from an
+              upstream stage/input, so the badge must say that, not claim a
+              concentration number this node doesn't itself have. */}
+          {payload.kind === "destination" || payload.kind === "product"
+            ? "⚠ AFETADO POR GARGALO A MONTANTE"
+            : "⚠ CONCENTRAÇÃO ≥ 90% CHINA"}
         </text>
       ) : payload.lowCarbon ? (
         <text x={labelX} y={labelY + 24} fill="#6ee7b7" fontSize={9} fontWeight={700} letterSpacing={0.4}>
@@ -642,7 +648,9 @@ function FlowTooltip({ active, payload }: SankeyTooltipProps) {
         {node.share !== undefined ? <div className="mt-2"><TooltipRow label="Participação" value={percent.format(node.share)} tone={node.domesticUse ? "neutral" : "emerald"} /></div> : null}
         {node.chokepoint ? (
           <p className="mt-3 rounded-md border border-red-500/25 bg-red-500/10 px-2.5 py-2 leading-5 text-red-200">
-            Concentração ≥ 90% de origem chinesa neste elo.
+            {node.kind === "destination" || node.kind === "product"
+              ? "Depende de uma etapa a montante com concentração ≥ 90% de origem chinesa — este nó em si não tem essa concentração própria."
+              : "Concentração ≥ 90% de origem chinesa neste elo."}
           </p>
         ) : null}
         {node.lowCarbon ? (
