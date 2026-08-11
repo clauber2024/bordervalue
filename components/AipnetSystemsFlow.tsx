@@ -387,7 +387,7 @@ const dashboardChainMap: Record<string, string> = {
   baterias: "battery-storage",
 };
 
-export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus }: { chainId?: string; inputs?: SolarInputMetric[]; onAnalysisFocus?: (focus: AipnetAnalysisFocus) => void }) {
+export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onViewFlowEvidence }: { chainId?: string; inputs?: SolarInputMetric[]; onAnalysisFocus?: (focus: AipnetAnalysisFocus) => void; onViewFlowEvidence?: () => void }) {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedChainId, setSelectedChainId] = useState(valueChains[0].id);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
@@ -741,7 +741,7 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus }: { c
           </div>
           <button
             type="button"
-            onClick={() => onAnalysisFocus?.({ nodeId: "all", stage: "Todas as etapas", input: topExposure.input.label })}
+            onClick={() => onViewFlowEvidence?.()}
             className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-red-300/20 bg-red-400/10 px-3 py-2 text-xs font-semibold text-red-100 transition hover:bg-red-400/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
           >
             Ver evidências

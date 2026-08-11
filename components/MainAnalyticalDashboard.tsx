@@ -150,6 +150,7 @@ export default function MainAnalyticalDashboard() {
   const [chainMenuOpen, setChainMenuOpen] = useState(false);
   const chainMenuRef = useRef<HTMLDivElement>(null);
   const diagnosticRef = useRef<HTMLDivElement>(null);
+  const sankeyRef = useRef<HTMLDivElement>(null);
   const overviewRef = useRef<HTMLDivElement>(null);
   const advancedRef = useRef<HTMLElement>(null);
   const nibRef = useRef<HTMLDivElement>(null);
@@ -244,6 +245,15 @@ export default function MainAnalyticalDashboard() {
     setCriticalOnly(false);
     setChainAnalysisFocus(focus.nodeId === "all" ? null : { stage: aipnetCoverageStage(focus.nodeId) || focus.stage, input: focus.input });
     requestAnimationFrame(() => diagnosticRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }, []);
+
+  // Distinct from handleAipnetAnalysisFocus: the "Ver evidências" bridge
+  // button sits above the Sankey panel and should surface the flow diagram
+  // next (the logical next layer), not jump straight past it to the
+  // per-NCM bar chart -- that jump is still correct for node/NCM-level
+  // drill-downs, which keep using handleAipnetAnalysisFocus.
+  const handleViewFlowEvidence = useCallback(() => {
+    requestAnimationFrame(() => sankeyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }, []);
 
   const handleSelectNcmShortcut = useCallback((inputId: string) => {
@@ -516,7 +526,12 @@ export default function MainAnalyticalDashboard() {
             ) : null}
           </div>
 
-          <AipnetSystemsFlow chainId={selectedChain} inputs={solarSovereignty?.inputs} onAnalysisFocus={handleAipnetAnalysisFocus} />
+          <AipnetSystemsFlow
+            chainId={selectedChain}
+            inputs={solarSovereignty?.inputs}
+            onAnalysisFocus={handleAipnetAnalysisFocus}
+            onViewFlowEvidence={handleViewFlowEvidence}
+          />
 
           {/* Primary entry panel for the executive read -- was previously
               buried inside the readingMode==="analytical"-gated
@@ -525,16 +540,18 @@ export default function MainAnalyticalDashboard() {
               Moved ahead of the dependency bar chart and opened by
               default; the bar chart is the supporting complement, not the
               lead. */}
-          <ExpandableAnalyticsPanel title="Fluxo de soberania por produto" subtitle="Rede de fornecedores, produto e capacidade nacional" defaultOpen>
-            <SovereigntySankeyChart
-              dado={radarProduct ?? premiumProducts[0]}
-              solarInputs={solarSovereignty?.inputs}
-              chainName={selectedChainMetadata?.name ?? solarSovereignty?.chain_name}
-              height={620}
-              title="Fluxo AIPNET por produto conceitual"
-              onAnalysisFocus={handleAipnetAnalysisFocus}
-            />
-          </ExpandableAnalyticsPanel>
+          <div ref={sankeyRef} className="scroll-mt-6">
+            <ExpandableAnalyticsPanel title="Fluxo de soberania por produto" subtitle="Rede de fornecedores, produto e capacidade nacional" defaultOpen>
+              <SovereigntySankeyChart
+                dado={radarProduct ?? premiumProducts[0]}
+                solarInputs={solarSovereignty?.inputs}
+                chainName={selectedChainMetadata?.name ?? solarSovereignty?.chain_name}
+                height={620}
+                title="Fluxo AIPNET por produto conceitual"
+                onAnalysisFocus={handleAipnetAnalysisFocus}
+              />
+            </ExpandableAnalyticsPanel>
+          </div>
 
             <div ref={diagnosticRef} className="scroll-mt-6">
               <ExecutiveVulnerabilityChart
