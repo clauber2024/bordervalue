@@ -340,6 +340,14 @@ export function SovereigntySankeyChart({
       : mappedInputsList.filter((input) => (input.global_china_share ?? input.china_share_brazilian_imports ?? 0) >= CHOKEPOINT_THRESHOLD),
     [perspective, mappedInputsList],
   );
+  // Which of the 5 route classes actually have an exported input in this
+  // chain -- the "Lente opcional" legend below only shows pills for these,
+  // instead of always listing all 5 regardless of whether the active chain
+  // touches them.
+  const presentRouteClasses = useMemo(
+    () => new Set(mappedInputsList.map((input) => input.production_route_class)),
+    [mappedInputsList],
+  );
   const activeInputCount = sankeyData.nodes.filter((node) => node.kind === "input").length;
   const effectiveHeight = solarInputs.length && activeInputCount
     ? Math.max(height, activeInputCount * 58 + 180)
@@ -444,7 +452,9 @@ export function SovereigntySankeyChart({
             </div>
             {routeColoring ? (
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[10px]">
-                {(Object.keys(ROUTE_CLASS_LABELS) as ProductionRouteClass[]).map((routeClass) => {
+                {(Object.keys(ROUTE_CLASS_LABELS) as ProductionRouteClass[])
+                  .filter((routeClass) => presentRouteClasses.has(routeClass))
+                  .map((routeClass) => {
                   const isActive = selectedRouteClass === routeClass;
                   const isMuted = selectedRouteClass !== null && !isActive;
                   return (

@@ -40,6 +40,18 @@ const usdCompact = new Intl.NumberFormat("pt-BR", {
 
 const percent = new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 1 });
 
+// Tailwind needs literal class names to generate the CSS, so this can't be
+// built from a template string -- keyed by how many route-class cards are
+// actually present (1-5) so the grid redistributes evenly instead of
+// leaving trailing gaps sized for the full 5-wide layout.
+const ROUTE_GRID_COLS: Record<number, string> = {
+  1: "grid grid-cols-1 gap-3",
+  2: "grid grid-cols-1 gap-3 sm:grid-cols-2",
+  3: "grid grid-cols-1 gap-3 sm:grid-cols-3",
+  4: "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4",
+  5: "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5",
+};
+
 export type CarbonFootprintIndustrialBlockProps = {
   solarInputs?: SolarInputMetric[];
   energyContext?: EnergyContextResponse;
@@ -195,19 +207,23 @@ export function CarbonFootprintIndustrialBlock({
         <span className="text-xs font-mono font-semibold uppercase tracking-wider text-zinc-400">
           Distribuição real por rota produtiva declarada
         </span>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {(Object.keys(ROUTE_CLASS_LABELS) as ProductionRouteClass[]).map((routeClass) => {
-            const item = exposure.find((entry) => entry.routeClass === routeClass);
-            const color = ROUTE_CLASS_COLORS[routeClass];
+        {/* Only routes with actual imported value for this chain -- exposure
+            is already filtered to importsValueUsd > 0 in
+            computeCarbonRouteExposure, so an inactive "Sem insumos nesta
+            rota" card never had data to show; it was just noise for chains
+            that don't touch every one of the 5 possible route classes. */}
+        <div className={ROUTE_GRID_COLS[Math.min(exposure.length, 5)] ?? ROUTE_GRID_COLS[5]}>
+          {exposure.map((item) => {
+            const color = ROUTE_CLASS_COLORS[item.routeClass];
             return (
               <div
-                key={routeClass}
+                key={item.routeClass}
                 className="flex flex-col justify-between gap-2 rounded-xl border p-3"
                 style={{ borderColor: `${color}4D`, backgroundColor: `${color}1A`, color }}
               >
-                <span className="text-xs font-bold tracking-wide">{ROUTE_CLASS_LABELS[routeClass]}</span>
+                <span className="text-xs font-bold tracking-wide">{ROUTE_CLASS_LABELS[item.routeClass]}</span>
                 <span className="text-[11px] leading-snug opacity-80">
-                  {item ? `${percent.format(item.share)} da pauta (${usdCompact.format(item.importsValueUsd)})` : "Sem insumos nesta rota"}
+                  {percent.format(item.share)} da pauta ({usdCompact.format(item.importsValueUsd)})
                 </span>
               </div>
             );
