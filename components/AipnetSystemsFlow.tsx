@@ -703,7 +703,7 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus }: { c
               return (
                 <div
                   key={item.id}
-                  className="flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-zinc-900/40 p-5 backdrop-blur-xl transition hover:border-white/20"
+                  className="flex h-full flex-col rounded-2xl border border-white/[0.08] bg-zinc-900/40 p-5 backdrop-blur-xl transition hover:border-white/20"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="rounded-xl border border-zinc-700/60 bg-zinc-800/80 p-2.5 text-zinc-300">
