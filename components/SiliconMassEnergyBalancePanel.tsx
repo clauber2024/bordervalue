@@ -13,6 +13,8 @@ type Stage = {
   energyIntensity: string;
   brazilCapacity: string;
   chinaConcentration: string;
+  concentrationBadge: string;
+  concentrationBadgeTone: "risk" | "neutral";
   note: string;
 };
 
@@ -32,6 +34,8 @@ const STAGES: Stage[] = [
     energyIntensity: "10–15 MWh/t",
     brazilCapacity: "Capacidade nacional consolidada — principal ativo de exportação da cadeia.",
     chinaConcentration: "Produção mundial concentrada, majoritariamente em matriz elétrica a carvão.",
+    concentrationBadge: "Produção distribuída — Brasil entre os principais exportadores",
+    concentrationBadgeTone: "neutral",
     note: "Mesma intensidade elétrica de processo em qualquer país; a diferença real está na matriz que a alimenta — >84% renovável no Brasil.",
   },
   {
@@ -41,6 +45,8 @@ const STAGES: Stage[] = [
     energyIntensity: "100–120 MWh/t",
     brazilCapacity: "Sem planta nacional em operação — potencial não realizado, barreira de CAPEX (US$ 40–100/kg).",
     chinaConcentration: "Capacidade concentrada em Xinjiang e Mongólia Interior, matriz predominantemente a carvão.",
+    concentrationBadge: "~75–90% da capacidade mundial na Ásia (China)",
+    concentrationBadgeTone: "risk",
     note: "Maior barreira de capital da cadeia — o gargalo de refino que o diferimento tributário isolado (PADIS) não resolve sozinho.",
   },
   {
@@ -50,6 +56,8 @@ const STAGES: Stage[] = [
     energyIntensity: "20–30 MWh/t",
     brazilCapacity: "Vazio fabril confirmado — 0% de capacidade nacional nesta etapa.",
     chinaConcentration: "Mais de 97% da capacidade mundial de crescimento de lingotes e corte de wafers.",
+    concentrationBadge: ">97% da capacidade mundial na China",
+    concentrationBadgeTone: "risk",
     note: "Concentração geopolítica mais extrema da cadeia, mesmo com baixo volume comercial em dólares.",
   },
   {
@@ -59,6 +67,8 @@ const STAGES: Stage[] = [
     energyIntensity: "15–20 kWh/painel",
     brazilCapacity: "Capacidade de montagem consolidada no Brasil, a partir de células majoritariamente importadas.",
     chinaConcentration: "Módulo pronto importado carrega energia embutida (fóssil) das etapas anteriores da cadeia.",
+    concentrationBadge: "Concentração é upstream — não na etapa de montagem",
+    concentrationBadgeTone: "neutral",
     note: "Etapa menos eletrointensiva — o adensamento real está em reter as etapas anteriores, não só a montagem final.",
   },
 ];
@@ -66,7 +76,7 @@ const STAGES: Stage[] = [
 const MASS_WATERFALL = [
   { label: "Quartzito", value: "100% (base)" },
   { label: "Silício grau metalúrgico (Si-GM)", value: "≈ 80–85% de rendimento de massa" },
-  { label: "Polissilício grau solar", value: "≈ 9N de pureza (não é % de massa retida)" },
+  { label: "Polissilício grau solar", value: "≈ 99,9999999% (9N) de pureza — não é % de massa retida" },
   { label: "Wafer (após corte)", value: "≈ 20–30% de perda de massa no corte (kerf loss)" },
   { label: "Módulo fotovoltaico", value: "Produto final encapsulado" },
 ];
@@ -126,7 +136,16 @@ export function SiliconMassEnergyBalancePanel({ energyContext }: SiliconMassEner
           </div>
           <div className="rounded-xl border border-red-500/20 bg-zinc-900/50 p-4">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-red-400">Concentração global</p>
-            <p className="mt-1.5 text-sm leading-relaxed text-zinc-200">{stage.chinaConcentration}</p>
+            <span
+              className={`mt-1.5 inline-block rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+                stage.concentrationBadgeTone === "risk"
+                  ? "border-red-400/30 bg-red-400/10 text-red-300"
+                  : "border-zinc-500/30 bg-zinc-500/10 text-zinc-300"
+              }`}
+            >
+              {stage.concentrationBadge}
+            </span>
+            <p className="mt-2 text-sm leading-relaxed text-zinc-200">{stage.chinaConcentration}</p>
           </div>
         </div>
         <p className="mt-4 rounded-lg border border-white/[0.06] bg-zinc-950/45 px-3.5 py-3 text-xs leading-relaxed text-zinc-400">
