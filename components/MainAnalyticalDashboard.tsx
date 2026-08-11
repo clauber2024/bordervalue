@@ -541,6 +541,11 @@ export default function MainAnalyticalDashboard() {
               Moved ahead of the dependency bar chart and opened by
               default; the bar chart is the supporting complement, not the
               lead. */}
+          <MacroModuleHeader
+            eyebrow="Macro-módulo 1 · ComexStat & PIA"
+            title="Diagnóstico de soberania e balança"
+            accent="cyan"
+          />
           <div ref={sankeyRef} className="scroll-mt-6">
             <ExpandableAnalyticsPanel eyebrow="Soberania & rede" title="Fluxo de soberania por produto" subtitle="Rede de fornecedores, produto e capacidade nacional" defaultOpen>
               <SovereigntySankeyChart
@@ -581,14 +586,11 @@ export default function MainAnalyticalDashboard() {
 
           {readingMode === "analytical" && (premiumProducts.length || selectedChain === "silicio") ? (
             <section ref={advancedRef} className="scroll-mt-40 space-y-5 md:scroll-mt-28">
-              <div className="border-l-2 border-cyan-300/60 pl-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">
-                  Aprofundamento analítico
-                </p>
-                <h2 className="mt-2 text-2xl font-bold tracking-tight text-white">
-                  Fluxos, priorização industrial e transição justa
-                </h2>
-              </div>
+              <MacroModuleHeader
+                eyebrow="Macro-módulo 2 · NIB & TSB"
+                title="Sustentabilidade e política industrial"
+                accent="emerald"
+              />
 
               {proportionalityProduct && selectedChain === "combustiveis_transicao" ? (
                 <ExpandableAnalyticsPanel
@@ -659,11 +661,18 @@ export default function MainAnalyticalDashboard() {
           ) : null}
 
           {premiumProducts.length ? (
-            <TechnicalDrawer
-              data={nibMatrixProducts}
-              solarInputs={solarSovereignty?.inputs}
-              solarMethodologyVersion={solarSovereignty?.methodology_version}
-            />
+            <div className="space-y-5">
+              <MacroModuleHeader
+                eyebrow="Macro-módulo 3 · NCM & CNAE"
+                title="Dados primários e governança"
+                accent="amber"
+              />
+              <TechnicalDrawer
+                data={nibMatrixProducts}
+                solarInputs={solarSovereignty?.inputs}
+                solarMethodologyVersion={solarSovereignty?.methodology_version}
+              />
+            </div>
           ) : null}
 
           <ExecutiveMetadataFooter metadata={executiveMetadata} />
@@ -699,6 +708,30 @@ function ExpandableAnalyticsPanel({
       </summary>
       <div className="border-t border-white/[0.07] p-4 sm:p-5">{children}</div>
     </details>
+  );
+}
+
+const MACRO_MODULE_ACCENTS = {
+  cyan: "border-cyan-300/60 text-cyan-300",
+  emerald: "border-emerald-300/60 text-emerald-300",
+  amber: "border-amber-300/60 text-amber-300",
+} as const;
+
+function MacroModuleHeader({
+  eyebrow,
+  title,
+  accent,
+}: {
+  eyebrow: string;
+  title: string;
+  accent: keyof typeof MACRO_MODULE_ACCENTS;
+}) {
+  const [borderColor, textColor] = MACRO_MODULE_ACCENTS[accent].split(" ");
+  return (
+    <div className={`border-l-2 ${borderColor} pl-4`}>
+      <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${textColor}`}>{eyebrow}</p>
+      <h2 className="mt-2 text-2xl font-bold tracking-tight text-white">{title}</h2>
+    </div>
   );
 }
 
