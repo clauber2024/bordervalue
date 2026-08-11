@@ -80,12 +80,19 @@ export function SiliconStrategicLevers({ valueAsymmetry, solarInputs }: SiliconS
         </div>
         <p className="text-xs leading-relaxed text-zinc-300">
           O PADIS (Lei 11.484/2007) permite diferimento de IPI, PIS e COFINS sobre insumos, máquinas e
-          equipamentos da cadeia de semicondutores e displays, aplicável a etapas de processamento e
-          refino de silício grau solar.
+          equipamentos da cadeia de semicondutores e displays, incidindo sobre o processamento e a
+          montagem de módulos e células — não sobre a barreira física de capital anterior a essa etapa.
+        </p>
+        <p className="text-xs leading-relaxed text-zinc-300">
+          O refino de polissilício grau solar (processo Siemens/FBR) exige CAPEX da ordem de US$ 40–100/kg
+          de capacidade instalada e consumo de 100–120 MWh por tonelada — por isso o diferimento tributário
+          do PADIS tende a precisar de instrumentos complementares de crédito estruturado (BNDES Finem,
+          Fundo Clima) para viabilizar planta nacional nessa etapa.
         </p>
         <p className="border-t border-white/10 pt-2 text-[11px] italic leading-relaxed text-zinc-400">
-          Referência regulatória — benefício fiscal federal, não derivado das bases de comércio exterior
-          (Comex, PIA, RAIS). Verificar vigência atualizada antes de decisão de investimento.
+          Referência regulatória e técnica — benefício fiscal federal e parâmetros de CAPEX/energia do
+          setor, não derivados das bases de comércio exterior (Comex, PIA, RAIS). Verificar vigência
+          atualizada antes de decisão de investimento.
         </p>
       </article>
 

@@ -322,14 +322,14 @@ export const ExecutiveMainHero = ({
         </motion.aside>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:gap-6">
         {kpis.map((kpi) => {
           const tone = kpi.tone ?? 'neutral';
 
           return (
             <article
               key={kpi.label}
-              className="relative overflow-hidden rounded-2xl border border-white/15 bg-zinc-900/55 p-5 shadow-xl backdrop-blur-xl"
+              className="relative overflow-hidden rounded-2xl border border-white/15 bg-zinc-900/55 p-5 shadow-xl backdrop-blur-xl xl:p-6"
             >
               <div className="flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">
                 <span>{kpi.label}</span>
@@ -338,7 +338,7 @@ export const ExecutiveMainHero = ({
                 )}
               </div>
               <div
-                className={`mt-2 font-mono text-2xl font-extrabold ${toneClasses[tone].value}`}
+                className={`mt-2 font-mono text-2xl font-extrabold xl:text-3xl ${toneClasses[tone].value}`}
               >
                 {kpi.value}
               </div>
