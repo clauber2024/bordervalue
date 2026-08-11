@@ -1229,14 +1229,28 @@ function buildExecutiveVulnerabilityData(
       "quartzo", "quartzito", "silicio_grau_metalurgico", "polissilicio_solar",
       "wafers_fotovoltaicos", "celulas_fotovoltaicas", "modulos_fotovoltaicos",
     ]);
+    // Inputs with no defensible domestic-production denominator at all --
+    // not "estimated low", but confirmed no manufacturing capability exists
+    // (e.g. wafer-to-cell p-n junction fabrication, which Brazil doesn't
+    // have). Comex-derived external_dependency for these either falls back
+    // to china_share_brazilian_imports (a supplier-diversification metric
+    // that reads as "controlled" purely because imports come from many
+    // countries, not because any of it is domestic) or is null outright.
+    // Both misrepresent 100% import reliance as a moderate/low risk.
+    const CONFIRMED_ZERO_DOMESTIC_PRODUCTION = new Set(["celulas_fotovoltaicas"]);
     return solarInputs
       .map((input): ProductVulnerability => {
-        const usesStructuralRisk = input.external_dependency === null && input.global_china_share !== null;
-        const usesImportConcentration = input.external_dependency === null && input.global_china_share === null;
+        const confirmedZeroDomestic = CONFIRMED_ZERO_DOMESTIC_PRODUCTION.has(input.input_id);
+        const usesStructuralRisk = !confirmedZeroDomestic && input.external_dependency === null && input.global_china_share !== null;
+        const usesImportConcentration = !confirmedZeroDomestic && input.external_dependency === null && input.global_china_share === null;
         return {
           name: input.label,
-          category: usesStructuralRisk ? "Gargalo estrutural AIPNET" : sectorStageLabel(input.stage),
-          dependency: Math.round(Math.min(1, input.external_dependency ?? input.global_china_share ?? input.china_share_brazilian_imports) * 1000) / 10,
+          category: confirmedZeroDomestic
+            ? "Gargalo de soberania confirmado"
+            : usesStructuralRisk ? "Gargalo estrutural AIPNET" : sectorStageLabel(input.stage),
+          dependency: confirmedZeroDomestic
+            ? 100
+            : Math.round(Math.min(1, input.external_dependency ?? input.global_china_share ?? input.china_share_brazilian_imports) * 1000) / 10,
           hhi: Math.round(
             usesStructuralRisk
               ? input.global_hhi_floor ?? 0
@@ -1245,9 +1259,11 @@ function buildExecutiveVulnerabilityData(
           strategic: primaryInputIds.has(input.input_id),
           executiveName: input.label,
           evidenceType: usesStructuralRisk ? "aipnet_structural" : "observed",
-          evidenceNote: usesStructuralRisk
-            ? input.data_gap_reason ?? "Concentração global da etapa produtiva."
-            : input.data_gap_reason ?? `Fonte: Comex Stat ${input.reference_period}; indicador comercial observado.`,
+          evidenceNote: confirmedZeroDomestic
+            ? "Sem fabricação nacional confirmada (conversão wafer → junção p-n); o indicador de dependência por origem de fornecedor subestima o risco real porque a pauta importada é diversificada entre países, não porque há produção doméstica."
+            : usesStructuralRisk
+              ? input.data_gap_reason ?? "Concentração global da etapa produtiva."
+              : input.data_gap_reason ?? `Fonte: Comex Stat ${input.reference_period}; indicador comercial observado.`,
           importsValueUsd: input.imports_value_usd,
           exportsValueUsd: input.exports_value_usd,
           importsWeightKg: input.imports_net_weight_kg,
@@ -1256,11 +1272,13 @@ function buildExecutiveVulnerabilityData(
           confidence: input.confidence_level,
           measurementMethod: usesStructuralRisk ? "structural" : input.measurement_method,
           chainStage: sectorStageLabel(input.stage),
-          metricKind: usesStructuralRisk
-            ? "global_concentration"
-            : usesImportConcentration
-              ? "china_import_share"
-              : "external_dependency",
+          metricKind: confirmedZeroDomestic
+            ? "confirmed_zero_domestic"
+            : usesStructuralRisk
+              ? "global_concentration"
+              : usesImportConcentration
+                ? "china_import_share"
+                : "external_dependency",
         };
       })
       .sort((left, right) => right.dependency * right.hhi - left.dependency * left.hhi);
