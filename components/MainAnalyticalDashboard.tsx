@@ -542,7 +542,7 @@ export default function MainAnalyticalDashboard() {
               default; the bar chart is the supporting complement, not the
               lead. */}
           <div ref={sankeyRef} className="scroll-mt-6">
-            <ExpandableAnalyticsPanel title="Fluxo de soberania por produto" subtitle="Rede de fornecedores, produto e capacidade nacional" defaultOpen>
+            <ExpandableAnalyticsPanel eyebrow="Soberania & rede" title="Fluxo de soberania por produto" subtitle="Rede de fornecedores, produto e capacidade nacional" defaultOpen>
               <SovereigntySankeyChart
                 dado={radarProduct ?? premiumProducts[0]}
                 solarInputs={solarSovereignty?.inputs}
@@ -556,6 +556,7 @@ export default function MainAnalyticalDashboard() {
 
             <div ref={diagnosticRef} className="scroll-mt-6">
               <ExpandableAnalyticsPanel
+                eyebrow="Balança & dependência"
                 title="Diagnóstico de soberania industrial"
                 subtitle="Dependência externa crítica, balança comercial e cobertura estrutural da cadeia"
                 defaultOpen
@@ -591,6 +592,7 @@ export default function MainAnalyticalDashboard() {
 
               {proportionalityProduct && selectedChain === "combustiveis_transicao" ? (
                 <ExpandableAnalyticsPanel
+                  eyebrow="Metodologia & proporcionalidade"
                   title="Lente RenovaCalc · uso final dos biocombustíveis"
                   subtitle="Separa, dentro da cesta comercial, a parcela efetivamente associada à transição energética"
                   defaultOpen
@@ -601,6 +603,7 @@ export default function MainAnalyticalDashboard() {
 
               {solarSovereignty?.inputs.length ? (
                 <ExpandableAnalyticsPanel
+                  eyebrow="Meio ambiente & emissões"
                   title="Exposição de carbono da pauta importada"
                   subtitle="Distribuição real por rota produtiva declarada, cruzada com o contexto energético nacional (BEN/EPE)"
                 >
@@ -614,7 +617,7 @@ export default function MainAnalyticalDashboard() {
 
               {nibMatrixProducts.length ? (
                 <div ref={nibRef} className="scroll-mt-40 md:scroll-mt-28">
-                  <ExpandableAnalyticsPanel title="Matriz de priorização NIB" subtitle="Posicionamento estratégico dos produtos da cadeia">
+                  <ExpandableAnalyticsPanel eyebrow="Política industrial" title="Matriz de priorização NIB" subtitle="Posicionamento estratégico dos produtos da cadeia">
                     <NIBMatrixChart data={nibMatrixProducts} />
                   </ExpandableAnalyticsPanel>
                 </div>
@@ -622,6 +625,7 @@ export default function MainAnalyticalDashboard() {
 
               {solarSovereignty?.green_jobs ? (
                 <ExpandableAnalyticsPanel
+                  eyebrow="Mercado de trabalho"
                   title="Empregos verdes e transição justa"
                   subtitle="Vínculos RAIS em atividades da cadeia associadas à Taxonomia Sustentável Brasileira"
                 >
@@ -635,6 +639,7 @@ export default function MainAnalyticalDashboard() {
 
               {selectedChain === "silicio" ? (
                 <ExpandableAnalyticsPanel
+                  eyebrow="Balanço de processo"
                   title="Balanço de massa e energia por etapa"
                   subtitle="Intensidade energética, capacidade nacional e concentração global — do quartzo ao módulo"
                 >
@@ -642,6 +647,7 @@ export default function MainAnalyticalDashboard() {
                 </ExpandableAnalyticsPanel>
               ) : energyContext?.blocos.length ? (
                 <ExpandableAnalyticsPanel
+                  eyebrow="Meio ambiente & energia"
                   title="Contexto Energético Nacional (BEN/EPE)"
                   subtitle="Referência nacional/anual do Balanço Energético Nacional — não cruzada linha a linha com os dados municipais"
                 >
@@ -669,11 +675,13 @@ export default function MainAnalyticalDashboard() {
 }
 
 function ExpandableAnalyticsPanel({
+  eyebrow,
   title,
   subtitle,
   children,
   defaultOpen = false,
 }: {
+  eyebrow: string;
   title: string;
   subtitle: string;
   children: ReactNode;
@@ -683,7 +691,7 @@ function ExpandableAnalyticsPanel({
     <details open={defaultOpen} className="group rounded-2xl border border-white/[0.08] bg-zinc-900/30 shadow-xl backdrop-blur-xl">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-2xl px-5 py-4 transition hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 [&::-webkit-details-marker]:hidden">
         <span>
-          <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">Painel analítico</span>
+          <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">{eyebrow}</span>
           <span className="mt-1 block text-base font-bold text-white">{title}</span>
           <span className="mt-1 block text-xs font-normal text-zinc-500">{subtitle}</span>
         </span>
