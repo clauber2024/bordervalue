@@ -47,6 +47,10 @@ type ParallelInput = {
   name: string;
   risk: RiscoParalelo;
   description: string;
+  /** Present when the item sits outside the silicon/PV semiconductor NCM
+   * chapter (8541) -- flags it explicitly so it isn't silently folded into
+   * the chain's own mass/value balance. */
+  ncmOutsideChain?: string;
   icon: ElementType;
 };
 
@@ -112,6 +116,20 @@ const solarNodes: SupplyNode[] = [
     icon: Cpu,
   },
   {
+    id: "lingotes_silicio_cn",
+    name: "Lingotes de Silício (Cz)",
+    country: "China",
+    flag: "🇨🇳",
+    stage: "Cristalização",
+    description: "Crescimento de lingotes monocristalinos pelo processo Czochralski, etapa intensiva em corte e controle de estrutura cristalina anterior ao fatiamento.",
+    isCritical: true,
+    isVulnerable: true,
+    alertMessage:
+      "Concentração Geopolítica: a etapa de crescimento de lingotes (Cz) está na mesma geografia e cadeia de fornecedores dos wafers, herdando sua concentração extrema na China.",
+    relatedInputs: ["Polissilício solar", "Cadinho de quartzo", "Fornos de crescimento Cz", "Fio diamantado"],
+    icon: Layers,
+  },
+  {
     id: "wafers_fotovoltaicos_cn",
     name: "Wafers Fotovoltaicos",
     country: "China",
@@ -122,17 +140,31 @@ const solarNodes: SupplyNode[] = [
     isVulnerable: true,
     alertMessage:
       "Risco Geopolítico Crítico: A China detém o monopólio extremo de mais de 97% da capacidade mundial de produção de Wafers fotovoltaicos, criando um estrangulamento de soberania para a montagem nacional.",
-    relatedInputs: ["Polissilício solar", "Cadinho de quartzo", "Fio diamantado", "Lingotes monocristalinos", "Equipamentos de corte e limpeza"],
+    relatedInputs: ["Lingotes monocristalinos", "Cadinho de quartzo", "Fio diamantado", "Equipamentos de corte e limpeza"],
     icon: ShieldAlert,
   },
   {
-    id: "celulas_modulos_pv_br",
-    name: "Módulos e Células PV",
+    id: "celulas_fotovoltaicas_cn",
+    name: "Células Fotovoltaicas",
+    country: "China",
+    flag: "🇨🇳",
+    stage: "Produção de células",
+    description: "Conversão do wafer em junção p-n semicondutora (dopagem, difusão, deposição) -- etapa de fabricação de semicondutores que o Brasil não possui.",
+    isCritical: true,
+    isVulnerable: true,
+    alertMessage:
+      "Gargalo de Soberania: o Brasil não possui fabricação de células fotovoltaicas (conversão wafer → junção p-n); toda a montagem nacional de módulos depende de células importadas.",
+    relatedInputs: ["Wafers fotovoltaicos", "Pasta de prata", "Reatores de difusão e deposição"],
+    icon: Cpu,
+  },
+  {
+    id: "modulos_fotovoltaicos_br",
+    name: "Módulos Fotovoltaicos",
     country: "Brasil",
     flag: "🇧🇷",
     stage: "Montagem",
-    description: "Montagem final de módulos fotovoltaicos no mercado doméstico.",
-    relatedInputs: ["Células fotovoltaicas", "Vidro solar", "Encapsulantes EVA/POE", "Pasta de prata", "Fitas de cobre", "Molduras de alumínio", "Backsheet", "Caixa de junção"],
+    description: "Encapsulamento e montagem final de módulos a partir de células majoritariamente importadas -- capacidade nacional real, mas não elimina a dependência a montante.",
+    relatedInputs: ["Células fotovoltaicas", "Vidro solar", "Encapsulantes EVA/POE", "Fitas de cobre", "Molduras de alumínio", "Backsheet", "Caixa de junção"],
     isCritical: false,
     isVulnerable: false,
     icon: Zap,
@@ -160,6 +192,7 @@ const valueChains: ValueChain[] = [
         name: "Inversores Solares",
         risk: "IMPORTACAO",
         description: "Conversão CC/CA da geração fotovoltaica, majoritariamente importada da China. Segundo a ABSOLAR, fabricantes instalados no Brasil produzem menos de 5% do que o setor solar demanda.",
+        ncmOutsideChain: "NCM 8504.40.90 -- eletrônica de potência, fora do capítulo 8541 (semicondutores) da cadeia de silício",
         icon: Zap,
       },
       {
@@ -328,8 +361,10 @@ const nodeInputStages: Record<string, string[]> = {
   quartzo_silica_br: ["extracao"],
   silicio_grau_metalurgico_br: ["processamento"],
   polissilicio_cn: ["refinamento"],
+  lingotes_silicio_cn: ["componentes_avancados"],
   wafers_fotovoltaicos_cn: ["componentes_avancados"],
-  celulas_modulos_pv_br: ["produto_final"],
+  celulas_fotovoltaicas_cn: ["produto_final"],
+  modulos_fotovoltaicos_br: ["produto_final"],
   fuel_feedstocks_br: ["insumos"],
   fuel_conversion_br: ["molecula_principal", "derivados"],
   fuel_advanced_inputs: ["insumos_tecnologicos", "equipamentos"],
@@ -680,6 +715,11 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus }: { c
                   </div>
                   <h4 className="mt-4 text-sm font-bold text-white">{item.name}</h4>
                   <p className="mt-1.5 text-xs leading-5 text-zinc-400">{item.description}</p>
+                  {item.ncmOutsideChain ? (
+                    <p className="mt-2 border-t border-white/10 pt-2 font-mono text-[10px] leading-4 text-amber-300/80">
+                      {item.ncmOutsideChain}
+                    </p>
+                  ) : null}
                 </div>
               );
             })}
@@ -733,6 +773,7 @@ function DetailMetric({ label, value, className = "" }: { label: string; value: 
 
 function structuralExposure(nodeId: string) {
   if (nodeId === "polissilicio_cn") return "95% · HHI mínimo 9.025";
+  if (nodeId === "lingotes_silicio_cn") return "97% · HHI mínimo 9.409";
   if (nodeId === "wafers_fotovoltaicos_cn") return "97% · HHI mínimo 9.409";
   return null;
 }

@@ -63,7 +63,7 @@ export function SiliconStrategicLevers({ valueAsymmetry, solarInputs }: SiliconS
       aria-label="Alavancas estratégicas da cadeia de silício e solar"
       className="grid grid-cols-1 gap-4 lg:grid-cols-3"
     >
-      <article className="flex flex-col gap-2 rounded-2xl border border-amber-500/25 bg-zinc-900/55 p-5 shadow-xl backdrop-blur-xl">
+      <article className="flex flex-col gap-2 rounded-2xl border border-amber-500/25 bg-zinc-900/55 p-6 shadow-xl backdrop-blur-xl">
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-300">
           <Scale className="h-4 w-4" />
           Assimetria de valor por quilo
@@ -97,7 +97,7 @@ export function SiliconStrategicLevers({ valueAsymmetry, solarInputs }: SiliconS
         )}
       </article>
 
-      <article className="flex flex-col gap-2 rounded-2xl border border-cyan-500/25 bg-zinc-900/55 p-5 shadow-xl backdrop-blur-xl">
+      <article className="flex flex-col gap-2 rounded-2xl border border-cyan-500/25 bg-zinc-900/55 p-6 shadow-xl backdrop-blur-xl">
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-300">
           <Landmark className="h-4 w-4" />
           Alavancagem regulatória — PADIS
@@ -137,7 +137,7 @@ export function SiliconStrategicLevers({ valueAsymmetry, solarInputs }: SiliconS
         </TechnicalDetail>
       </article>
 
-      <article className="flex flex-col gap-2 rounded-2xl border border-emerald-500/25 bg-zinc-900/55 p-5 shadow-xl backdrop-blur-xl">
+      <article className="flex flex-col gap-2 rounded-2xl border border-emerald-500/25 bg-zinc-900/55 p-6 shadow-xl backdrop-blur-xl">
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-300">
           <Leaf className="h-4 w-4" />
           Prêmio de descarbonização

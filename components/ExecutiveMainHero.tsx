@@ -145,7 +145,7 @@ export const ExecutiveMainHero = ({
   return (
     <section className="w-full space-y-6">
       <div className="flex flex-col gap-4">
-        <div className="relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/15 bg-zinc-900/55 p-6 shadow-2xl backdrop-blur-xl md:p-8">
+        <div className="relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/15 bg-zinc-900/55 p-6 shadow-2xl backdrop-blur-xl">
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/30 to-transparent" />
           <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl" />
 
