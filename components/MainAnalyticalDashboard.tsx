@@ -25,6 +25,7 @@ import { ExecutiveMetadataFooter, type ExecutiveMetadata } from "./ExecutiveMeta
 import { HeaderTopBar } from "./HeaderTopBar";
 import { SiliconStrategicLevers, type SiliconValueAsymmetry } from "./SiliconStrategicLevers";
 import { EnergyContextBenPanel } from "./EnergyContextBenPanel";
+import { SiliconMassEnergyBalancePanel } from "./SiliconMassEnergyBalancePanel";
 import { GreenJobsTSBPanel } from "./GreenJobsTSBPanel";
 import { NIBMatrixChart } from "./NIBMatrixChart";
 import { ProportionalityToggle } from "./ProportionalityToggle";
@@ -626,7 +627,14 @@ export default function MainAnalyticalDashboard() {
                 </ExpandableAnalyticsPanel>
               ) : null}
 
-              {energyContext?.blocos.length ? (
+              {selectedChain === "silicio" ? (
+                <ExpandableAnalyticsPanel
+                  title="Balanço de massa e energia por etapa"
+                  subtitle="Intensidade energética, capacidade nacional e concentração global — do quartzo ao módulo"
+                >
+                  <SiliconMassEnergyBalancePanel energyContext={energyContext} />
+                </ExpandableAnalyticsPanel>
+              ) : energyContext?.blocos.length ? (
                 <ExpandableAnalyticsPanel
                   title="Contexto Energético Nacional (BEN/EPE)"
                   subtitle="Referência nacional/anual do Balanço Energético Nacional — não cruzada linha a linha com os dados municipais"
