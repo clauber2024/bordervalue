@@ -716,6 +716,11 @@ export function SovereigntySankeyChart({
                   const value = perspective === "exports" ? input.exports_value_usd : input.imports_value_usd;
                   const share = value / Math.max(summary.totalValue, 1);
                   const chinaShare = input.global_china_share ?? input.china_share_brazilian_imports;
+                  // Below this, a single spot shipment (lab sample, test
+                  // batch, one-off reexport) can be the entire recorded
+                  // flow -- flag it so the figure doesn't read as active
+                  // production/export capacity.
+                  const isSampleScale = value > 0 && value < SAMPLE_SHIPMENT_THRESHOLD_USD;
                   return (
                     <div
                       key={input.input_id}
@@ -731,6 +736,11 @@ export function SovereigntySankeyChart({
                           <p className="text-[11px] text-zinc-500">{percent.format(share)}</p>
                         </div>
                       </div>
+                      {isSampleScale ? (
+                        <p className="mt-2 border-t border-white/[0.06] pt-2 text-[10px] font-semibold uppercase tracking-wide text-amber-300/80">
+                          Escala de amostra/remessa pontual — não representa capacidade produtiva ativa
+                        </p>
+                      ) : null}
                       {metricsDrawer === "highlight" ? (
                         perspective === "exports" ? (
                           input.production_route_rationale ? (
@@ -752,6 +762,16 @@ export function SovereigntySankeyChart({
                     </div>
                   );
                 })}
+              {metricsDrawer === "highlight" && perspective === "exports" ? (
+                <p className="mt-1 border-t border-white/[0.08] pt-3 text-[11px] leading-relaxed text-zinc-500">
+                  A rota produtiva classifica a produção/fornecimento típico deste ativo, a mesma
+                  classificação usada na perspectiva de importações — não a origem específica desta
+                  exportação. Ativos como o Silício Grau Metalúrgico não aparecem aqui apesar da matriz
+                  elétrica brasileira ser &gt;84% renovável, porque a classificação reflete a produção
+                  mundial predominante (concentrada em matriz a carvão); não é uma avaliação da planta
+                  brasileira específica que gerou esta exportação.
+                </p>
+              ) : null}
             </div>
           </motion.aside>
         </>
@@ -1716,6 +1736,12 @@ function mergeParallelLinks(links: SankeyLinkDatum[]): SankeyLinkDatum[] {
 // which a node/link is flagged as a sovereignty chokepoint and gets the
 // pulsing red treatment in the Imports perspective.
 const CHOKEPOINT_THRESHOLD = 0.9;
+
+// Below this USD value, a single spot shipment (lab sample, test batch,
+// one-off reexport) can be the entire recorded trade flow for an input in
+// the period -- flagged in the metrics drawer so it doesn't read as active
+// production/export capacity.
+const SAMPLE_SHIPMENT_THRESHOLD_USD = 100_000;
 
 // Physical order (see STAGE_PHYSICAL_ORDER) up to which a stage has
 // confirmed real domestic activity worth drawing as its own "Etapa
