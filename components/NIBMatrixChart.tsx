@@ -41,12 +41,50 @@ type QuadrantLabel =
   | "Atenção Estratégica"
   | "Substituir / Descarbonizar";
 
+// Single source of truth for color, legend label and interpretation copy per
+// quadrant -- the legend pills, interpretation cards, point color, sidebar
+// badges and the numbered-circle tooltip all read from this instead of each
+// keeping their own hardcoded color/label, which is what let them drift.
+const QUADRANT_META: Record<QuadrantLabel, { label: string; color: string; tone: "red" | "amber" | "emerald" | "blue" | "purple"; body: string }> = {
+  "Atrair Investimento / Planta Nova": {
+    label: "Atrair nova capacidade",
+    color: "#f87171",
+    tone: "red",
+    body: "Alto déficit e baixa capacidade nacional. Prioridade para atração de plantas, financiamento e transferência tecnológica.",
+  },
+  "Modernizar / Expandir": {
+    label: "Modernizar e expandir",
+    color: "#fbbf24",
+    tone: "amber",
+    body: "Alto déficit, mas já existe capacidade nacional relevante. Prioridade para expansão, produtividade e substituição competitiva de importações.",
+  },
+  "Zona Segura / Competitiva": {
+    label: "Posição competitiva",
+    color: "#34d399",
+    tone: "emerald",
+    body: "Capacidade nacional acima do corte e déficit controlado ou superávit. Prioridade para consolidar e ampliar mercados.",
+  },
+  "Atenção Estratégica": {
+    label: "Monitorar",
+    color: "#38bdf8",
+    tone: "blue",
+    body: "Déficit abaixo do corte, mas a capacidade observada ainda é pequena ou incompleta. Exige acompanhamento antes de recomendar investimento.",
+  },
+  "Substituir / Descarbonizar": {
+    label: "Substituir / descarbonizar",
+    color: "#c084fc",
+    tone: "purple",
+    body: "A trava climática prevalece sobre o quadrante econômico: insumos fósseis não recebem recomendação automática de expansão.",
+  },
+};
+
 type MatrixPointProps = {
   cx?: number;
   cy?: number;
   payload?: MatrixDatum;
   expandedCluster?: string | null;
   onToggleCluster?: (clusterKey: string) => void;
+  selectedQuadrant?: QuadrantLabel | null;
 };
 
 type NIBTooltipProps = {
@@ -95,6 +133,7 @@ export function NIBMatrixChart({
   className = "",
 }: NIBMatrixChartProps) {
   const [expandedCluster, setExpandedCluster] = useState<string | null>(null);
+  const [selectedQuadrant, setSelectedQuadrant] = useState<QuadrantLabel | null>(null);
 
   if (!data.length) {
     return (
@@ -121,6 +160,17 @@ export function NIBMatrixChart({
   ).length;
   const hasCapacityCoverage = missingCapacityCount < matrixData.length;
   const proxyCount = matrixData.filter((item) => item.auditoria.ncm_mapping_status === "proxy").length;
+  // Which of the 5 quadrants actually have an item in this chain's cut --
+  // legend pills and interpretation cards only render for these, instead of
+  // always showing all 5 regardless of the active chain.
+  const presentQuadrants = (Object.keys(QUADRANT_META) as QuadrantLabel[]).filter(
+    (quadrant) => matrixData.some((item) => item.matrixState === quadrant),
+  );
+  const toggleQuadrant = (quadrant: QuadrantLabel) =>
+    setSelectedQuadrant((current) => (current === quadrant ? null : quadrant));
+  const visibleMatrixData = selectedQuadrant
+    ? matrixData.filter((item) => item.matrixState === selectedQuadrant)
+    : matrixData;
 
   return (
     <section className={`${glass} overflow-hidden rounded-lg text-zinc-100 ${className}`}>
@@ -184,13 +234,29 @@ export function NIBMatrixChart({
       {/* Legend used to float absolutely inside the plot area (top-right),
           covering real data points in that quadrant. Rendered as a normal
           flow row above the chart instead, so nothing overlaps the axes or
-          the scatter points. */}
-      <div className="mx-4 mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[10.5px] leading-tight text-zinc-400 sm:mx-6">
-        <MatrixLegend color="#f87171" label="Atrair nova capacidade" />
-        <MatrixLegend color="#fbbf24" label="Modernizar e expandir" />
-        <MatrixLegend color="#34d399" label="Posição competitiva" />
-        <MatrixLegend color="#38bdf8" label="Monitorar" />
-        <MatrixLegend color="#c084fc" label="Substituir / descarbonizar" />
+          the scatter points. Doubles as a filter: click a pill to isolate
+          that quadrant in the chart and the sidebar list below; click again
+          to clear. Only pills for quadrants this chain actually has an item
+          in are shown. */}
+      <div className="mx-4 mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[10.5px] leading-tight sm:mx-6">
+        {presentQuadrants.map((quadrant) => (
+          <MatrixLegend
+            key={quadrant}
+            quadrant={quadrant}
+            isSelected={selectedQuadrant === quadrant}
+            isMuted={selectedQuadrant !== null && selectedQuadrant !== quadrant}
+            onClick={() => toggleQuadrant(quadrant)}
+          />
+        ))}
+        {selectedQuadrant ? (
+          <button
+            type="button"
+            onClick={() => setSelectedQuadrant(null)}
+            className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-zinc-400 transition hover:text-white"
+          >
+            Limpar filtro
+          </button>
+        ) : null}
       </div>
 
       <div className="relative h-[470px] min-h-[380px] w-full px-2 py-2 sm:px-4">
@@ -250,6 +316,7 @@ export function NIBMatrixChart({
                 <MatrixPoint
                   expandedCluster={expandedCluster}
                   onToggleCluster={(clusterKey) => setExpandedCluster((current) => current === clusterKey ? null : clusterKey)}
+                  selectedQuadrant={selectedQuadrant}
                 />
               )}
             />
@@ -268,14 +335,26 @@ export function NIBMatrixChart({
 
       {hasCapacityCoverage && (
       <div className="space-y-2 border-t border-zinc-800/60 px-4 py-4 sm:px-6">
-        {matrixData.map((item) => (
+        {selectedQuadrant && !visibleMatrixData.length ? (
+          <p className="rounded-lg border border-dashed border-white/10 px-3 py-3 text-xs text-zinc-500">
+            Nenhum item neste recorte pertence ao quadrante selecionado.
+          </p>
+        ) : null}
+        {visibleMatrixData.map((item) => {
+          const meta = QUADRANT_META[item.matrixState];
+          const briefing = matrixStateBriefing(item);
+          return (
           <details
             key={`${item.produto_nome}-${item.matrixOrdinal}`}
             className="group overflow-hidden rounded-lg border border-l-4 border-zinc-800/60 bg-white/[0.025]"
-            style={{ borderLeftColor: getPointColor(item) }}
+            style={{ borderLeftColor: meta.color }}
           >
             <summary className="flex cursor-pointer list-none items-start gap-3 px-3 py-3 [&::-webkit-details-marker]:hidden">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-zinc-950" style={{ backgroundColor: getPointColor(item) }}>
+              <span
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-zinc-950"
+                style={{ backgroundColor: meta.color }}
+                title={`Diretriz NIB: ${meta.label}`}
+              >
                 {item.matrixOrdinal}
               </span>
               <div className="min-w-0 flex-1">
@@ -284,7 +363,15 @@ export function NIBMatrixChart({
                   <span className="shrink-0 text-[10px] font-semibold text-cyan-300 group-open:hidden">Ver classificação</span>
                   <span className="hidden shrink-0 text-[10px] font-semibold text-cyan-300 group-open:inline">Ocultar detalhes</span>
                 </div>
-                <p className="mt-1 text-[11px] text-zinc-500">{formatCapacityPosition(item)} · {formatTradePosition(item)}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span
+                    className="rounded-full border px-2 py-0.5 text-[10px] font-semibold"
+                    style={{ borderColor: `${meta.color}4D`, backgroundColor: `${meta.color}1A`, color: meta.color }}
+                  >
+                    {meta.label}
+                  </span>
+                  <p className="text-[11px] text-zinc-500">{formatCapacityPosition(item)} · {formatTradePosition(item)}</p>
+                </div>
               </div>
             </summary>
             <div className="border-t border-white/[0.06] px-4 py-4 sm:pl-14">
@@ -298,44 +385,33 @@ export function NIBMatrixChart({
                 <ExpandedMetric label="Confiança" value={confidenceLabel(item.auditoria.confidence_level)} />
                 <ExpandedMetric label="Status da cesta" value={item.auditoria.ncm_mapping_status === "proxy" ? "Proxy · requer homologação de uso" : "Validada"} />
               </div>
-              <p className="mt-4 rounded-lg border border-white/[0.06] bg-zinc-950/45 px-3 py-2.5 text-xs leading-5 text-zinc-400">
-                <strong className="text-zinc-200">Por que recebeu esta classificação?</strong>{" "}{matrixStateExplanation(item)}
-              </p>
-              {getTransitionGuardrail(item) ? <p className="mt-2 text-xs font-semibold leading-5 text-purple-300">{getTransitionGuardrail(item)}</p> : null}
+              <div className="mt-4 flex flex-col gap-2 rounded-lg border border-emerald-500/20 bg-zinc-950/60 p-3.5">
+                <div className="flex items-start gap-2">
+                  <span className="mt-0.5 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+                    Diagnóstico Estratégico:
+                  </span>
+                  <p className="text-xs leading-relaxed text-zinc-300">{briefing.diagnostic}</p>
+                </div>
+                <div className="flex items-start gap-2 border-t border-white/[0.06] pt-2">
+                  <span className="mt-0.5 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                    Diretriz de Ação NIB:
+                  </span>
+                  <p className="text-xs leading-relaxed text-zinc-400">{briefing.directive}</p>
+                </div>
+              </div>
             </div>
           </details>
-        ))}
+          );
+        })}
       </div>
       )}
 
       <div className="border-t border-zinc-800/60 bg-white/[0.025] px-4 py-4 sm:px-6">
         {hasCapacityCoverage ? (
         <div className="grid grid-cols-1 gap-3 text-xs md:grid-cols-2 xl:grid-cols-4">
-          <InterpretationCard
-            title="Atrair nova capacidade"
-            tone="red"
-            body="Alto déficit e baixa capacidade nacional. Prioridade para atração de plantas, financiamento e transferência tecnológica."
-          />
-          <InterpretationCard
-            title="Modernizar e expandir"
-            tone="amber"
-            body="Alto déficit, mas já existe capacidade nacional relevante. Prioridade para expansão, produtividade e substituição competitiva de importações."
-          />
-          <InterpretationCard
-            title="Posição competitiva"
-            tone="emerald"
-            body="Capacidade nacional acima do corte e déficit controlado ou superávit. Prioridade para consolidar e ampliar mercados."
-          />
-          <InterpretationCard
-            title="Monitorar"
-            tone="blue"
-            body="Déficit abaixo do corte, mas a capacidade observada ainda é pequena ou incompleta. Exige acompanhamento antes de recomendar investimento."
-          />
-          <InterpretationCard
-            title="Substituir / descarbonizar"
-            tone="purple"
-            body="A trava climática prevalece sobre o quadrante econômico: insumos fósseis não recebem recomendação automática de expansão."
-          />
+          {presentQuadrants.map((quadrant) => (
+            <InterpretationCard key={quadrant} meta={QUADRANT_META[quadrant]} />
+          ))}
         </div>
         ) : null}
 
@@ -352,15 +428,7 @@ export function NIBMatrixChart({
   );
 }
 
-function InterpretationCard({
-  title,
-  body,
-  tone,
-}: {
-  title: string;
-  body: string;
-  tone: "red" | "amber" | "emerald" | "blue" | "purple";
-}) {
+function InterpretationCard({ meta }: { meta: (typeof QUADRANT_META)[QuadrantLabel] }) {
   const tones = {
     red: "border-red-300/20 bg-red-400/10 text-red-200",
     amber: "border-amber-300/20 bg-amber-400/10 text-amber-200",
@@ -370,9 +438,9 @@ function InterpretationCard({
   };
 
   return (
-    <div className={`rounded-lg border px-3 py-3 ${tones[tone]}`}>
-      <p className="font-bold uppercase tracking-[0.14em]">{title}</p>
-      <p className="mt-2 leading-5 text-zinc-300">{body}</p>
+    <div className={`rounded-lg border px-3 py-3 ${tones[meta.tone]}`}>
+      <p className="font-bold uppercase tracking-[0.14em]">{meta.label}</p>
+      <p className="mt-2 leading-5 text-zinc-300">{meta.body}</p>
     </div>
   );
 }
@@ -418,12 +486,38 @@ function MetricPill({ label, value }: { label: string; value: string }) {
   );
 }
 
-function MatrixLegend({ color, label }: { color: string; label: string }) {
+function MatrixLegend({
+  quadrant,
+  isSelected,
+  isMuted,
+  onClick,
+}: {
+  quadrant: QuadrantLabel;
+  isSelected: boolean;
+  isMuted: boolean;
+  onClick: () => void;
+}) {
+  const meta = QUADRANT_META[quadrant];
   return (
-    <span className="inline-flex items-center gap-2">
-      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
-      {label}
-    </span>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={isSelected}
+      title={`Isolar quadrante "${meta.label}"`}
+      className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 transition ${
+        isSelected
+          ? "border-white/30 bg-white/[0.08] text-white"
+          : isMuted
+            ? "border-transparent text-zinc-600 opacity-50 hover:opacity-75"
+            : "border-transparent text-zinc-400 hover:border-white/15 hover:text-zinc-200"
+      }`}
+    >
+      <span
+        className="h-2.5 w-2.5 rounded-full"
+        style={{ backgroundColor: meta.color, boxShadow: isSelected ? `0 0 8px ${meta.color}99` : undefined }}
+      />
+      {meta.label}
+    </button>
   );
 }
 
@@ -444,23 +538,94 @@ function confidenceLabel(value: ProdutoConceitual["auditoria"]["confidence_level
   return ({ alta: "Alta", media: "Média", baixa: "Baixa" } as const)[value];
 }
 
-function matrixStateExplanation(item: MatrixDatum) {
+// Hand-authored, data-grounded briefings for the silicio-chain items this
+// session verified against the live Comex/PIA-backed API (export/import
+// values, confirmed-zero domestic cell fabrication, PADIS/CAPEX figures
+// already established elsewhere in the app). Deliberately not extended to
+// every product in every chain -- a generic quadrant-level explanation
+// (below) is the honest fallback for items we haven't grounded this way,
+// rather than fabricating specific policy-instrument claims for chains this
+// session didn't investigate.
+function siliconExecutiveBriefing(item: MatrixDatum): { diagnostic: string; directive: string } | null {
+  const name = item.produto_nome.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+
+  if (/quartzito/.test(name)) {
+    return {
+      diagnostic: `Ativo de soberania extrativa: o Brasil é autossuficiente e amplamente exportador de quartzito (${usdCompact.format(item.comercio.exportacao_valor_fob)} em exportações), a rocha-base para a redução carbotérmica que sustenta a produção nacional de silício grau metalúrgico.`,
+      directive: "Preservar a competitividade exportadora enquanto se estimula o adensamento do refino de pureza (6N a 9N) a jusante, para reter mais valor agregado no país.",
+    };
+  }
+  if (/sil[ií]cio grau metal[uú]rgico/.test(name)) {
+    return {
+      diagnostic: `Maior ativo de powershoring da cadeia: ${usdCompact.format(item.comercio.exportacao_valor_fob)} em exportações de Si-GM produzido em matriz elétrica >84% renovável, com pegada de carbono estimada em até 6x menor que o similar chinês.`,
+      directive: "Usar a vantagem de baixo carbono como argumento comercial direto (CBAM, powershoring) e como base de crédito para financiar o adensamento das etapas de refino a jusante.",
+    };
+  }
+  if (/polissil[ií]cio/.test(name)) {
+    return {
+      diagnostic: "Volume comercial residual (escala de amostra/remessa pontual, não capacidade produtiva ativa): o refino de polissilício grau solar (processo Siemens/FBR) exige CAPEX da ordem de US$ 40-100/kg e 100-120 MWh/t, uma barreira física de capital que o diferimento tributário isolado não resolve.",
+      directive: "Priorizar instrumentos de crédito estruturado (BNDES Finem, Fundo Clima) combinados ao PADIS para viabilizar planta nacional, em vez de tratar a ausência de produção como falta de dependência.",
+    };
+  }
+  if (/wafers fotovolta/.test(name)) {
+    return {
+      diagnostic: `Baixo volume absoluto (${usdCompact.format(item.comercio.importacao_valor_fob)} em importações) esconde uma concentração geopolítica extrema: a China detém mais de 97% da capacidade mundial de crescimento de lingotes e corte de wafers.`,
+      directive: "Tratar como gargalo estrutural mesmo com déficit em dólares abaixo do corte de política industrial — a métrica de risco aqui é concentração de origem, não magnitude comercial.",
+    };
+  }
+  if (/c[ée]lulas fotovolta/.test(name)) {
+    return {
+      diagnostic: "Gargalo absoluto de soberania semicondutora: o Brasil não possui fabricação nacional de células fotovoltaicas (conversão do wafer em junção p-n). A dependência real é de 100%, mesmo quando o indicador de origem — diversificado entre Hong Kong, China e outros — sugere um risco moderado.",
+      directive: "Prioridade máxima para atração de capital produtivo (greenfield) via BNDES Finem e PADIS — diversificar fornecedores não resolve produção zero.",
+    };
+  }
+  if (/m[óo]dulos fotovolta/.test(name)) {
+    return {
+      diagnostic: `Ativo fabril doméstico com déficit de escala: capacidade de montagem/encapsulamento consolidada no Brasil, mas absorvendo ${usdCompact.format(item.comercio.importacao_valor_fob)} em importações de células e componentes.`,
+      directive: "Modernizar linhas de montagem e exigir conteúdo local progressivo em compras públicas e leilões, para converter capacidade de montagem em adensamento real da cadeia.",
+    };
+  }
+  return null;
+}
+
+function matrixStateBriefing(item: MatrixDatum): { diagnostic: string; directive: string } {
+  const grounded = siliconExecutiveBriefing(item);
+  if (grounded) return grounded;
+
   if (getTransitionGuardrail(item)) {
-    return "A trava climática substitui a recomendação puramente econômica: a prioridade é reduzir o uso fóssil e desenvolver alternativas de baixo carbono.";
+    return {
+      diagnostic: "A trava climática substitui a recomendação puramente econômica para este insumo fóssil.",
+      directive: "Priorizar redução do uso fóssil e desenvolvimento de alternativas de baixo carbono antes de qualquer recomendação de expansão.",
+    };
   }
   if (item.industria.valor_producao_pia <= 0) {
-    return "O comércio exterior está observado, mas a capacidade produtiva não possui valor PIA publicado. A posição é indicativa e não comprova ausência de produção nacional.";
+    return {
+      diagnostic: "O comércio exterior está observado, mas a capacidade produtiva não possui valor PIA publicado.",
+      directive: "Tratar a posição como indicativa — não comprova ausência de produção nacional, apenas lacuna de mensuração. Homologar antes de decisão operacional.",
+    };
   }
   if (item.matrixState === "Atrair Investimento / Planta Nova") {
-    return "O déficit supera o corte de política industrial e a capacidade nacional observada permanece abaixo do corte.";
+    return {
+      diagnostic: "Déficit acima do corte de política industrial, com capacidade nacional observada abaixo do corte.",
+      directive: "Priorizar atração de plantas, financiamento e transferência tecnológica para reduzir a dependência externa.",
+    };
   }
   if (item.matrixState === "Modernizar / Expandir") {
-    return "O déficit supera o corte, mas já existe capacidade produtiva nacional relevante que pode ser modernizada ou ampliada.";
+    return {
+      diagnostic: "Déficit acima do corte, mas já existe capacidade produtiva nacional relevante.",
+      directive: "Priorizar modernização, ganho de produtividade e substituição competitiva de importações na base instalada.",
+    };
   }
   if (item.matrixState === "Zona Segura / Competitiva") {
-    return "A capacidade nacional está acima do corte e o déficit está controlado ou há superávit comercial.";
+    return {
+      diagnostic: "Capacidade nacional acima do corte, com déficit controlado ou superávit comercial.",
+      directive: "Consolidar e ampliar mercados a partir da posição competitiva já estabelecida.",
+    };
   }
-  return "O déficit está abaixo do corte, mas a capacidade observada ainda recomenda acompanhamento antes de uma intervenção industrial.";
+  return {
+    diagnostic: "Déficit abaixo do corte de política industrial, com capacidade nacional ainda pequena ou incompleta.",
+    directive: "Acompanhar a evolução do indicador antes de recomendar intervenção — não é prioridade imediata pelo critério de magnitude comercial.",
+  };
 }
 
 function CommercialExposurePanel({ data }: { data: MatrixDatum[] }) {
@@ -514,17 +679,19 @@ function CommercialExposurePanel({ data }: { data: MatrixDatum[] }) {
   );
 }
 
-function MatrixPoint({ cx = 0, cy = 0, payload, expandedCluster, onToggleCluster }: MatrixPointProps) {
+function MatrixPoint({ cx = 0, cy = 0, payload, expandedCluster, onToggleCluster, selectedQuadrant }: MatrixPointProps) {
   if (!payload) return null;
 
   const pointColor = getPointColor(payload);
   const isCluster = payload.matrixClusterSize > 1;
   const isExpanded = expandedCluster === payload.matrixClusterKey;
+  const isDimmed = selectedQuadrant !== null && selectedQuadrant !== undefined && selectedQuadrant !== payload.matrixState;
 
   return (
     <g
       transform={`translate(${payload.matrixOffsetX} ${payload.matrixOffsetY})`}
-      className={isCluster ? "cursor-pointer" : undefined}
+      className={`transition-opacity duration-200 ${isCluster ? "cursor-pointer" : ""}`}
+      style={{ opacity: isDimmed ? 0.22 : 1 }}
       role={isCluster ? "button" : undefined}
       aria-label={isCluster ? `${isExpanded ? "Recolher" : "Abrir"} grupo com ${payload.matrixClusterSize} itens` : undefined}
       onClick={(event) => {
@@ -723,11 +890,7 @@ function getMatrixState(
 }
 
 function getPointColor(product: MatrixDatum) {
-  if (product.matrixState === "Substituir / Descarbonizar") return "#c084fc";
-  if (product.matrixState === "Atrair Investimento / Planta Nova") return "#f87171";
-  if (product.matrixState === "Modernizar / Expandir") return "#fbbf24";
-  if (product.matrixState === "Zona Segura / Competitiva") return "#34d399";
-  return "#38bdf8";
+  return QUADRANT_META[product.matrixState].color;
 }
 
 function getTransitionGuardrail(product: Pick<ProdutoConceitual, "produto_nome">) {
