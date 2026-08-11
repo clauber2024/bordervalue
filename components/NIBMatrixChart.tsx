@@ -146,6 +146,8 @@ export function NIBMatrixChart({
   const matrixData = addCollisionOffsets(
     data.map((item, index) => toMatrixDatum(item, capacidadeThreshold, deficitThreshold, index + 1)),
     expandedCluster,
+    capacidadeThreshold,
+    deficitThreshold,
   );
   const capacityDomainMax = Math.max(
     capacidadeThreshold * 3,
@@ -798,17 +800,29 @@ function toMatrixDatum(
   };
 }
 
-function addCollisionOffsets(data: MatrixDatum[], expandedCluster: string | null) {
+function addCollisionOffsets(
+  data: MatrixDatum[],
+  expandedCluster: string | null,
+  capacidadeThreshold: number,
+  deficitThreshold: number,
+) {
   const groups = new Map<string, MatrixDatum[]>();
   data.forEach((item) => {
     // Agrupa também valores próximos que ficam indistinguíveis na escala logarítmica.
+    // Points straddling a quadrant threshold never share a band, even if
+    // their log-rounded value would otherwise match -- clustering (and the
+    // pixel offset applied to expanded clusters below) must never visually
+    // push a below-threshold item across the reference line into the
+    // wrong quadrant's background, or vice versa.
     const capacityBand = Math.round(Math.log10(Math.max(item.matrixCapacityValue, 1)) * 4);
     const tradeBand = Math.round(Math.log10(Math.max(item.matrixTradeMagnitude, 1)) * 4);
+    const aboveCapacityThreshold = item.matrixCapacityValue >= capacidadeThreshold;
+    const aboveDeficitThreshold = item.matrixTradeMagnitude >= deficitThreshold;
     const key = item.matrixCapacityValue <= 1
       ? "capacidade-pendente"
       : item.matrixTradeMagnitude <= 1
-        ? `sem-deficit:${capacityBand}`
-        : `${capacityBand}:${tradeBand}`;
+        ? `sem-deficit:${capacityBand}:${aboveCapacityThreshold}`
+        : `${capacityBand}:${aboveCapacityThreshold}:${tradeBand}:${aboveDeficitThreshold}`;
     item.matrixClusterKey = key;
     groups.set(key, [...(groups.get(key) ?? []), item]);
   });
