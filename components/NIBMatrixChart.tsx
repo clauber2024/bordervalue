@@ -376,7 +376,7 @@ export function NIBMatrixChart({
             </summary>
             <div className="border-t border-white/[0.06] px-4 py-4 sm:pl-14">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <ExpandedMetric label="Classificação NIB" value={item.matrixState} />
+                <ExpandedMetric label="Classificação NIB" value={QUADRANT_META[item.matrixState].label} />
                 <ExpandedMetric label="Importações FOB" value={usdCompact.format(item.comercio.importacao_valor_fob)} />
                 <ExpandedMetric label="Exportações FOB" value={usdCompact.format(item.comercio.exportacao_valor_fob)} />
                 <ExpandedMetric label="Dependência externa" value={`${(Math.min(item.industria.dependencia_externa_fracao, 1) * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`} />
@@ -722,7 +722,7 @@ function NIBTooltip({ active, payload }: NIBTooltipProps) {
     <div className="min-w-72 rounded-lg border border-zinc-800/70 bg-zinc-950/95 p-4 text-xs text-zinc-100 shadow-2xl backdrop-blur-xl">
       <p className="text-sm font-bold tracking-tight text-white">{product.produto_nome}</p>
       <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.16em] text-cyan-300">
-        {product.matrixState}
+        {QUADRANT_META[product.matrixState].label}
       </p>
 
       <div className="mt-3 space-y-2.5">

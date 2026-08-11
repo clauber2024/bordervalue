@@ -895,7 +895,13 @@ function buildSolarNibProducts(
         prodlist_codigos: input.prodlist_codes,
         valor_producao_pia: productionBrl,
         consumo_aparente: apparentConsumption,
-        dependencia_externa_fracao: input.external_dependency ?? 0,
+        // ?? 0 alone would silently read "no defensible denominator" (null)
+        // as "0% dependent" -- backwards for CONFIRMED_ZERO_DOMESTIC_PRODUCTION
+        // inputs, where null means the opposite: no domestic production to
+        // divide against, so external reliance is total.
+        dependencia_externa_fracao: CONFIRMED_ZERO_DOMESTIC_PRODUCTION.has(input.input_id)
+          ? 1
+          : input.external_dependency ?? 0,
         qtde_vinculos_rais: 0,
         massa_salarial_rais: 0,
       },
