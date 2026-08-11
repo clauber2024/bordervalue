@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { BriefcaseBusiness, Info, MapPinned, Scale, WalletCards, X } from "lucide-react";
-import type { SolarGreenJobs } from "../types/solar-sovereignty";
+import type { SolarGreenJobs, SolarInputMetric } from "../types/solar-sovereignty";
 
 type GreenJobsTSBPanelProps = {
   data: SolarGreenJobs;
   chainName?: string;
+  solarInputs?: SolarInputMetric[];
 };
 
 type Selection = { kind: "activity"; cnae: string } | { kind: "state"; uf: string } | null;
@@ -19,8 +20,24 @@ const currency = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 1,
 });
 
-export function GreenJobsTSBPanel({ data, chainName = "cadeia analisada" }: GreenJobsTSBPanelProps) {
+export function GreenJobsTSBPanel({ data, chainName = "cadeia analisada", solarInputs = [] }: GreenJobsTSBPanelProps) {
   const [selection, setSelection] = useState<Selection>(null);
+  const [showTsbInfo, setShowTsbInfo] = useState(false);
+
+  const inputLabelById = useMemo(
+    () => new Map(solarInputs.map((input) => [input.input_id, input.label])),
+    [solarInputs],
+  );
+  // sector_names[0] is the CNAE *class* description (4-digit, broad --
+  // "Fabricação de químicos orgânicos e inorgânicos, resinas e elastômeros"
+  // covers several distinct classes at once), so multiple activities in the
+  // same broad chemistry family render identical labels unless the specific
+  // input(s) tied to that CNAE row are appended.
+  const activityLabel = (activity: SolarGreenJobs["activities"][number]) => {
+    const base = activity.sector_names[0] ?? "Atividade produtiva associada à TSB";
+    const inputNames = activity.input_ids.map((id) => inputLabelById.get(id)).filter((v): v is string => Boolean(v));
+    return inputNames.length ? `${base} — ${inputNames.join(", ")}` : base;
+  };
 
   const maxActivityJobs = Math.max(...data.activities.map((item) => item.formal_jobs), 1);
   const maxStateJobs = Math.max(...data.top_states.map((item) => item.formal_jobs), 1);
@@ -51,16 +68,39 @@ export function GreenJobsTSBPanel({ data, chainName = "cadeia analisada" }: Gree
 
   const selectedActivity = selection?.kind === "activity" ? selection.cnae : null;
   const selectedState = selection?.kind === "state" ? selection.uf : null;
+  const selectedActivityMatch = selectedActivity
+    ? data.activities.find((a) => a.cnae_class === selectedActivity)
+    : undefined;
   const selectedActivityLabel = selectedActivity
-    ? data.activities.find((a) => a.cnae_class === selectedActivity)?.sector_names[0] ?? selectedActivity
+    ? (selectedActivityMatch ? activityLabel(selectedActivityMatch) : selectedActivity)
     : null;
 
   return (
     <section className="overflow-hidden rounded-xl border border-emerald-300/15 bg-zinc-950/65 text-zinc-100">
-      <header className="border-b border-white/[0.08] bg-emerald-400/[0.035] px-4 py-5 sm:px-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
-          Taxonomia Sustentável Brasileira · RAIS {data.reference_year}
-        </p>
+      <header className="relative border-b border-white/[0.08] bg-emerald-400/[0.035] px-4 py-5 sm:px-6">
+        <div className="flex items-center gap-1.5">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
+            Taxonomia Sustentável Brasileira · RAIS {data.reference_year}
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowTsbInfo((value) => !value)}
+            aria-expanded={showTsbInfo}
+            aria-label="O que é a TSB?"
+            className="rounded-full p-0.5 text-emerald-300/70 transition hover:bg-emerald-400/10 hover:text-emerald-200"
+          >
+            <Info className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        {showTsbInfo ? (
+          <div className="mt-2 max-w-2xl rounded-lg border border-emerald-300/20 bg-zinc-950/80 p-3 text-[11px] leading-relaxed text-zinc-300">
+            <strong className="text-emerald-200">O que é a TSB?</strong> A Taxonomia Sustentável Brasileira,
+            coordenada pelo Ministério da Fazenda em articulação interministerial, é o sistema oficial de
+            classificação do país para identificar atividades econômicas, ativos e projetos com impactos
+            socioambientais positivos. Aqui, ela cruza os códigos CNAE das cadeias produtivas para filtrar
+            postos de trabalho associados a atividades de baixo carbono e transição justa.
+          </div>
+        ) : null}
         <h3 className="mt-2 text-xl font-bold text-white">Emprego formal associado à {chainName}</h3>
         <p className="mt-2 max-w-4xl text-sm leading-6 text-zinc-400">
           Vínculos existentes em atividades econômicas alcançadas pela cesta de insumos e cobertas pela análise TSB. Cobertura estatística não equivale a alinhamento sustentável.
@@ -98,7 +138,7 @@ export function GreenJobsTSBPanel({ data, chainName = "cadeia analisada" }: Gree
           </div>
           <div className="mt-4 space-y-4">
             {data.activities.map((activity) => {
-              const label = activity.sector_names[0] ?? "Atividade produtiva associada à TSB";
+              const label = activityLabel(activity);
               const isSelected = activity.cnae_class === selectedActivity;
               const jobsInSelectedState = selectedState
                 ? stateJobsByActivity.get(activity.cnae_class)?.get(selectedState) ?? 0
@@ -194,9 +234,20 @@ export function GreenJobsTSBPanel({ data, chainName = "cadeia analisada" }: Gree
         </div>
       ) : null}
 
-      <div className="flex gap-3 border-t border-amber-300/15 bg-amber-400/[0.05] px-4 py-4 text-xs leading-5 text-zinc-400 sm:px-6">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
-        <p><strong className="text-amber-200">Nota metodológica:</strong> {data.methodology_note}</p>
+      <div className="space-y-2 border-t border-amber-300/15 bg-amber-400/[0.05] px-4 py-4 text-xs leading-5 text-zinc-400 sm:px-6">
+        <div className="flex items-center gap-2 font-semibold text-amber-300">
+          <Info className="h-4 w-4 shrink-0" />
+          <span>Nota metodológica e escopo de emprego verde (TSB)</span>
+        </div>
+        <p>
+          <strong className="text-amber-200">Enquadramento TSB:</strong> {data.methodology_note}
+        </p>
+        <p>
+          <strong className="text-amber-200">Ponderação por exposição setorial:</strong> as classes CNAE cobrem
+          indústrias amplas (ex.: fundição de metais, química). A estimativa ponderada aplica o fator de
+          exposição de cada atividade à cadeia analisada para aproximar a parcela de vínculos diretamente
+          vinculada aos insumos desta cadeia, em vez de contar a classe inteira.
+        </p>
       </div>
     </section>
   );

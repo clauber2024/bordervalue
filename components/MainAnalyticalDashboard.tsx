@@ -618,7 +618,11 @@ export default function MainAnalyticalDashboard() {
                   title="Empregos verdes e transição justa"
                   subtitle="Vínculos RAIS em atividades da cadeia associadas à Taxonomia Sustentável Brasileira"
                 >
-                  <GreenJobsTSBPanel data={solarSovereignty.green_jobs} chainName={selectedChainMetadata?.name ?? "cadeia analisada"} />
+                  <GreenJobsTSBPanel
+                    data={solarSovereignty.green_jobs}
+                    chainName={selectedChainMetadata?.name ?? "cadeia analisada"}
+                    solarInputs={solarSovereignty.inputs}
+                  />
                 </ExpandableAnalyticsPanel>
               ) : null}
 
