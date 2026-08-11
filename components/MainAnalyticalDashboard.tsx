@@ -1190,6 +1190,15 @@ function buildExecutiveHeroKpis(metrics: {
   ];
 }
 
+// Inputs with no defensible domestic-production denominator at all -- not
+// "estimated low", but confirmed no manufacturing capability exists (e.g.
+// wafer-to-cell p-n junction fabrication, which Brazil doesn't have). Shared
+// between buildExecutiveVulnerabilityData (dependency bar) and
+// buildSovereigntyCoverage (structural coverage status dot) so both surfaces
+// agree instead of one showing Crítico and the other Observado for the same
+// input.
+const CONFIRMED_ZERO_DOMESTIC_PRODUCTION = new Set(["celulas_fotovoltaicas"]);
+
 function buildExecutiveVulnerabilityData(
   products: ConceptualProduct[],
   selectedChain: string | null,
@@ -1229,15 +1238,12 @@ function buildExecutiveVulnerabilityData(
       "quartzo", "quartzito", "silicio_grau_metalurgico", "polissilicio_solar",
       "wafers_fotovoltaicos", "celulas_fotovoltaicas", "modulos_fotovoltaicos",
     ]);
-    // Inputs with no defensible domestic-production denominator at all --
-    // not "estimated low", but confirmed no manufacturing capability exists
-    // (e.g. wafer-to-cell p-n junction fabrication, which Brazil doesn't
-    // have). Comex-derived external_dependency for these either falls back
-    // to china_share_brazilian_imports (a supplier-diversification metric
-    // that reads as "controlled" purely because imports come from many
-    // countries, not because any of it is domestic) or is null outright.
-    // Both misrepresent 100% import reliance as a moderate/low risk.
-    const CONFIRMED_ZERO_DOMESTIC_PRODUCTION = new Set(["celulas_fotovoltaicas"]);
+    // Comex-derived external_dependency for CONFIRMED_ZERO_DOMESTIC_PRODUCTION
+    // inputs either falls back to china_share_brazilian_imports (a supplier-
+    // diversification metric that reads as "controlled" purely because
+    // imports come from many countries, not because any of it is domestic)
+    // or is null outright. Both misrepresent 100% import reliance as a
+    // moderate/low risk.
     return solarInputs
       .map((input): ProductVulnerability => {
         const confirmedZeroDomestic = CONFIRMED_ZERO_DOMESTIC_PRODUCTION.has(input.input_id);
@@ -1346,15 +1352,20 @@ function buildSovereigntyCoverage(inputs: SolarInputMetric[]): SovereigntyCovera
   inputs.forEach((input) => {
     const stage = sectorStageLabel(input.stage);
     const items = groups.get(stage) ?? [];
+    const confirmedZeroDomestic = CONFIRMED_ZERO_DOMESTIC_PRODUCTION.has(input.input_id);
     const criticalMetric = input.external_dependency ?? input.global_china_share ?? input.china_share_brazilian_imports;
     items.push({
       name: input.label,
-      explanation: input.data_gap_reason ?? undefined,
-      status: input.global_china_share !== null && input.external_dependency === null
+      explanation: confirmedZeroDomestic
+        ? "Sem fabricação nacional confirmada -- a diversificação de fornecedores não implica produção doméstica."
+        : input.data_gap_reason ?? undefined,
+      status: confirmedZeroDomestic
         ? "critical"
-        : input.measurement_method === "validated"
-          ? criticalMetric >= 0.75 ? "critical" : "observed"
-          : input.measurement_method === "estimated" ? "estimated" : "external_source",
+        : input.global_china_share !== null && input.external_dependency === null
+          ? "critical"
+          : input.measurement_method === "validated"
+            ? criticalMetric >= 0.75 ? "critical" : "observed"
+            : input.measurement_method === "estimated" ? "estimated" : "external_source",
     });
     groups.set(stage, items);
   });
