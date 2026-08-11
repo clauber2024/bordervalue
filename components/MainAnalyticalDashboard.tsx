@@ -23,6 +23,7 @@ import { ChainSelectionLanding } from "./ChainSelectionLanding";
 import { ExecutiveMainHero, type ExecutiveMainKpi, type ExecutiveTopAlert } from "./ExecutiveMainHero";
 import { ExecutiveMetadataFooter, type ExecutiveMetadata } from "./ExecutiveMetadataFooter";
 import { HeaderTopBar } from "./HeaderTopBar";
+import { SiliconStrategicLevers, type SiliconValueAsymmetry } from "./SiliconStrategicLevers";
 import { EnergyContextBenPanel } from "./EnergyContextBenPanel";
 import { GreenJobsTSBPanel } from "./GreenJobsTSBPanel";
 import { NIBMatrixChart } from "./NIBMatrixChart";
@@ -322,6 +323,12 @@ export default function MainAnalyticalDashboard() {
     () => buildExecutiveVulnerabilityData(data.products, selectedChain, solarSovereignty?.inputs),
     [data.products, selectedChain, solarSovereignty?.inputs],
   );
+  const siliconValueAsymmetry = useMemo(
+    () => selectedChain === "silicio" && solarSovereignty?.inputs.length
+      ? buildSiliconValueAsymmetry(solarSovereignty.inputs)
+      : undefined,
+    [selectedChain, solarSovereignty],
+  );
   const sovereigntyCoverage = useMemo(
     () => solarSovereignty?.inputs.length
       ? buildSovereigntyCoverage(solarSovereignty.inputs)
@@ -409,8 +416,6 @@ export default function MainAnalyticalDashboard() {
         alertCount={headerAlertCount}
         alertLabel={headerAlertLabel}
         deficitLabel={headerDeficitLabel}
-        readingMode={readingMode}
-        onReadingModeChange={handleReadingModeChange}
         canExport={canExportChain}
         onExport={handleExportChain}
         onOpenNibMatrix={handleOpenNibMatrix}
@@ -426,8 +431,8 @@ export default function MainAnalyticalDashboard() {
           />
         </div>
       ) : (
-      <div className="mx-auto max-w-7xl space-y-10 px-4 py-8 sm:px-6 lg:px-8">
-        <section className="relative z-50 rounded-xl border border-cyan-300/15 bg-cyan-400/[0.05] px-4 py-3 shadow-xl backdrop-blur-xl">
+      <div className="mx-auto max-w-[1600px] space-y-10 px-4 py-8 sm:px-6 lg:px-8">
+        <section className="relative z-50 rounded-xl border border-cyan-300/25 bg-cyan-400/[0.08] px-4 py-3 shadow-xl backdrop-blur-xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">
@@ -495,18 +500,20 @@ export default function MainAnalyticalDashboard() {
           </p>
         </aside>
         <StateShell status={status} error={error} onRetry={loadData}>
-          <div ref={overviewRef} className="scroll-mt-40 md:scroll-mt-28">
+          <div ref={overviewRef} className="scroll-mt-40 md:scroll-mt-28 space-y-4">
             <ExecutiveMainHero
               alert={executiveHeroAlert}
               kpis={executiveHeroKpis}
               strategicQuestion={selectedChain === "silicio"
                 ? "Onde o Brasil possui capacidade e onde está o estrangulamento tecnológico da cadeia solar?"
                 : "Onde estão a capacidade nacional e os principais estrangulamentos desta cadeia?"}
-              greenAsset={selectedChain === "silicio" ? {
-                title: "Ativo de Descarbonização:",
-                description: "O Silício Grau Metalúrgico (Si-GM) produzido no Brasil possui pegada de carbono até 6x menor que o refinado na China, graças à matriz elétrica nacional (>84% renovável) — base para acesso a linhas do PADIS e da NIB.",
-              } : undefined}
             />
+            {selectedChain === "silicio" && solarSovereignty?.inputs.length ? (
+              <SiliconStrategicLevers
+                valueAsymmetry={siliconValueAsymmetry}
+                solarInputs={solarSovereignty.inputs}
+              />
+            ) : null}
           </div>
 
           <AipnetSystemsFlow chainId={selectedChain} inputs={solarSovereignty?.inputs} onAnalysisFocus={handleAipnetAnalysisFocus} />
@@ -1052,6 +1059,36 @@ function sectorRecommendedPolicy(chainName: string, inputLabel: string) {
     return "Missão 5 da NIB (Bioeconomia, descarbonização e transição e segurança energéticas): desenvolver fornecedores nacionais para combustíveis e tecnologias de baixo carbono, condicionando apoio à redução verificável de emissões.";
   }
   return "Direcionamento NIB a homologar: insumo ainda não mapeado explicitamente a uma das 6 missões da Nova Indústria Brasil (MDIC/BNDES).";
+}
+
+// Minimum traded weight before trusting a US$/kg figure -- thin flows
+// (e.g. polissilicio_solar's 142kg import in 2026-H1) produce noisy,
+// unrepresentative prices per kg.
+const MIN_WEIGHT_KG_FOR_PRICE = 1000;
+
+function buildSiliconValueAsymmetry(inputs: SolarInputMetric[]): SiliconValueAsymmetry | undefined {
+  const exportInput = inputs.find((input) => input.input_id === "silicio_grau_metalurgico");
+  // celulas_fotovoltaicas (bare cells), not modulos_fotovoltaicos (assembled
+  // modules): modules carry heavy low-value glass/aluminum framing that
+  // dilutes US$/kg below raw Si-GM, inverting the intended asymmetry. Cells
+  // are the concentrated, high-value-density stage Brazil re-imports, and
+  // already the platform's own flagship sovereignty alert for this chain.
+  const importInput = inputs.find((input) => input.input_id === "celulas_fotovoltaicas");
+  if (!exportInput || !importInput) return undefined;
+  if (exportInput.exports_net_weight_kg < MIN_WEIGHT_KG_FOR_PRICE) return undefined;
+  if (importInput.imports_net_weight_kg < MIN_WEIGHT_KG_FOR_PRICE) return undefined;
+
+  const exportPricePerKg = exportInput.exports_value_usd / exportInput.exports_net_weight_kg;
+  const importPricePerKg = importInput.imports_value_usd / importInput.imports_net_weight_kg;
+  if (exportPricePerKg <= 0 || importPricePerKg <= 0) return undefined;
+
+  return {
+    exportInputLabel: exportInput.label,
+    exportPricePerKg,
+    importInputLabel: importInput.label,
+    importPricePerKg,
+    ratio: importPricePerKg / exportPricePerKg,
+  };
 }
 
 function csvEscape(value: string) {

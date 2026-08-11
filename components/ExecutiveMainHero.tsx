@@ -13,7 +13,6 @@ import {
   Database,
   Layers3,
   Info,
-  Leaf,
   ShieldAlert,
   Sparkles,
 } from 'lucide-react';
@@ -42,16 +41,10 @@ export type ExecutiveMainKpi = {
   icon?: React.ReactNode;
 };
 
-export type ExecutiveGreenAsset = {
-  title: string;
-  description: string;
-};
-
 type ExecutiveMainHeroProps = {
   alert?: ExecutiveTopAlert;
   kpis?: ExecutiveMainKpi[];
   strategicQuestion?: string;
-  greenAsset?: ExecutiveGreenAsset;
 };
 
 const defaultAlert: ExecutiveTopAlert = {
@@ -138,7 +131,6 @@ export const ExecutiveMainHero = ({
   alert = defaultAlert,
   kpis = defaultKpis,
   strategicQuestion = 'Onde o Brasil lidera e onde estão os principais estrangulamentos tecnológicos desta cadeia?',
-  greenAsset,
 }: ExecutiveMainHeroProps) => {
   const hasAuditedSupplier =
     alert.topSupplier !== 'Em auditoria' && alert.supplierShare > 0;
@@ -153,7 +145,7 @@ export const ExecutiveMainHero = ({
   return (
     <section className="w-full space-y-6">
       <div className="flex flex-col gap-4">
-        <div className="relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/40 p-6 shadow-2xl backdrop-blur-xl md:p-8">
+        <div className="relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/15 bg-zinc-900/55 p-6 shadow-2xl backdrop-blur-xl md:p-8">
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/30 to-transparent" />
           <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl" />
 
@@ -188,7 +180,7 @@ export const ExecutiveMainHero = ({
           </div>
 
           <div className="relative mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-white/10 bg-zinc-950/45 p-3">
+            <div className="rounded-xl border border-white/15 bg-zinc-950/60 p-3">
               <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
                 <Database className="h-3.5 w-3.5" />
                 Cobertura
@@ -196,9 +188,9 @@ export const ExecutiveMainHero = ({
               <p className="font-mono text-lg font-extrabold text-zinc-100">
                 2.902
               </p>
-              <p className="text-[11px] text-zinc-500">registros filtrados</p>
+              <p className="text-[11px] text-zinc-400">registros filtrados</p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-zinc-950/45 p-3">
+            <div className="rounded-xl border border-white/15 bg-zinc-950/60 p-3">
               <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-cyan-300">
                 <Layers3 className="h-3.5 w-3.5" />
                 Recorte
@@ -206,9 +198,9 @@ export const ExecutiveMainHero = ({
               <p className="font-mono text-lg font-extrabold text-zinc-100">
                 Jan-Jun 2026
               </p>
-              <p className="text-[11px] text-zinc-500">comércio exterior</p>
+              <p className="text-[11px] text-zinc-400">comércio exterior</p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-zinc-950/45 p-3">
+            <div className="rounded-xl border border-white/15 bg-zinc-950/60 p-3">
               <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-amber-300">
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 Bases
@@ -216,7 +208,7 @@ export const ExecutiveMainHero = ({
               <p className="font-mono text-lg font-extrabold text-zinc-100">
                 3
               </p>
-              <p className="text-[11px] text-zinc-500">Comex, PIA e RAIS</p>
+              <p className="text-[11px] text-zinc-400">Comex, PIA e RAIS</p>
             </div>
           </div>
 
@@ -231,15 +223,6 @@ export const ExecutiveMainHero = ({
           <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-red-500/20 blur-3xl transition-colors group-hover:bg-red-500/30" />
 
           <div className="relative">
-            {greenAsset ? (
-              <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-emerald-500/25 bg-emerald-950/25 p-3 text-xs text-emerald-100">
-                <Leaf className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
-                <p className="leading-relaxed">
-                  <strong className="text-emerald-300">{greenAsset.title}</strong> {greenAsset.description}
-                </p>
-              </div>
-            ) : null}
-
             <div className="mb-4 flex flex-col justify-between gap-3 border-b border-red-500/20 pb-3 sm:flex-row sm:items-center">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-md border border-red-500/30 bg-red-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-red-300">
@@ -346,7 +329,7 @@ export const ExecutiveMainHero = ({
           return (
             <article
               key={kpi.label}
-              className="relative overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/40 p-5 shadow-xl backdrop-blur-xl"
+              className="relative overflow-hidden rounded-2xl border border-white/15 bg-zinc-900/55 p-5 shadow-xl backdrop-blur-xl"
             >
               <div className="flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">
                 <span>{kpi.label}</span>

@@ -14,7 +14,6 @@ import {
 
 export type HeaderChainOption = { id: string; name: string; group: string };
 export type HeaderNcmShortcut = { id: string; code: string; label: string; riskLabel: string };
-export type ReadingMode = "guided" | "analytical";
 
 export type HeaderTopBarProps = {
   activeChainName?: string;
@@ -25,8 +24,6 @@ export type HeaderTopBarProps = {
   alertCount?: number;
   alertLabel?: string;
   deficitLabel?: string;
-  readingMode: ReadingMode;
-  onReadingModeChange: (mode: ReadingMode) => void;
   canExport: boolean;
   onExport: () => void;
   onOpenNibMatrix: () => void;
@@ -41,8 +38,6 @@ export function HeaderTopBar({
   alertCount,
   alertLabel,
   deficitLabel,
-  readingMode,
-  onReadingModeChange,
   canExport,
   onExport,
   onOpenNibMatrix,
@@ -138,23 +133,6 @@ export function HeaderTopBar({
             <div className="hidden items-center gap-2 rounded-xl border border-zinc-800/80 bg-zinc-900/60 px-2.5 py-1 font-mono text-xs sm:flex">
               <span className="text-zinc-500">Déficit:</span>
               <strong className="text-amber-400">{deficitLabel ?? "—"}</strong>
-            </div>
-
-            <div className="hidden items-center rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-0.5 text-[11px] font-semibold sm:flex">
-              <button
-                type="button"
-                onClick={() => onReadingModeChange("guided")}
-                className={`rounded-lg px-2.5 py-1 transition ${readingMode === "guided" ? "bg-emerald-400/10 text-emerald-300" : "text-zinc-500 hover:text-zinc-300"}`}
-              >
-                Executiva
-              </button>
-              <button
-                type="button"
-                onClick={() => onReadingModeChange("analytical")}
-                className={`rounded-lg px-2.5 py-1 transition ${readingMode === "analytical" ? "bg-cyan-400/10 text-cyan-200" : "text-zinc-500 hover:text-zinc-300"}`}
-              >
-                Avançada
-              </button>
             </div>
 
             <button
