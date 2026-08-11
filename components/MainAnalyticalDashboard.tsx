@@ -555,21 +555,27 @@ export default function MainAnalyticalDashboard() {
           </div>
 
             <div ref={diagnosticRef} className="scroll-mt-6">
-              <ExecutiveVulnerabilityChart
-                data={executiveVulnerabilityData}
-                coverageGroups={sovereigntyCoverage}
-                chainFocus={chainAnalysisFocus}
-                onClearChainFocus={() => setChainAnalysisFocus(null)}
-                criticalOnly={criticalOnly}
-                onCriticalOnlyChange={(value) => {
-                  setCriticalOnly(value);
-                  setChainAnalysisFocus(null);
-                }}
-                onCoverageItemSelect={(stage, input) => {
-                  setCriticalOnly(false);
-                  setChainAnalysisFocus({ stage, input });
-                }}
-              />
+              <ExpandableAnalyticsPanel
+                title="Diagnóstico de soberania industrial"
+                subtitle="Dependência externa crítica, balança comercial e cobertura estrutural da cadeia"
+                defaultOpen
+              >
+                <ExecutiveVulnerabilityChart
+                  data={executiveVulnerabilityData}
+                  coverageGroups={sovereigntyCoverage}
+                  chainFocus={chainAnalysisFocus}
+                  onClearChainFocus={() => setChainAnalysisFocus(null)}
+                  criticalOnly={criticalOnly}
+                  onCriticalOnlyChange={(value) => {
+                    setCriticalOnly(value);
+                    setChainAnalysisFocus(null);
+                  }}
+                  onCoverageItemSelect={(stage, input) => {
+                    setCriticalOnly(false);
+                    setChainAnalysisFocus({ stage, input });
+                  }}
+                />
+              </ExpandableAnalyticsPanel>
             </div>
 
           {readingMode === "analytical" && (premiumProducts.length || selectedChain === "silicio") ? (
