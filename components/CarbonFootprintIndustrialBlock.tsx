@@ -62,17 +62,25 @@ export function CarbonFootprintIndustrialBlock({
   }
 
   const fossilExposure = exposure.find((item) => item.routeClass === "fossil_dominant");
+  const transitionExposure = exposure.find((item) => item.routeClass === "transition_underway");
   const lowCarbonExposure = exposure.find((item) => item.routeClass === "low_carbon_dominant");
   const lowCarbonInputs = solarInputs
     .filter((input) => input.production_route_class === "low_carbon_dominant")
     .sort((left, right) => right.imports_value_usd - left.imports_value_usd);
 
-  // Top-value input driving the fossil-dominant share -- quoting its own
+  // Top-value input driving each share -- quoting its own
   // production_route_rationale keeps the claim chain-specific and sourced,
   // instead of a blanket "China/carvão" line that wouldn't hold for every
-  // chain this component renders for (aço, fertilizantes, etc.).
+  // chain this component renders for (aço, fertilizantes, etc.). This is
+  // also why "transição em curso" isn't relabeled to something
+  // silicio-specific like "China/Carvão": the same route class covers very
+  // different rationale text (and countries) across chains, so the fix is
+  // surfacing that chain's own quoted rationale, not renaming the class.
   const fossilLeadInput = [...solarInputs]
     .filter((input) => input.production_route_class === "fossil_dominant")
+    .sort((left, right) => right.imports_value_usd - left.imports_value_usd)[0];
+  const transitionLeadInput = [...solarInputs]
+    .filter((input) => input.production_route_class === "transition_underway")
     .sort((left, right) => right.imports_value_usd - left.imports_value_usd)[0];
 
   // silicio is the only chain currently mapped to a BEN block in
@@ -97,7 +105,7 @@ export function CarbonFootprintIndustrialBlock({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-3 rounded-xl border border-red-900/30 bg-zinc-950/60 p-5">
           <div className="flex items-center gap-2 text-sm font-semibold text-red-400">
             <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
@@ -111,7 +119,7 @@ export function CarbonFootprintIndustrialBlock({
                 classificados com rota produtiva fóssil dominante.
               </p>
               {fossilLeadInput?.production_route_rationale ? (
-                <p className="border-t border-white/[0.06] pt-2 text-[11px] italic leading-relaxed text-zinc-500">
+                <p className="border-t border-white/[0.06] pt-2 text-[11px] italic leading-relaxed text-zinc-400">
                   "{fossilLeadInput.production_route_rationale}" — {fossilLeadInput.label}
                 </p>
               ) : null}
@@ -119,6 +127,32 @@ export function CarbonFootprintIndustrialBlock({
           ) : (
             <p className="text-xs leading-relaxed text-zinc-300">
               Nenhum insumo desta cadeia está classificado com rota fóssil dominante no período.
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-3 rounded-xl border border-amber-900/30 bg-zinc-950/60 p-5">
+          <div className="flex items-center gap-2 text-sm font-semibold text-amber-400">
+            <span className="h-2 w-2 rounded-full bg-amber-500" />
+            <span>Rota em transição — carrega intensidade a montante</span>
+          </div>
+          {transitionExposure ? (
+            <>
+              <p className="text-2xl font-bold text-white">{percent.format(transitionExposure.share)}</p>
+              <p className="text-xs leading-relaxed text-zinc-300">
+                da pauta importada ({usdCompact.format(transitionExposure.importsValueUsd)}) vem de insumos cuja
+                etapa final é menos eletrointensiva, mas cuja cadeia a montante ainda herda a matriz elétrica —
+                predominantemente a carvão — dos países fornecedores.
+              </p>
+              {transitionLeadInput?.production_route_rationale ? (
+                <p className="border-t border-white/[0.06] pt-2 text-[11px] italic leading-relaxed text-zinc-400">
+                  "{transitionLeadInput.production_route_rationale}" — {transitionLeadInput.label}
+                </p>
+              ) : null}
+            </>
+          ) : (
+            <p className="text-xs leading-relaxed text-zinc-300">
+              Nenhum insumo desta cadeia está classificado com rota em transição no período.
             </p>
           )}
         </div>
@@ -137,7 +171,7 @@ export function CarbonFootprintIndustrialBlock({
                 predominante confirmada.
               </p>
               {lowCarbonInputs[0].production_route_rationale ? (
-                <p className="border-t border-white/[0.06] pt-2 text-[11px] italic leading-relaxed text-zinc-500">
+                <p className="border-t border-white/[0.06] pt-2 text-[11px] italic leading-relaxed text-zinc-400">
                   "{lowCarbonInputs[0].production_route_rationale}" — {lowCarbonInputs[0].label}
                 </p>
               ) : null}
@@ -149,7 +183,7 @@ export function CarbonFootprintIndustrialBlock({
             </p>
           )}
           {benItem ? (
-            <p className="border-t border-white/[0.06] pt-2 text-[11px] leading-relaxed text-zinc-500">
+            <p className="border-t border-white/[0.06] pt-2 text-[11px] leading-relaxed text-zinc-400">
               Contexto nacional (BEN/EPE, {energyContext?.ano_selecionado}): {benBlock?.setor_ben} —{" "}
               {benItem.fonte_energetica} de {benItem.valor.toLocaleString("pt-BR")} {benBlock?.unidade}.
             </p>
