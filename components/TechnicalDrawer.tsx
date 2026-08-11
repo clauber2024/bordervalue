@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { AlertTriangle, BadgeAlert, ChevronDown, Download } from "lucide-react";
 import type { ProdutoConceitual } from "../types/border-value";
 import type { SolarInputMetric } from "../types/solar-sovereignty";
@@ -15,6 +16,9 @@ const glass =
   "border border-white/[0.08] bg-zinc-900/40 shadow-2xl shadow-black/25 backdrop-blur-xl";
 
 export function TechnicalDrawer({ data, solarInputs, solarMethodologyVersion, className = "" }: TechnicalDrawerProps) {
+  const hasCrosswalk = Boolean(solarInputs?.length);
+  const [activeTab, setActiveTab] = useState<"dicionario" | "comercio">("dicionario");
+
   const referenceYears = Array.from(new Set(data.map((product) => product.auditoria.reference_year))).sort(
     (left, right) => right - left,
   );
@@ -47,62 +51,34 @@ export function TechnicalDrawer({ data, solarInputs, solarMethodologyVersion, cl
             <div className="grid gap-3 text-sm text-zinc-300 sm:grid-cols-3">
               <TraceabilitySummary label="Produtos rastreados" value={String(data.length)} />
               <TraceabilitySummary label="Anos de referência" value={referenceYears.join(", ")} />
-              <TraceabilitySummary label="Metodologias" value={String(methodologies.length)} />
+              <TraceabilitySummary
+                label="Metodologia ativa"
+                value={methodologies.join(", ") || "N/D"}
+                hint="Versão do motor analítico aplicada ao recorte comercial e industrial"
+              />
             </div>
             <CsvButton data={data} />
           </div>
 
           <div className="space-y-4">
-            {solarInputs?.length ? (
+            {hasCrosswalk ? (
+              <div className="flex flex-wrap gap-2">
+                <DrawerTabButton active={activeTab === "dicionario"} onClick={() => setActiveTab("dicionario")}>
+                  Dicionário de insumos &amp; limitações metodológicas
+                </DrawerTabButton>
+                <DrawerTabButton active={activeTab === "comercio"} onClick={() => setActiveTab("comercio")}>
+                  Matriz de comércio exterior (valores FOB)
+                </DrawerTabButton>
+              </div>
+            ) : null}
+
+            {(!hasCrosswalk || activeTab === "dicionario") && solarInputs?.length ? (
               <SolarInputCrosswalk inputs={solarInputs} methodologyVersion={solarMethodologyVersion} />
             ) : null}
 
-            <div className="overflow-hidden rounded-lg border border-white/[0.08]">
-              <div className="max-h-[440px] overflow-y-auto">
-                <table className="min-w-full border-collapse text-left text-xs">
-                  <thead className="sticky top-0 bg-zinc-950/95 text-zinc-400 backdrop-blur-xl">
-                    <tr>
-                      <AuditHeader>Produto</AuditHeader>
-                      <AuditHeader>NCM</AuditHeader>
-                      <AuditHeader>Status da cesta</AuditHeader>
-                      <AuditHeader>CNAE</AuditHeader>
-                      <AuditHeader>PRODLIST</AuditHeader>
-                      <AuditHeader>Importação FOB</AuditHeader>
-                      <AuditHeader>Déficit</AuditHeader>
-                      <AuditHeader>Fator alfa</AuditHeader>
-                      <AuditHeader>Sigilo</AuditHeader>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/[0.06] bg-zinc-950/30">
-                    {data.map((product) => (
-                      <tr key={product.conceptual_product_id} className="align-top">
-                        <AuditCell className="min-w-56 font-semibold text-zinc-100">
-                          {product.produto_nome}
-                        </AuditCell>
-                        <AuditCell>
-                          {isResidualCode(product.ncm_codigo)
-                            ? <UnvalidatedCode />
-                            : <CodeList codes={product.ncm_codigos?.length ? product.ncm_codigos : [product.ncm_codigo]} />}
-                        </AuditCell>
-                        <AuditCell><MappingStatus product={product} /></AuditCell>
-                        <AuditCell>{product.industria.cnae_codigo || "N/D"}</AuditCell>
-                        <AuditCell>
-                          <CodeList codes={product.industria.prodlist_codigos?.length
-                            ? product.industria.prodlist_codigos
-                            : [product.industria.prodlist_codigo].filter(Boolean)} />
-                        </AuditCell>
-                        <AuditCell>{formatUsd(product.comercio.importacao_valor_fob)}</AuditCell>
-                        <AuditCell>{formatUsd(product.comercio.deficit_comercial)}</AuditCell>
-                        <AuditCell>{formatPercent(product.fator_proporcionalidade.fator_alpha)}</AuditCell>
-                        <AuditCell>
-                          {product.auditoria.has_sigilo_pia ? <SigiloBadge /> : <span className="text-zinc-500">Aberto</span>}
-                        </AuditCell>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            {!hasCrosswalk || activeTab === "comercio" ? (
+              <TradeMatrixTable data={data} referenceYears={referenceYears} />
+            ) : null}
 
             <div className="grid gap-4 lg:grid-cols-2">
               <section className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-4">
@@ -173,6 +149,93 @@ function GenericNcmMethodologicalNote({ affected, total }: { affected: number; t
         />
       </div>
     </div>
+  );
+}
+
+function DrawerTabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+        active
+          ? "border-cyan-300/40 bg-cyan-400/10 text-cyan-200"
+          : "border-white/10 bg-white/[0.03] text-zinc-400 hover:text-zinc-200"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function TradeMatrixTable({ data, referenceYears }: { data: ProdutoConceitual[]; referenceYears: number[] }) {
+  return (
+    <section className="overflow-hidden rounded-lg border border-emerald-300/15 bg-emerald-400/[0.025]">
+      <div className="border-b border-white/[0.08] px-4 py-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300">
+          Matriz consolidada de comércio exterior (valores FOB)
+        </p>
+        <p className="mt-1 text-sm text-zinc-300">
+          Resultado numérico aplicado às NCMs de cada produto conceitual — importação FOB, déficit comercial,
+          fator de proporcionalidade e sigilo estatístico
+          {referenceYears.length ? ` (${referenceYears.join(", ")})` : null}.
+        </p>
+      </div>
+
+      <div className="max-h-[440px] overflow-y-auto">
+        <table className="min-w-full border-collapse text-left text-xs">
+          <thead className="sticky top-0 bg-zinc-950/95 text-zinc-400 backdrop-blur-xl">
+            <tr>
+              <AuditHeader>Produto</AuditHeader>
+              <AuditHeader>NCM</AuditHeader>
+              <AuditHeader>Status da cesta</AuditHeader>
+              <AuditHeader>CNAE</AuditHeader>
+              <AuditHeader>PRODLIST</AuditHeader>
+              <AuditHeader>Importação FOB</AuditHeader>
+              <AuditHeader>Déficit</AuditHeader>
+              <AuditHeader>Fator alfa</AuditHeader>
+              <AuditHeader>Sigilo</AuditHeader>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/[0.06] bg-zinc-950/30">
+            {data.map((product) => (
+              <tr key={product.conceptual_product_id} className="align-top">
+                <AuditCell className="min-w-56 font-semibold text-zinc-100">
+                  {product.produto_nome}
+                </AuditCell>
+                <AuditCell>
+                  {isResidualCode(product.ncm_codigo)
+                    ? <UnvalidatedCode />
+                    : <CodeList codes={product.ncm_codigos?.length ? product.ncm_codigos : [product.ncm_codigo]} />}
+                </AuditCell>
+                <AuditCell><MappingStatus product={product} /></AuditCell>
+                <AuditCell>{product.industria.cnae_codigo || "N/D"}</AuditCell>
+                <AuditCell>
+                  <CodeList codes={product.industria.prodlist_codigos?.length
+                    ? product.industria.prodlist_codigos
+                    : [product.industria.prodlist_codigo].filter(Boolean)} />
+                </AuditCell>
+                <AuditCell>{formatUsd(product.comercio.importacao_valor_fob)}</AuditCell>
+                <AuditCell>{formatUsd(product.comercio.deficit_comercial)}</AuditCell>
+                <AuditCell>{formatPercent(product.fator_proporcionalidade.fator_alpha)}</AuditCell>
+                <AuditCell>
+                  {product.auditoria.has_sigilo_pia ? <SigiloBadge /> : <span className="text-zinc-500">Aberto</span>}
+                </AuditCell>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -387,11 +450,12 @@ function isResidualCode(value: string | null | undefined) {
   return !normalized || /^0+$/.test(normalized);
 }
 
-function TraceabilitySummary({ label, value }: { label: string; value: string }) {
+function TraceabilitySummary({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-3">
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">{label}</p>
       <p className="mt-1 font-semibold text-zinc-100">{value || "N/D"}</p>
+      {hint ? <p className="mt-1 text-[11px] leading-4 text-zinc-500">{hint}</p> : null}
     </div>
   );
 }
