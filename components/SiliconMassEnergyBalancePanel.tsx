@@ -73,12 +73,17 @@ const STAGES: Stage[] = [
   },
 ];
 
-const MASS_WATERFALL = [
-  { label: "Quartzito", value: "100% (base)" },
-  { label: "Silício grau metalúrgico (Si-GM)", value: "≈ 80–85% de rendimento de massa" },
-  { label: "Polissilício grau solar", value: "≈ 99,9999999% (9N) de pureza — não é % de massa retida" },
-  { label: "Wafer (após corte)", value: "≈ 20–30% de perda de massa no corte (kerf loss)" },
-  { label: "Módulo fotovoltaico", value: "Produto final encapsulado" },
+const MASS_WATERFALL: { label: string; value: string; note?: string; stage: StageKey | null }[] = [
+  { label: "Quartzito", value: "100% (base)", stage: null },
+  { label: "Silício grau metalúrgico (Si-GM)", value: "≈ 80–85% de rendimento de massa", stage: "si_gm" },
+  {
+    label: "Polissilício grau solar",
+    value: "≈ 99,9999999% (9N) de pureza",
+    note: "não é % de massa retida",
+    stage: "polissilicio",
+  },
+  { label: "Wafer (após corte)", value: "≈ 20–30% de perda de massa no corte (kerf loss)", stage: "wafer" },
+  { label: "Módulo fotovoltaico", value: "Produto final encapsulado", stage: "modulo" },
 ];
 
 type SiliconMassEnergyBalancePanelProps = {
@@ -156,15 +161,27 @@ export function SiliconMassEnergyBalancePanel({ energyContext }: SiliconMassEner
       <div className="border-t border-white/[0.06] px-4 py-5 sm:px-6">
         <p className="text-sm font-semibold text-white">Balanço de massa (ilustrativo)</p>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-          {MASS_WATERFALL.map((step, index) => (
-            <div key={step.label} className="flex items-center gap-2">
-              <span className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-zinc-300">
-                <span className="block font-semibold text-zinc-100">{step.label}</span>
-                <span className="text-[11px] text-zinc-500">{step.value}</span>
-              </span>
-              {index < MASS_WATERFALL.length - 1 ? <span className="text-zinc-600">→</span> : null}
-            </div>
-          ))}
+          {MASS_WATERFALL.map((step, index) => {
+            const isActive = step.stage === activeStage;
+            return (
+              <div key={step.label} className="flex items-center gap-2">
+                <span
+                  className={`rounded-lg border px-3 py-2 text-zinc-300 transition ${
+                    isActive
+                      ? "border-sky-300/70 bg-sky-400/10 shadow-[0_0_0_1px_rgba(56,189,248,0.45),0_0_14px_rgba(56,189,248,0.35)]"
+                      : "border-white/10 bg-white/[0.03]"
+                  }`}
+                >
+                  <span className={`block font-semibold ${isActive ? "text-sky-200" : "text-zinc-100"}`}>
+                    {step.label}
+                  </span>
+                  <span className="text-[11px] text-zinc-500">{step.value}</span>
+                  {step.note ? <span className="block text-[10px] text-zinc-600">{step.note}</span> : null}
+                </span>
+                {index < MASS_WATERFALL.length - 1 ? <span className="text-zinc-600">→</span> : null}
+              </div>
+            );
+          })}
         </div>
       </div>
 
