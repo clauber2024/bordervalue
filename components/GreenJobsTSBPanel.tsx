@@ -111,7 +111,16 @@ export function GreenJobsTSBPanel({ data, chainName = "cadeia analisada", solarI
         <GreenJobsKpi icon={BriefcaseBusiness} label="Vínculos em CNAEs cobertos" value={integer.format(data.formal_jobs_in_tsb_activities)} note="Total RAIS no universo estatístico analisado" />
         <GreenJobsKpi icon={Scale} label="Estimativa ponderada" value={integer.format(data.exposure_weighted_jobs_estimate)} note="Proxy de cobertura, não certificação sustentável" />
         <GreenJobsKpi icon={WalletCards} label="Massa salarial de referência" value={currency.format(data.wage_mass_brl)} note="Agregação RAIS do recorte" />
-        <GreenJobsKpi icon={MapPinned} label="Atividades abrangidas" value={integer.format(data.cnae_count)} note="Classes econômicas únicas, sem dupla contagem" />
+        <GreenJobsKpi
+          icon={MapPinned}
+          label="Atividades abrangidas"
+          value={integer.format(data.activities.length)}
+          note={
+            data.cnae_count > data.activities.length
+              ? `Com vínculos RAIS reportados, de ${integer.format(data.cnae_count)} classes mapeadas na cesta TSB`
+              : "Classes econômicas únicas, sem dupla contagem"
+          }
+        />
       </div>
 
       <div className="grid gap-6 border-t border-white/[0.08] px-4 py-5 sm:px-6 lg:grid-cols-[1.25fr_0.75fr]">
