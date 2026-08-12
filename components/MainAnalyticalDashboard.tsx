@@ -361,10 +361,16 @@ export default function MainAnalyticalDashboard() {
   );
   const headerNcmShortcuts = useMemo(() => {
     const inputs = solarSovereignty?.inputs ?? [];
+    // external_dependency is a trade-balance ratio (imports / apparent consumption) and can
+    // exceed 1 when apparent consumption is deflated by exports (e.g. re-export dynamics) --
+    // clamp to [0,1] here the same way every other consumer of this field already does,
+    // so neither the ranking score nor the displayed percentage shows a nonsensical >100% value.
+    const clampedDependency = (input: (typeof inputs)[number]) =>
+      Math.min(1, Math.max(0, input.external_dependency ?? input.global_china_share ?? 0));
     return [...inputs]
       .sort((left, right) => {
-        const leftScore = (left.external_dependency ?? left.global_china_share ?? 0) * Math.max(left.supplier_hhi_brazil, 1);
-        const rightScore = (right.external_dependency ?? right.global_china_share ?? 0) * Math.max(right.supplier_hhi_brazil, 1);
+        const leftScore = clampedDependency(left) * Math.max(left.supplier_hhi_brazil, 1);
+        const rightScore = clampedDependency(right) * Math.max(right.supplier_hhi_brazil, 1);
         return rightScore - leftScore;
       })
       .slice(0, 6)
@@ -372,7 +378,7 @@ export default function MainAnalyticalDashboard() {
         id: input.input_id,
         code: input.ncm_codes[0] ?? "s/ NCM",
         label: input.label,
-        riskLabel: `${formatPercentOneDecimal((input.external_dependency ?? input.global_china_share ?? 0) * 100)} dependência · HHI ${number.format(input.supplier_hhi_brazil)}`,
+        riskLabel: `${formatPercentOneDecimal(clampedDependency(input) * 100)} dependência · HHI ${number.format(input.supplier_hhi_brazil)}`,
       }));
   }, [solarSovereignty]);
   const globalSummary = useMemo(() => {
