@@ -65,6 +65,17 @@ type ValueChain = {
   parallelInputs?: ParallelInput[];
 };
 
+const number = new Intl.NumberFormat("pt-BR");
+
+// Matches the band language already used by this component's own hardcoded
+// hhiGlobal strings (e.g. "9.100 · alto risco", "7.800 · risco moderado-alto").
+function hhiRiskDescriptor(hhi: number): string {
+  if (hhi >= 8000) return "alto risco";
+  if (hhi >= 5000) return "risco moderado-alto";
+  if (hhi >= 2500) return "risco moderado";
+  return "risco controlado";
+}
+
 const parallelRiskLabel: Record<RiscoParalelo, string> = {
   FORNECIMENTO: "Atenção de Fornecimento",
   IMPORTACAO: "Atenção de Importação",
@@ -429,6 +440,16 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
     }))
     .filter((item) => !item.isSampleDerived || item.input.imports_value_usd >= SAMPLE_SHIPMENT_THRESHOLD_USD)
     .sort((left, right) => right.value - left.value)[0];
+  // fertilizantes/combustiveis_transicao/aco shipped with a static "em
+  // homologação" placeholder for hhiGlobal from before real per-input HHI
+  // data existed for them -- it's stale now that supplier_hhi_brazil is
+  // real and populated (e.g. eletrodos de grafite genuinely computes to
+  // 7557). Compute a real header figure from the same materiality-gated
+  // topExposure input already derived above instead of leaving the
+  // placeholder up once the underlying data exists.
+  const dynamicHhiGlobal = currentChain.hhiGlobal === "em homologação" && topExposure
+    ? `${number.format(Math.round(topExposure.input.supplier_hhi_brazil))} · ${hhiRiskDescriptor(topExposure.input.supplier_hhi_brazil)}`
+    : currentChain.hhiGlobal;
 
   return (
     <section className="relative overflow-hidden rounded-2xl border border-zinc-800/60 bg-zinc-900/40 p-6 text-zinc-100 shadow-2xl backdrop-blur-xl md:p-8">
@@ -451,7 +472,7 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
           <span className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
             Concentração global
           </span>
-          <strong className="font-mono text-sm text-red-300">HHI {currentChain.hhiGlobal}</strong>
+          <strong className="font-mono text-sm text-red-300">HHI {dynamicHhiGlobal}</strong>
         </div>
       </header>
 
