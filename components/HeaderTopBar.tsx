@@ -24,6 +24,7 @@ export type HeaderTopBarProps = {
   alertCount?: number;
   alertLabel?: string;
   deficitLabel?: string;
+  deficitIsSurplus?: boolean;
   canExport: boolean;
   onExport: () => void;
   onOpenNibMatrix: () => void;
@@ -38,6 +39,7 @@ export function HeaderTopBar({
   alertCount,
   alertLabel,
   deficitLabel,
+  deficitIsSurplus,
   canExport,
   onExport,
   onOpenNibMatrix,
@@ -131,8 +133,10 @@ export function HeaderTopBar({
             </div>
 
             <div className="hidden items-center gap-2 rounded-xl border border-zinc-800/80 bg-zinc-900/60 px-2.5 py-1 font-mono text-xs sm:flex">
-              <span className="text-zinc-500">Déficit:</span>
-              <strong className="text-amber-400">{deficitLabel ?? "—"}</strong>
+              <span className="text-zinc-500">{deficitIsSurplus ? "Superávit:" : "Déficit:"}</span>
+              <strong className={deficitIsSurplus ? "text-emerald-400" : "text-amber-400"}>
+                {deficitLabel ?? "—"}
+              </strong>
             </div>
 
             <button

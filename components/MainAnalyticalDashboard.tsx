@@ -421,9 +421,11 @@ export default function MainAnalyticalDashboard() {
   const headerAlertLabel = selectedChain
     ? headerAlertCount !== undefined ? `${headerAlertCount} Insumo${headerAlertCount === 1 ? "" : "s"} em Alerta Crítico` : undefined
     : globalSummary ? `${globalSummary.criticalAlerts} Alertas Críticos` : undefined;
-  const headerDeficitLabel = selectedChain
-    ? money.format(metrics.totalImports - metrics.totalExports)
-    : globalSummary ? money.format(globalSummary.deficit) : undefined;
+  const headerDeficitRaw = selectedChain
+    ? metrics.totalImports - metrics.totalExports
+    : globalSummary?.deficit;
+  const headerDeficitIsSurplus = headerDeficitRaw !== undefined && headerDeficitRaw < 0;
+  const headerDeficitLabel = headerDeficitRaw !== undefined ? money.format(Math.abs(headerDeficitRaw)) : undefined;
   const canExportChain = Boolean(selectedChain) && nibMatrixProducts.length > 0;
 
   const handleExportChain = useCallback(() => {
@@ -458,6 +460,7 @@ export default function MainAnalyticalDashboard() {
         alertCount={headerAlertCount}
         alertLabel={headerAlertLabel}
         deficitLabel={headerDeficitLabel}
+        deficitIsSurplus={headerDeficitIsSurplus}
         canExport={canExportChain}
         onExport={handleExportChain}
         onOpenNibMatrix={handleOpenNibMatrix}
@@ -1090,6 +1093,17 @@ function buildExecutiveHeroAlert(product?: ConceptualProduct): ExecutiveTopAlert
   };
 }
 
+// external_dependency (imports / apparent consumption) can exceed 1 when
+// apparent consumption is deflated by exports -- for heavily export-dominant
+// inputs, exports can almost exactly offset production+imports, collapsing
+// the denominator near zero and sending the ratio to absurd multiples (e.g.
+// ferroligas hit 354x). Clamp to [0,1] the same way headerNcmShortcuts above
+// already does, so a broken denominator can't outscore a genuinely critical,
+// high-HHI item just by being numerically huge.
+function clampedSectorDependency(input: SolarInputMetric): number {
+  return Math.min(1, Math.max(0, input.external_dependency ?? 0));
+}
+
 function buildSectorExecutiveHeroAlert(
   inputs: SolarInputMetric[],
   chainName: string,
@@ -1097,11 +1111,12 @@ function buildSectorExecutiveHeroAlert(
   const candidates = inputs.filter((input) => (
     input.imports_value_usd > 0
     && input.external_dependency !== null
+    && input.imports_value_usd >= SAMPLE_SHIPMENT_THRESHOLD_USD
   ));
 
   const input = [...candidates].sort((left, right) => {
-    const leftScore = (left.external_dependency ?? 0) * Math.max(left.supplier_hhi_brazil, 1);
-    const rightScore = (right.external_dependency ?? 0) * Math.max(right.supplier_hhi_brazil, 1);
+    const leftScore = clampedSectorDependency(left) * Math.max(left.supplier_hhi_brazil, 1);
+    const rightScore = clampedSectorDependency(right) * Math.max(right.supplier_hhi_brazil, 1);
     return rightScore - leftScore;
   })[0];
 

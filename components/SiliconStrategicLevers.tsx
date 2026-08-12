@@ -248,15 +248,17 @@ export function SiliconStrategicLevers({ chainId, valueAsymmetry, solarInputs }:
               {valueAsymmetry.ratio.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}x
             </p>
             <div className="flex flex-wrap gap-1.5 text-[11px] font-semibold">
-              <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-amber-200">
-                Exporta {valueAsymmetry.exportInputLabel}
-                {valueAsymmetry.exportNcm ? ` (NCM ${formatNcm(valueAsymmetry.exportNcm)})` : ""} ·{" "}
-                {usdPerKg.format(valueAsymmetry.exportPricePerKg)}/kg
+              <span
+                title={valueAsymmetry.exportNcm ? `NCM ${formatNcm(valueAsymmetry.exportNcm)}` : undefined}
+                className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-amber-200"
+              >
+                Exporta {valueAsymmetry.exportInputLabel} · {usdPerKg.format(valueAsymmetry.exportPricePerKg)}/kg
               </span>
-              <span className="rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-red-200">
-                Reimporta {valueAsymmetry.importInputLabel}
-                {valueAsymmetry.importNcm ? ` (NCM ${formatNcm(valueAsymmetry.importNcm)})` : ""} ·{" "}
-                {usdPerKg.format(valueAsymmetry.importPricePerKg)}/kg
+              <span
+                title={valueAsymmetry.importNcm ? `NCM ${formatNcm(valueAsymmetry.importNcm)}` : undefined}
+                className="rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-red-200"
+              >
+                Reimporta {valueAsymmetry.importInputLabel} · {usdPerKg.format(valueAsymmetry.importPricePerKg)}/kg
               </span>
             </div>
             {valueAsymmetry.categoryNote ? (
@@ -264,6 +266,12 @@ export function SiliconStrategicLevers({ chainId, valueAsymmetry, solarInputs }:
             ) : null}
             <TechnicalDetail accent="text-amber-300/80">
               <p>Fonte: Comex Stat, período selecionado.</p>
+              <p>
+                NCMs: {valueAsymmetry.exportInputLabel}
+                {valueAsymmetry.exportNcm ? ` ${formatNcm(valueAsymmetry.exportNcm)}` : " N/D"} ·{" "}
+                {valueAsymmetry.importInputLabel}
+                {valueAsymmetry.importNcm ? ` ${formatNcm(valueAsymmetry.importNcm)}` : " N/D"}
+              </p>
               {chainId === "silicio" ? (
                 <p>
                   Referência de contexto (fora da base de comércio exterior): a redução carbotérmica de
@@ -291,7 +299,8 @@ export function SiliconStrategicLevers({ chainId, valueAsymmetry, solarInputs }:
           <>
             <p className="text-2xl font-extrabold text-white">{percent.format(nonLowCarbonShare)}</p>
             <p className="text-xs font-semibold leading-snug text-zinc-200">
-              da pauta importada ainda é fóssil/transição, concentrada na China
+              da pauta importada ainda é fóssil/transição
+              {chainId === "silicio" ? ", concentrada na China" : ""}
             </p>
           </>
         ) : null}
