@@ -276,8 +276,19 @@ export default function MainAnalyticalDashboard() {
     const avgDependency = data.kpis?.avgDependency ?? (data.products.length
       ? data.products.reduce((acc, item) => acc + item.metrics.externalDependency, 0) / data.products.length
       : 0);
+    // Picking by raw HHI alone surfaces thin-flow noise as a false "monopólio"
+    // alert: e.g. minério de ferro (Brazil's #1 export, 0% external
+    // dependency) can score hhi≈9976 purely from a handful of import
+    // transactions worth a few million dollars against an $11bi+ export
+    // base -- a concentration number with no bearing on actual supply risk.
+    // Weighting by dependency (same formula topRisk already uses below)
+    // keeps this KPI about real import vulnerability, not export dominance.
     const maxHhiProduct = data.products.reduce<ConceptualProduct | undefined>(
-      (best, item) => (!best || item.metrics.hhi > best.metrics.hhi ? item : best),
+      (best, item) => {
+        const itemScore = item.metrics.externalDependency * item.metrics.hhi;
+        const bestScore = best ? best.metrics.externalDependency * best.metrics.hhi : -1;
+        return !best || itemScore > bestScore ? item : best;
+      },
       undefined,
     );
     const maxHhi = data.kpis?.maxHhi ?? maxHhiProduct?.metrics.hhi ?? 0;
