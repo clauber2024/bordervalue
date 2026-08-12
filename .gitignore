@@ -38,6 +38,15 @@ outputs/official_2026_rais/*
 !outputs/tsb_bridge_2026/
 !dados/cache/ncm_vigente.json
 !dados/cache/dim_pais_comex.csv
+
+# Excecao: tabela estatica de priorizacao por especialistas (CNAE), exigida
+# pelo botao de atualizacao do Painel Admin (build_final_border_value_outputs.py)
+# -- nunca gerada por script, so lida; sem essa excecao o passo "Producao
+# industrial consolidada" falha com FileNotFoundError em qualquer deploy novo
+# da Railway (outputs/* nunca chega la sem excecao explicita).
+!outputs/official_2026/
+outputs/official_2026/*
+!outputs/official_2026/priorizacao_especialistas_cnae.csv
 !dados/cache/dim_municipio_ibge.csv
 
 # Excecao: workbooks-fonte do BEN (EPE), exigidos pelo botao de atualizacao
