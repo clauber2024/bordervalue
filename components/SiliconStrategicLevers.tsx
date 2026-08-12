@@ -8,8 +8,10 @@ import type { SolarInputMetric } from "../types/solar-sovereignty";
 export type SiliconValueAsymmetry = {
   exportInputLabel: string;
   exportPricePerKg: number;
+  exportNcm?: string;
   importInputLabel: string;
   importPricePerKg: number;
+  importNcm?: string;
   ratio: number;
   categoryNote?: string;
 };
@@ -31,6 +33,11 @@ const usdPerKg = new Intl.NumberFormat("pt-BR", {
 });
 
 const percent = new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 1 });
+
+function formatNcm(ncm?: string) {
+  if (!ncm || ncm.length !== 8) return ncm;
+  return `${ncm.slice(0, 4)}.${ncm.slice(4, 6)}.${ncm.slice(6, 8)}`;
+}
 
 // Native <details> for the technical footnotes -- same progressive-disclosure
 // pattern TechnicalDrawer.tsx already uses, kept collapsed by default so
@@ -242,10 +249,14 @@ export function SiliconStrategicLevers({ chainId, valueAsymmetry, solarInputs }:
             </p>
             <div className="flex flex-wrap gap-1.5 text-[11px] font-semibold">
               <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-amber-200">
-                Exporta {valueAsymmetry.exportInputLabel} · {usdPerKg.format(valueAsymmetry.exportPricePerKg)}/kg
+                Exporta {valueAsymmetry.exportInputLabel}
+                {valueAsymmetry.exportNcm ? ` (NCM ${formatNcm(valueAsymmetry.exportNcm)})` : ""} ·{" "}
+                {usdPerKg.format(valueAsymmetry.exportPricePerKg)}/kg
               </span>
               <span className="rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-red-200">
-                Reimporta {valueAsymmetry.importInputLabel} · {usdPerKg.format(valueAsymmetry.importPricePerKg)}/kg
+                Reimporta {valueAsymmetry.importInputLabel}
+                {valueAsymmetry.importNcm ? ` (NCM ${formatNcm(valueAsymmetry.importNcm)})` : ""} ·{" "}
+                {usdPerKg.format(valueAsymmetry.importPricePerKg)}/kg
               </span>
             </div>
             {valueAsymmetry.categoryNote ? (

@@ -1202,8 +1202,10 @@ function buildValueAsymmetry(chainId: string, inputs: SolarInputMetric[]): Silic
   return {
     exportInputLabel: exportInput.label,
     exportPricePerKg,
+    exportNcm: exportInput.ncm_codes[0],
     importInputLabel: importInput.label,
     importPricePerKg,
+    importNcm: importInput.ncm_codes[0],
     ratio: importPricePerKg / exportPricePerKg,
     categoryNote: pair.categoryNote,
   };
