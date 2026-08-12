@@ -1926,6 +1926,7 @@ function buildImportsTopology(
   // straight from the imported input to their real destination bucket.
   const isFertilizerChain = /fertiliz/i.test(chainName ?? "");
   const isTransitionFuelChain = /combustíveis de transição|combustiveis de transicao/i.test(chainName ?? "");
+  const isSteelChain = /aço|aco e materiais/i.test(chainName ?? "");
   // Prefer the real end-of-chain product (stage "produto_final", e.g.
   // "Módulos fotovoltaicos") over a generic system label when the data
   // actually names one -- a synthetic "Sistema solar fotovoltaico"
@@ -1974,6 +1975,16 @@ function buildImportsTopology(
     const order = stagePhysicalOrder(`stage:${input.stage}`);
     if (order <= BASE_MATERIAL_STAGE_ORDER_THRESHOLD) return "base";
     if (order >= maxStageOrder) return "final";
+    // Aço's "transformação" stage (laminados a quente/frio) is a near-
+    // finished commercial steel product, not a base material feeding
+    // further domestic steel processing -- unlike silício's order-3/4
+    // support chemicals (ácido clorídrico, hidrogênio de alta pureza), which
+    // genuinely are inputs consumed mid-process, not the product itself.
+    // Without this, e.g. laminados imported from Coreia do Sul land in
+    // "Insumos de Base (uso industrial doméstico)" alongside minério de
+    // ferro, implying they're raw material Brazil further transforms, when
+    // they're actually the (semi-)finished good.
+    if (isSteelChain && order === maxStageOrder - 1) return "final";
     return input.global_china_share !== null ? "critical" : "base";
   };
 
