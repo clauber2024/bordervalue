@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
+from operational_pipeline import _download
+
 
 ROOT = Path(__file__).resolve().parent
 INPUTS = ROOT / "inputs" / "official"
@@ -253,6 +255,14 @@ def aggregate_trade(
     for year in (2025, 2026):
         for flow, prefix in (("IMP", "IMP"), ("EXP", "EXP")):
             path = INPUTS / f"{prefix}_{year}.csv"
+            # 2025 is a closed year, never refreshed by operational_pipeline.py's
+            # cache-clear step (only *_2026.csv gets force-refreshed) -- a fresh
+            # container just never had it. Same download helper/cert workaround
+            # already used for the 2026 files, so it only ever fetches once.
+            _download(
+                f"https://balanca.economia.gov.br/balanca/bd/comexstat-bd/ncm/{prefix}_{year}.csv",
+                path,
+            )
             with path.open("r", encoding="utf-8-sig", newline="") as handle:
                 reader = csv.DictReader(handle, delimiter=";")
                 for row in reader:
