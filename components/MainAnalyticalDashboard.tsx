@@ -25,7 +25,7 @@ import { ExecutiveMetadataFooter, type ExecutiveMetadata } from "./ExecutiveMeta
 import { HeaderTopBar } from "./HeaderTopBar";
 import { SiliconStrategicLevers, type SiliconValueAsymmetry } from "./SiliconStrategicLevers";
 import { EnergyContextBenPanel } from "./EnergyContextBenPanel";
-import { SiliconMassEnergyBalancePanel } from "./SiliconMassEnergyBalancePanel";
+import { SiliconMassEnergyBalancePanel, MASS_ENERGY_BALANCE_CHAINS } from "./SiliconMassEnergyBalancePanel";
 import { GreenJobsTSBPanel } from "./GreenJobsTSBPanel";
 import { NIBMatrixChart } from "./NIBMatrixChart";
 import { ProportionalityToggle } from "./ProportionalityToggle";
@@ -644,13 +644,13 @@ export default function MainAnalyticalDashboard() {
                 </ExpandableAnalyticsPanel>
               ) : null}
 
-              {selectedChain === "silicio" ? (
+              {selectedChain && MASS_ENERGY_BALANCE_CHAINS.has(selectedChain) ? (
                 <ExpandableAnalyticsPanel
                   eyebrow="Balanço de processo"
                   title="Balanço de massa e energia por etapa"
-                  subtitle="Intensidade energética, capacidade nacional e concentração global — do quartzo ao módulo"
+                  subtitle="Intensidade energética, capacidade nacional e concentração global — etapa a etapa da cadeia"
                 >
-                  <SiliconMassEnergyBalancePanel energyContext={energyContext} />
+                  <SiliconMassEnergyBalancePanel chainId={selectedChain} energyContext={energyContext} />
                 </ExpandableAnalyticsPanel>
               ) : energyContext?.blocos.length ? (
                 <ExpandableAnalyticsPanel
