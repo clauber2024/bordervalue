@@ -334,9 +334,9 @@ export default function MainAnalyticalDashboard() {
     () => buildExecutiveVulnerabilityData(data.products, selectedChain, solarSovereignty?.inputs),
     [data.products, selectedChain, solarSovereignty?.inputs],
   );
-  const siliconValueAsymmetry = useMemo(
-    () => selectedChain === "silicio" && solarSovereignty?.inputs.length
-      ? buildSiliconValueAsymmetry(solarSovereignty.inputs)
+  const chainValueAsymmetry = useMemo(
+    () => selectedChain && solarSovereignty?.inputs.length
+      ? buildValueAsymmetry(selectedChain, solarSovereignty.inputs)
       : undefined,
     [selectedChain, solarSovereignty],
   );
@@ -521,13 +521,12 @@ export default function MainAnalyticalDashboard() {
             <ExecutiveMainHero
               alert={executiveHeroAlert}
               kpis={executiveHeroKpis}
-              strategicQuestion={selectedChain === "silicio"
-                ? "Onde o Brasil possui capacidade e onde está o estrangulamento tecnológico da cadeia solar?"
-                : "Onde estão a capacidade nacional e os principais estrangulamentos desta cadeia?"}
+              strategicQuestion={chainStrategicQuestion(selectedChain)}
             />
-            {selectedChain === "silicio" && solarSovereignty?.inputs.length ? (
+            {solarSovereignty?.inputs.length ? (
               <SiliconStrategicLevers
-                valueAsymmetry={siliconValueAsymmetry}
+                chainId={selectedChain}
+                valueAsymmetry={chainValueAsymmetry}
                 solarInputs={solarSovereignty.inputs}
               />
             ) : null}
@@ -1156,14 +1155,31 @@ function sectorRecommendedPolicy(chainName: string, inputLabel: string) {
 // unrepresentative prices per kg.
 const MIN_WEIGHT_KG_FOR_PRICE = 1000;
 
-function buildSiliconValueAsymmetry(inputs: SolarInputMetric[]): SiliconValueAsymmetry | undefined {
-  const exportInput = inputs.find((input) => input.input_id === "silicio_grau_metalurgico");
-  // celulas_fotovoltaicas (bare cells), not modulos_fotovoltaicos (assembled
-  // modules): modules carry heavy low-value glass/aluminum framing that
-  // dilutes US$/kg below raw Si-GM, inverting the intended asymmetry. Cells
-  // are the concentrated, high-value-density stage Brazil re-imports, and
-  // already the platform's own flagship sovereignty alert for this chain.
-  const importInput = inputs.find((input) => input.input_id === "celulas_fotovoltaicas");
+// Export/import input_id pair for the "Assimetria de valor por quilo" card,
+// picked per chain from the real price-per-kg ratio (verified against
+// Comex Stat, not guessed) -- see build_sector_sovereignty_metrics.py for
+// the underlying input_ids. Not every chain has a clean "raw material
+// Brazil exports vs. its own processed good Brazil reimports" pair the way
+// silicio and aco do; combustiveis_transicao's pair below is a different
+// kind of asymmetry (finished low-carbon fuel export vs. imported enabling
+// technology), flagged via categoryNote so the card doesn't imply the same
+// same-chain raw-to-processed story it isn't.
+const VALUE_ASYMMETRY_PAIRS: Record<string, { exportId: string; importId: string; categoryNote?: string }> = {
+  silicio: { exportId: "silicio_grau_metalurgico", importId: "celulas_fotovoltaicas" },
+  aco: { exportId: "minerio_ferro", importId: "tubos_aco" },
+  fertilizantes: { exportId: "rocha_fosfatica", importId: "fosfato_monoamonico" },
+  combustiveis_transicao: {
+    exportId: "etanol",
+    importId: "eletrolisadores",
+    categoryNote: "Aqui a assimetria é entre um combustível pronto que o Brasil já exporta em escala e a tecnologia habilitadora (eletrolisadores) que a rota de hidrogênio ainda importa -- não matéria-prima crua vs. produto processado da mesma cadeia, como em silício ou aço.",
+  },
+};
+
+function buildValueAsymmetry(chainId: string, inputs: SolarInputMetric[]): SiliconValueAsymmetry | undefined {
+  const pair = VALUE_ASYMMETRY_PAIRS[chainId];
+  if (!pair) return undefined;
+  const exportInput = inputs.find((input) => input.input_id === pair.exportId);
+  const importInput = inputs.find((input) => input.input_id === pair.importId);
   if (!exportInput || !importInput) return undefined;
   if (exportInput.exports_net_weight_kg < MIN_WEIGHT_KG_FOR_PRICE) return undefined;
   if (importInput.imports_net_weight_kg < MIN_WEIGHT_KG_FOR_PRICE) return undefined;
@@ -1178,7 +1194,26 @@ function buildSiliconValueAsymmetry(inputs: SolarInputMetric[]): SiliconValueAsy
     importInputLabel: importInput.label,
     importPricePerKg,
     ratio: importPricePerKg / exportPricePerKg,
+    categoryNote: pair.categoryNote,
   };
+}
+
+// Executive framing question per chain -- same "real citation over generic
+// boilerplate" principle as sectorRecommendedPolicy() above, just for the
+// hero question instead of the NIB policy line.
+function chainStrategicQuestion(chainId: string | null) {
+  switch (chainId) {
+    case "silicio":
+      return "Onde o Brasil possui capacidade e onde está o estrangulamento tecnológico da cadeia solar?";
+    case "aco":
+      return "Onde o Brasil já lidera (minério, aço bruto) e onde a siderurgia nacional ainda depende de ligas e equipamentos importados?";
+    case "fertilizantes":
+      return "Onde a produção nacional de fertilizantes se sustenta e onde a segurança alimentar do país ainda depende de nutrientes importados?";
+    case "combustiveis_transicao":
+      return "Onde o Brasil já exporta combustíveis de baixo carbono em escala e onde a próxima rota (hidrogênio, e-combustíveis) ainda depende de tecnologia importada?";
+    default:
+      return "Onde estão a capacidade nacional e os principais estrangulamentos desta cadeia?";
+  }
 }
 
 function csvEscape(value: string) {
