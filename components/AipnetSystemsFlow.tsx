@@ -322,7 +322,8 @@ const valueChains: ValueChain[] = [
     primaryVulnerability: "insumos importados com maior dependência no diagnóstico comercial",
     nodes: [
       { id: "fuel_feedstocks_br", name: "Biomassa e Insumos", country: "Brasil", flag: "🇧🇷", stage: "Insumo", description: "Base agroindustrial, resíduos e insumos necessários às rotas de baixo carbono.", relatedInputs: ["Gás natural / proxy biometano"], isCritical: false, isVulnerable: false, icon: Factory },
-      { id: "fuel_conversion_br", name: "Conversão e Bioprocessos", country: "Brasil", flag: "🇧🇷", stage: "Insumo", description: "Fermentação, digestão, síntese e conversão de matérias-primas em moléculas intermediárias.", relatedInputs: ["Hidrogênio", "Etanol", "Biodiesel", "Amônia", "Metanol"], isCritical: false, isVulnerable: false, icon: Layers },
+      { id: "fuel_conversion_br", name: "Conversão e Bioprocessos Nacional", country: "Brasil", flag: "🇧🇷", stage: "Insumo", description: "Fermentação e transesterificação com base agroindustrial consolidada -- rota de baixo carbono já operada em escala no Brasil.", relatedInputs: ["Etanol", "Biodiesel"], isCritical: false, isVulnerable: false, icon: Layers },
+      { id: "fuel_conversion_imported", name: "Moléculas de Base Importadas", country: "Múltiplas origens", flag: "🌐", stage: "Insumo", description: "Hidrogênio, amônia e metanol comercializados hoje dependem majoritariamente de produção ou insumo importado, mesmo quando servem de base a rotas de baixo carbono.", relatedInputs: ["Hidrogênio", "Amônia", "Metanol"], isCritical: true, isVulnerable: true, alertMessage: "O diagnóstico comercial mostra dependência externa elevada para amônia e metanol e ausência de produção doméstica comparável para hidrogênio -- diferente da rota consolidada de etanol/biodiesel.", icon: ShieldAlert },
       { id: "fuel_advanced_inputs", name: "Tecnologias de Conversão", country: "Múltiplas origens", flag: "🌐", stage: "Tecnologia habilitadora", description: "Catalisadores, enzimas e eletrolisadores condicionam a escala, a produtividade e a intensidade de carbono das rotas.", relatedInputs: ["Enzimas e biocatalisadores", "Catalisadores preparados", "Eletrolisadores / proxy de equipamentos"], isCritical: true, isVulnerable: true, alertMessage: "Evidência disponível: a IEA estima que a China reúne quase 60% da capacidade mundial de fabricação de eletrolisadores. Essa é uma concentração geográfica publicada, não um HHI por empresa. Para enzimas e catalisadores, a leitura permanece baseada na dependência e nos fornecedores observados nas importações brasileiras.", icon: ShieldAlert },
       { id: "fuel_final_br", name: "Combustíveis e Usos Finais", country: "Brasil", flag: "🇧🇷", stage: "Aplicação final", description: "Hidrogênio renovável, SAF, biometano e e-combustíveis abastecem aviação, indústria e transporte pesado.", relatedInputs: ["Combustíveis de aviação / proxy SAF"], relatedDestinations: transitionFuelDestinations, isCritical: false, isVulnerable: false, icon: Zap },
     ],
@@ -366,7 +367,6 @@ const nodeInputStages: Record<string, string[]> = {
   celulas_fotovoltaicas_cn: ["produto_final"],
   modulos_fotovoltaicos_br: ["produto_final"],
   fuel_feedstocks_br: ["insumos"],
-  fuel_conversion_br: ["molecula_principal", "derivados"],
   fuel_advanced_inputs: ["insumos_tecnologicos", "equipamentos"],
   fuel_final_br: ["aplicacoes_finais"],
   fertilizer_resources: ["materias_primas"],
