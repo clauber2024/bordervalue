@@ -1163,7 +1163,15 @@ function sectorRecommendedPolicy(chainName: string, inputLabel: string) {
   if (/quartzo|silício|silicio|polissilício|polissilicio|wafer|fotovoltaic|módulo|modulo|célula|celula/.test(context)) {
     return "Missão 5 da NIB (Bioeconomia, descarbonização e transição e segurança energéticas): diversificar fornecedores e desenvolver capacidade produtiva nacional na cadeia solar fotovoltaica, hoje concentrada na China nas etapas de polissilício e wafers.";
   }
-  if (/aço|siderurg|ferro|grafite|ferroliga|laminado|estrutura/.test(context)) {
+  // Insumos que sustentam especificamente a rota de descarbonização do aço
+  // (eletrodos de grafite -> forno elétrico a arco; ferro-esponja/redução
+  // direta -> pré-requisito da rota DRI-hidrogênio) são insumo crítico de
+  // processo para a própria transição energética da siderurgia, não uso
+  // final em infraestrutura -- cabem na Missão 5, não na 3.
+  if (/grafite|esponja|redução direta|reducao direta/.test(context)) {
+    return "Missão 5 da NIB (Bioeconomia, descarbonização e transição e segurança energéticas): garantir insumo crítico de processo para a rota de descarbonização siderúrgica (forno elétrico a arco/redução direta) -- sua interrupção força a volta à rota primária a coque, de maior pegada de carbono e mais exposta ao CBAM.";
+  }
+  if (/aço|siderurg|ferro|ferroliga|laminado|estrutura/.test(context)) {
     return "Missão 3 da NIB (Infraestrutura, saneamento, moradia e mobilidade sustentáveis): diversificar fornecedores de insumos siderúrgicos e desenvolver capacidade nacional em rotas compatíveis com a Missão 5 (descarbonização industrial).";
   }
   if (/fertiliz|amônia|amonia|fosfat|potáss|potass|ureia|rocha fosfática|rocha fosfatica/.test(context)) {

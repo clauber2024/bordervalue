@@ -155,7 +155,7 @@ export const ExecutiveMainHero = ({
                 <Sparkles className="h-3 w-3" />
                 Plataforma Analítica de Estado
               </span>
-              <span className="rounded border border-white/5 bg-zinc-950/40 px-2 py-0.5 font-mono text-xs text-zinc-500">
+              <span className="rounded border border-white/5 bg-zinc-950/40 px-2 py-0.5 font-mono text-xs text-zinc-400">
                 Border Value v1.0.0-rc.1
               </span>
             </div>
@@ -173,7 +173,7 @@ export const ExecutiveMainHero = ({
             <div className="mt-5 flex max-w-4xl items-start gap-3 rounded-xl border border-emerald-300/15 bg-zinc-950/50 px-4 py-3">
               <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-400" />
               <p className="text-sm font-semibold leading-6 text-zinc-200">
-                <span className="text-zinc-500">Pergunta de Estado:</span>{' '}
+                <span className="text-zinc-400">Pergunta de Estado:</span>{' '}
                 {strategicQuestion}
               </p>
             </div>
@@ -236,7 +236,7 @@ export const ExecutiveMainHero = ({
               <div className="w-fit rounded-lg border border-white/10 bg-zinc-950/80 px-3 py-1 text-xs font-semibold text-zinc-400">
                 Fatura Anual de Importação:{' '}
                 <strong className="font-mono text-amber-400">{alert.fobValue}</strong>
-                <span className="text-zinc-500"> (Exposição Comercial)</span>
+                <span className="text-zinc-400"> (Exposição Comercial)</span>
               </div>
             </div>
 
@@ -244,7 +244,7 @@ export const ExecutiveMainHero = ({
               <p className="text-[10px] font-bold uppercase tracking-widest text-red-300/90">
                 Cadeia: {alert.chain}
               </p>
-              <p className="mt-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+              <p className="mt-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
                 Produto conceitual
               </p>
               <h2 className="mt-1 text-xl font-bold leading-snug text-zinc-100">
@@ -267,7 +267,7 @@ export const ExecutiveMainHero = ({
 
             <div className="grid grid-cols-3 gap-2 rounded-xl border border-red-500/20 bg-zinc-950/70 p-3 text-center">
               <div>
-                <span className="block text-[10px] font-semibold uppercase text-zinc-500">
+                <span className="block text-[10px] font-semibold uppercase text-zinc-400">
                   Dependência externa
                 </span>
                 <span className="block font-mono text-base font-extrabold text-red-400">
@@ -278,7 +278,7 @@ export const ExecutiveMainHero = ({
                 </span>
               </div>
               <div className="border-x border-white/10 px-1">
-                <span className="block text-[10px] font-semibold uppercase text-zinc-500">
+                <span className="block text-[10px] font-semibold uppercase text-zinc-400">
                   Índice HHI
                 </span>
                 <span className="block font-mono text-base font-extrabold text-red-400">
@@ -289,7 +289,7 @@ export const ExecutiveMainHero = ({
                 </span>
               </div>
               <div>
-                <span className="block text-[10px] font-semibold uppercase text-zinc-500">
+                <span className="block text-[10px] font-semibold uppercase text-zinc-400">
                   Principal País Origem
                 </span>
                 <span className="mt-1 block truncate text-xs font-bold text-amber-200">
