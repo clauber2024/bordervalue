@@ -1,5 +1,6 @@
 "use client";
 
+import { Clock } from "lucide-react";
 import { ROUTE_CLASS_COLORS, ROUTE_CLASS_LABELS } from "./SovereigntySankeyChart";
 import type { EnergyContextResponse } from "../types/energy-context";
 import type { ProductionRouteClass, SolarInputMetric } from "../types/solar-sovereignty";
@@ -67,8 +68,19 @@ export function CarbonFootprintIndustrialBlock({
 
   if (!exposure.length) {
     return (
-      <section className="w-full rounded-2xl border border-white/[0.08] bg-zinc-900/40 p-6 text-sm text-zinc-400 backdrop-blur-xl">
-        Nenhum insumo com rota produtiva classificada disponível para {chainName ?? "esta cadeia"}.
+      <section className="flex w-full items-start gap-3 rounded-2xl border border-white/[0.08] bg-zinc-900/40 p-6 backdrop-blur-xl">
+        <Clock className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
+        <div className="text-sm text-zinc-300">
+          <p className="font-semibold text-zinc-100">
+            Classificação de rota produtiva em atualização para {chainName ?? "esta cadeia"}
+          </p>
+          <p className="mt-1.5 leading-relaxed text-zinc-400">
+            O diagnóstico comercial (dependência externa, HHI, balança) desta cadeia já está disponível nos
+            painéis acima — apenas o cruzamento por rota produtiva (fóssil, transição, baixo carbono) para o
+            prêmio de descarbonização ainda não foi publicado na base de soberania. Volte a consultar após a
+            próxima atualização.
+          </p>
+        </div>
       </section>
     );
   }

@@ -732,9 +732,9 @@ function ExpandableAnalyticsPanel({
         <span>
           <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">{eyebrow}</span>
           <span className="mt-1 block text-base font-bold text-white">{title}</span>
-          <span className="mt-1 block text-xs font-normal text-zinc-500">{subtitle}</span>
+          <span className="mt-1 block text-xs font-normal text-zinc-400">{subtitle}</span>
         </span>
-        <ChevronDown className="h-5 w-5 shrink-0 text-zinc-500 transition-transform duration-200 group-open:rotate-180" />
+        <ChevronDown className="h-5 w-5 shrink-0 text-zinc-400 transition-transform duration-200 group-open:rotate-180" />
       </summary>
       <div className="border-t border-white/[0.07] p-4 sm:p-5">{children}</div>
     </details>
