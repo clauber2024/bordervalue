@@ -422,24 +422,46 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
   const filteredChains = valueChains.filter((chain) =>
     `${chain.name} ${chain.category}`.toLocaleLowerCase("pt-BR").includes(normalizedQuery),
   );
-  const topExposure = [...inputs]
-    .map((input) => ({
-      input,
-      value: input.external_dependency ?? input.global_china_share ?? input.china_share_brazilian_imports,
-      // global_china_share is a structural figure, not derived from Brazil's
-      // own trade sample -- the other two are, so they need the materiality
-      // floor or a near-empty trade record (e.g. ferro-esponja's $3,559
-      // total import base) can win this "maior exposição mensurada" banner
-      // on a percentage that isn't a real signal.
-      isSampleDerived: input.external_dependency !== null || input.global_china_share === null,
-      metric: input.external_dependency !== null
-        ? "dependência externa"
-        : input.global_china_share !== null
-          ? "concentração geográfica global"
-          : "participação chinesa nas importações",
-    }))
-    .filter((item) => !item.isSampleDerived || item.input.imports_value_usd >= SAMPLE_SHIPMENT_THRESHOLD_USD)
-    .sort((left, right) => right.value - left.value)[0];
+
+  function computeTopExposure(inputSet: SolarInputMetric[]) {
+    return [...inputSet]
+      .map((input) => ({
+        input,
+        value: input.external_dependency ?? input.global_china_share ?? input.china_share_brazilian_imports,
+        // global_china_share is a structural figure, not derived from Brazil's
+        // own trade sample -- the other two are, so they need the materiality
+        // floor or a near-empty trade record (e.g. ferro-esponja's $3,559
+        // total import base) can win this "maior exposição mensurada" banner
+        // on a percentage that isn't a real signal.
+        isSampleDerived: input.external_dependency !== null || input.global_china_share === null,
+        metric: input.external_dependency !== null
+          ? "dependência externa"
+          : input.global_china_share !== null
+            ? "concentração geográfica global"
+            : "participação chinesa nas importações",
+      }))
+      .filter((item) => !item.isSampleDerived || item.input.imports_value_usd >= SAMPLE_SHIPMENT_THRESHOLD_USD)
+      // Same collapse as buildSectorExecutiveHeroAlert in MainAnalyticalDashboard.tsx:
+      // apparent consumption (production + imports - exports) can go near-zero
+      // for export-dominant inputs, sending external_dependency past 100% (e.g.
+      // aco's ferroligas hit 354x). The display below already clamps to 1 before
+      // formatting, but the sort itself compared raw values, so the broken
+      // multiple still won this banner (and, via dynamicHhiGlobal, the header
+      // HHI badge) over genuinely higher-risk inputs.
+      .sort((left, right) => Math.min(right.value, 1) - Math.min(left.value, 1))[0];
+  }
+
+  // dynamicHhiGlobal (header badge) stays chain-wide regardless of selection --
+  // it's labeled "Concentração global", not per-stage. Only the bridge banner
+  // below narrows to the selected stage's own inputs, so clicking through
+  // etapas 1-4 actually changes what "maior exposição mensurada" reports
+  // instead of always repeating the chain-wide figure.
+  const chainTopExposure = computeTopExposure(inputs);
+  const selectedStageInputs = selectedNodeId
+    ? inputs.filter((input) => nodeInputStages[selectedNodeId]?.includes(input.stage))
+    : [];
+  const selectedStageTopExposure = selectedStageInputs.length ? computeTopExposure(selectedStageInputs) : undefined;
+  const topExposure = selectedStageTopExposure ?? chainTopExposure;
   // fertilizantes/combustiveis_transicao/aco shipped with a static "em
   // homologação" placeholder for hhiGlobal from before real per-input HHI
   // data existed for them -- it's stale now that supplier_hhi_brazil is
@@ -447,8 +469,8 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
   // 7557). Compute a real header figure from the same materiality-gated
   // topExposure input already derived above instead of leaving the
   // placeholder up once the underlying data exists.
-  const dynamicHhiGlobal = currentChain.hhiGlobal === "em homologação" && topExposure
-    ? `${number.format(Math.round(topExposure.input.supplier_hhi_brazil))} · ${hhiRiskDescriptor(topExposure.input.supplier_hhi_brazil)}`
+  const dynamicHhiGlobal = currentChain.hhiGlobal === "em homologação" && chainTopExposure
+    ? `${number.format(Math.round(chainTopExposure.input.supplier_hhi_brazil))} · ${hhiRiskDescriptor(chainTopExposure.input.supplier_hhi_brazil)}`
     : currentChain.hhiGlobal;
 
   return (
@@ -558,8 +580,12 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
                 <ArrowRight className="absolute -right-4 top-1/2 z-20 hidden h-5 w-5 -translate-y-1/2 text-zinc-600 md:block" />
               ) : null}
 
-              {/* Tooltip de Estado — risco geopolítico do elo, em glassmorphism */}
-              {isChokepoint && node.alertMessage ? (
+              {/* Tooltip de Estado — risco geopolítico do elo, em glassmorphism.
+                  Suprimido quando o node está selecionado: o painel de
+                  detalhamento abaixo já mostra o mesmo alertMessage, e o
+                  cursor tende a continuar sobre o card logo após o clique
+                  que selecionou, duplicando o texto na tela. */}
+              {isChokepoint && node.alertMessage && selectedNodeId !== node.id ? (
                 <div
                   role="tooltip"
                   className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-3 w-64 -translate-x-1/2 rounded-xl border border-red-500/30 bg-zinc-950/95 p-3.5 text-xs leading-relaxed text-zinc-200 opacity-0 shadow-2xl backdrop-blur-xl transition-opacity duration-200 group-hover/node:opacity-100 group-focus-within/node:opacity-100"
@@ -761,8 +787,13 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
           <div className="flex items-start gap-4">
             <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0 text-red-400" />
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-red-300">Ponte para o diagnóstico quantitativo</p>
-              <h3 className="mt-1 text-sm font-bold text-white">Maior exposição mensurada: {topExposure.input.label}</h3>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-red-300">
+                Ponte para o diagnóstico quantitativo
+                {selectedStageTopExposure && selectedNode ? ` · ${selectedNode.name}` : ""}
+              </p>
+              <h3 className="mt-1 text-sm font-bold text-white">
+                Maior exposição {selectedStageTopExposure ? "desta etapa" : "mensurada"}: {topExposure.input.label}
+              </h3>
               <p className="mt-2 max-w-4xl text-xs leading-5 text-zinc-400">
                 {topExposure.metric}: <strong className="font-mono text-red-300">{(Math.min(topExposure.value, 1) * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</strong>. Consulte fornecedores, HHI, comércio e ressalvas metodológicas no diagnóstico abaixo.
               </p>
