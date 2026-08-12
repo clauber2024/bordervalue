@@ -11,6 +11,8 @@ import {
   Factory,
   Layers,
   Lock,
+  Plug,
+  Recycle,
   ShieldAlert,
   Search,
   ChevronDown,
@@ -360,8 +362,9 @@ const valueChains: ValueChain[] = [
     hhiGlobal: "em homologação",
     primaryVulnerability: "ligas, insumos e equipamentos críticos indicados pelo diagnóstico comercial",
     nodes: [
-      { id: "steel_inputs_br", name: "Minério, Sucata e Redutores", country: "Brasil", flag: "🇧🇷", stage: "Insumo", description: "Minério de ferro, sucata, carvão vegetal e energia compõem a base material da siderurgia.", relatedInputs: ["Minério de ferro", "Sucata ferrosa"], isCritical: false, isVulnerable: false, icon: Factory },
-      { id: "steel_reduction_br", name: "Redução e Aciaria", country: "Brasil", flag: "🇧🇷", stage: "Transformação", description: "Altos-fornos, redução direta e fornos elétricos convertem a carga em aço bruto.", relatedInputs: ["Ferro-gusa", "Ferro-esponja e redução direta"], isCritical: false, isVulnerable: false, icon: Layers },
+      { id: "steel_inputs_br", name: "Minério de Ferro", country: "Brasil", flag: "🇧🇷", stage: "Insumo", description: "Minério de ferro extraído e beneficiado no Brasil -- mineração e beneficiamento físico, sem feedstock fóssil no minério em si.", relatedInputs: ["Minério de ferro"], isCritical: false, isVulnerable: false, icon: Factory },
+      { id: "steel_scrap_br", name: "Sucata Ferrosa", country: "Brasil", flag: "🇧🇷", stage: "Insumo reciclado", description: "Sucata ferrosa reciclada, insumo da rota elétrica (EAF) -- pegada de carbono muito menor que a rota primária a carvão. O Brasil exportou cerca de 32x mais sucata do que importou no período mapeado, sinalizando potencial de reciclagem doméstica ainda não totalmente aproveitado.", relatedInputs: ["Sucata ferrosa"], isCritical: false, isVulnerable: false, icon: Recycle },
+      { id: "steel_reduction_br", name: "Redução e Aciaria", country: "Brasil", flag: "🇧🇷", stage: "Transformação", description: "Altos-fornos a coque/carvão mineral importado, redução direta e fornos elétricos convertem a carga em aço bruto. O carvão vegetal (biorredução), rota de baixo carbono estruturalmente doméstica do Brasil, não aparece como insumo comercial rastreável nesta base -- não cruza fronteira em volume comparável ao redutor fóssil importado, então é um dado de contexto/produção, não uma métrica AIPNET de comércio exterior.", relatedInputs: ["Ferro-gusa", "Ferro-esponja e redução direta", "Carvão mineral e coque siderúrgico"], isCritical: false, isVulnerable: false, icon: Layers },
       { id: "steel_alloys_global", name: "Ligas e Tecnologia de Processo", country: "Múltiplas origens", flag: "🌐", stage: "Transformação", description: "Ferroligas, refratários e equipamentos condicionam qualidade e descarbonização.", relatedInputs: ["Ferroligas", "Eletrodos de grafite"], isCritical: true, isVulnerable: true, alertMessage: "Itens críticos são identificados pelo risco comercial observado; a topologia não atribui concentração sem homologação.", icon: ShieldAlert },
       { id: "steel_products_br", name: "Aços e Bens da Transição", country: "Brasil", flag: "🇧🇷", stage: "Equipamento e uso final", description: "Chapas, tubos, cabos e estruturas abastecem energia, mobilidade e infraestrutura verde.", relatedInputs: ["Laminados planos a quente", "Laminados planos a frio", "Tubos de aço", "Estruturas de aço"], isCritical: false, isVulnerable: false, icon: Zap },
     ],
@@ -385,9 +388,21 @@ const nodeInputStages: Record<string, string[]> = {
   fertilizer_intermediates: ["intermediarios", "nitrogenados", "fosfatados", "potassicos"],
   fertilizer_blending_br: ["formulacao"],
   steel_inputs_br: ["base_mineral"],
+  steel_scrap_br: ["base_mineral"],
   steel_reduction_br: ["reducao"],
   steel_alloys_global: ["aciaria"],
   steel_products_br: ["transformacao", "bens_transicao"],
+};
+
+// Only steel's base_mineral stage holds two distinct inputs (minério de
+// ferro, sucata ferrosa) that need their own dedicated nodes -- every other
+// chain's nodeInputStages entry already maps 1:1 (or many-inputs-to-one on
+// purpose, e.g. fertilizer_intermediates) onto a single node, so this exact
+// input_id filter only needs entries for the two steel nodes that split a
+// shared stage.
+const nodeInputIds: Record<string, string[]> = {
+  steel_inputs_br: ["minerio_ferro"],
+  steel_scrap_br: ["sucata_ferrosa"],
 };
 
 const dashboardChainMap: Record<string, string> = {
@@ -409,7 +424,10 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
   const resolvedNodes = currentChain.nodes.map((node) => {
     const stages = nodeInputStages[node.id];
     if (!inputs.length || !stages?.length) return node;
-    const relatedInputs = inputs.filter((input) => stages.includes(input.stage)).map((input) => input.label);
+    const ids = nodeInputIds[node.id];
+    const relatedInputs = inputs
+      .filter((input) => stages.includes(input.stage) && (!ids || ids.includes(input.input_id)))
+      .map((input) => input.label);
     return relatedInputs.length ? { ...node, relatedInputs } : node;
   });
 
@@ -653,6 +671,15 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
                   ) : (
                     <Status icon={Lock} label="Capacidade Nacional" className="text-emerald-300" />
                   )}
+                  {node.id === "steel_reduction_br" ? (
+                    <div
+                      className="mt-2.5 flex items-center gap-1.5 border-t border-zinc-800/50 pt-2.5 text-[10px] font-medium text-emerald-200/80"
+                      title="Matriz elétrica nacional (SIN): >84% renovável (BEN/EPE). A rota elétrica (EAF, forno a arco) usa cerca de 1/8 da energia da rota integrada a coque -- comparação de intensidade energética por rota (IEA Iron and Steel Technology Roadmap / World Steel Association) disponível no balanço de massa e energia abaixo."
+                    >
+                      <Plug className="h-3.5 w-3.5 shrink-0" />
+                      <span>Eletricidade da rede &gt;84% renovável (BEN/EPE) -- rota EAF ≈1/8 da energia da rota a coque</span>
+                    </div>
+                  ) : null}
                 </div>
               </motion.article>
             </div>
