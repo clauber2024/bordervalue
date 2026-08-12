@@ -21,6 +21,7 @@ import {
 import type { ElementType } from "react";
 import type { SolarInputMetric } from "../types/solar-sovereignty";
 import { transitionFuelDestinations } from "../lib/transitionFuelTopology";
+import { SAMPLE_SHIPMENT_THRESHOLD_USD } from "./SovereigntySankeyChart";
 
 type SupplyNode = {
   id: string;
@@ -414,12 +415,19 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
     .map((input) => ({
       input,
       value: input.external_dependency ?? input.global_china_share ?? input.china_share_brazilian_imports,
+      // global_china_share is a structural figure, not derived from Brazil's
+      // own trade sample -- the other two are, so they need the materiality
+      // floor or a near-empty trade record (e.g. ferro-esponja's $3,559
+      // total import base) can win this "maior exposição mensurada" banner
+      // on a percentage that isn't a real signal.
+      isSampleDerived: input.external_dependency !== null || input.global_china_share === null,
       metric: input.external_dependency !== null
         ? "dependência externa"
         : input.global_china_share !== null
           ? "concentração geográfica global"
           : "participação chinesa nas importações",
     }))
+    .filter((item) => !item.isSampleDerived || item.input.imports_value_usd >= SAMPLE_SHIPMENT_THRESHOLD_USD)
     .sort((left, right) => right.value - left.value)[0];
 
   return (

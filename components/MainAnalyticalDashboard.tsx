@@ -29,7 +29,7 @@ import { SiliconMassEnergyBalancePanel, MASS_ENERGY_BALANCE_CHAINS } from "./Sil
 import { GreenJobsTSBPanel } from "./GreenJobsTSBPanel";
 import { NIBMatrixChart } from "./NIBMatrixChart";
 import { ProportionalityToggle } from "./ProportionalityToggle";
-import { SovereigntySankeyChart } from "./SovereigntySankeyChart";
+import { SovereigntySankeyChart, SAMPLE_SHIPMENT_THRESHOLD_USD } from "./SovereigntySankeyChart";
 import { TechnicalDrawer } from "./TechnicalDrawer";
 import { VulnerabilityChart as ExecutiveVulnerabilityChart, type ProductVulnerability, type SovereigntyCoverageGroup } from "./VulnerabilityChart";
 import { useBorderValue } from "../hooks/useBorderValue";
@@ -283,7 +283,15 @@ export default function MainAnalyticalDashboard() {
     // base -- a concentration number with no bearing on actual supply risk.
     // Weighting by dependency (same formula topRisk already uses below)
     // keeps this KPI about real import vulnerability, not export dominance.
-    const maxHhiProduct = data.products.reduce<ConceptualProduct | undefined>(
+    // A materiality floor is also needed on top of the weighting: e.g. ferro-
+    // esponja/tubos de aço can show 100% dependency purely because their
+    // import base is a handful of thousand dollars with no domestic
+    // production data point to divide by -- not a meaningful signal. Falls
+    // back to the unfiltered list if every product is below the floor
+    // (small chains) rather than picking nothing.
+    const materialProducts = data.products.filter((item) => item.metrics.imports >= SAMPLE_SHIPMENT_THRESHOLD_USD);
+    const hhiCandidates = materialProducts.length ? materialProducts : data.products;
+    const maxHhiProduct = hhiCandidates.reduce<ConceptualProduct | undefined>(
       (best, item) => {
         const itemScore = item.metrics.externalDependency * item.metrics.hhi;
         const bestScore = best ? best.metrics.externalDependency * best.metrics.hhi : -1;
@@ -293,7 +301,7 @@ export default function MainAnalyticalDashboard() {
     );
     const maxHhi = data.kpis?.maxHhi ?? maxHhiProduct?.metrics.hhi ?? 0;
     const maxHhiProductName = maxHhiProduct?.name.split("(")[0].trim();
-    const topRisk = [...data.products].sort(
+    const topRisk = [...hhiCandidates].sort(
       (left, right) =>
         right.metrics.externalDependency * right.metrics.hhi -
         left.metrics.externalDependency * left.metrics.hhi,
@@ -378,7 +386,13 @@ export default function MainAnalyticalDashboard() {
     // so neither the ranking score nor the displayed percentage shows a nonsensical >100% value.
     const clampedDependency = (input: (typeof inputs)[number]) =>
       Math.min(1, Math.max(0, input.external_dependency ?? input.global_china_share ?? 0));
+    // external_dependency is derived from Brazil's own trade sample and can
+    // be a near-meaningless extreme when that sample is tiny (e.g. ferro-
+    // esponja's 83.5% "China share" comes from a $3,559 total import base
+    // for the half-year); global_china_share is a structural figure that
+    // doesn't have this problem, so only gate the former behind the floor.
     return [...inputs]
+      .filter((input) => input.external_dependency === null || input.imports_value_usd >= SAMPLE_SHIPMENT_THRESHOLD_USD)
       .sort((left, right) => {
         const leftScore = clampedDependency(left) * Math.max(left.supplier_hhi_brazil, 1);
         const rightScore = clampedDependency(right) * Math.max(right.supplier_hhi_brazil, 1);

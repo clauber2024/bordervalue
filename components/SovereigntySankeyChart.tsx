@@ -337,7 +337,15 @@ export function SovereigntySankeyChart({
   const highlightInputsList = useMemo(
     () => perspective === "exports"
       ? mappedInputsList.filter((input) => input.production_route_class === "low_carbon_dominant")
-      : mappedInputsList.filter((input) => (input.global_china_share ?? input.china_share_brazilian_imports ?? 0) >= CHOKEPOINT_THRESHOLD),
+      : mappedInputsList.filter((input) =>
+          (input.global_china_share ?? input.china_share_brazilian_imports ?? 0) >= CHOKEPOINT_THRESHOLD
+          // global_china_share is a structural figure, not derived from
+          // Brazil's own sample -- only gate the Brazil-import-sample-based
+          // reading behind the materiality floor, or a real global
+          // chokepoint (thin Brazilian trade, real global monopoly) would be
+          // wrongly dropped along with actual sample-scale noise.
+          && (input.global_china_share !== null || input.imports_value_usd >= SAMPLE_SHIPMENT_THRESHOLD_USD),
+        ),
     [perspective, mappedInputsList],
   );
   // Which of the 5 route classes actually have an exported input in this
@@ -1750,8 +1758,14 @@ const CHOKEPOINT_THRESHOLD = 0.9;
 // Below this USD value, a single spot shipment (lab sample, test batch,
 // one-off reexport) can be the entire recorded trade flow for an input in
 // the period -- flagged in the metrics drawer so it doesn't read as active
-// production/export capacity.
-const SAMPLE_SHIPMENT_THRESHOLD_USD = 100_000;
+// production/export capacity. Exported so other "biggest exposure"/"only
+// bottleneck" selections (AipnetSystemsFlow's topExposure,
+// MainAnalyticalDashboard's maxHhiProduct/headerNcmShortcuts) apply the same
+// floor instead of letting a sample-scale flow win a ranking by percentage
+// alone -- e.g. ferro-esponja's 83.5% "China share" comes from a $3,559
+// total import base, ferro-gusa's 96.5% "only >=90% chokepoint" comes from a
+// $37.5k spot shipment.
+export const SAMPLE_SHIPMENT_THRESHOLD_USD = 100_000;
 
 // Physical order (see STAGE_PHYSICAL_ORDER) up to which a stage has
 // confirmed real domestic activity worth drawing as its own "Etapa
@@ -2009,7 +2023,12 @@ function buildImportsTopology(
     // (global-preferring) isChokepoint, since the input itself can be a
     // genuine monopoly risk even when Brazil's tiny import sample doesn't
     // show it.
-    const isSupplierChokepoint = (input.china_share_brazilian_imports ?? 0) >= CHOKEPOINT_THRESHOLD;
+    // Unlike isChokepoint above, this has no global_china_share fallback --
+    // it's entirely Brazil's own import sample, so it needs the materiality
+    // floor directly (e.g. ferro-esponja's 83.5% China share comes from a
+    // $3,559 total import base for the whole half-year).
+    const isSupplierChokepoint = (input.china_share_brazilian_imports ?? 0) >= CHOKEPOINT_THRESHOLD
+      && rawValue >= SAMPLE_SHIPMENT_THRESHOLD_USD;
     if (isChokepoint) chokepointInputCount += 1;
     const value = visualFlowValue(rawValue);
     const source = ensureNode(`supplier:${supplierName}`, supplierName, "supplier");
