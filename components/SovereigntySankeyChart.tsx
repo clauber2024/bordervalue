@@ -2349,12 +2349,30 @@ function buildExportsTopology(
   // collapse into "Outros Insumos" -- but a real low-carbon input (the
   // "Valor Ambiental" story this perspective exists to tell, e.g. Si-GM)
   // is always exempt regardless of how small its dollar value is.
+  // Aço-specific: sucata_ferrosa and ferro_esponja have an unambiguous
+  // process route just from what the product physically IS -- scrap can
+  // only feed an electric arc furnace, and DRI (redução direta) is a
+  // distinct process by definition -- unlike ferro_gusa/minerio_ferro,
+  // whose shared NCM basket can't distinguish BF-BOF (coque) from
+  // biorredução (carvão vegetal) output (see carvao_mineral_coque's
+  // rationale). These input_ids only exist in the aço catalog, so no
+  // chainName check is needed to scope this safely to that chain alone.
+  // Declared before the long-tail collapse below because that collapse
+  // filter needs to exempt these two -- folding ferro_esponja's (real but
+  // tiny, $181 in the current cut) DRI-attributed flow into the anonymous
+  // "Outros Insumos" bucket would erase the one thing that route split
+  // exists to show.
+  const EXPORT_ROUTE_NODE_OVERRIDES: Record<string, { id: string; label: string }> = {
+    sucata_ferrosa: { id: "route:eaf", label: "Aciaria Elétrica (EAF)" },
+    ferro_esponja: { id: "route:dri", label: "Redução Direta (DRI)" },
+  };
   const EXPORT_INPUT_LONG_TAIL_SHARE_THRESHOLD = 0.005;
   const OTHER_EXPORT_INPUTS_LABEL = "Outros Insumos";
   const collapsibleExportInputIds = new Set(
     exportableInputs
       .filter((input) => {
         if (input.production_route_class === "low_carbon_dominant") return false;
+        if (EXPORT_ROUTE_NODE_OVERRIDES[input.input_id]) return false;
         const raw = input.exports_value_usd + (domesticUseByInput.get(input.input_id) ?? 0);
         const share = raw / Math.max(totalProductionBasis, 1);
         return share < EXPORT_INPUT_LONG_TAIL_SHARE_THRESHOLD;
@@ -2385,18 +2403,6 @@ function buildExportsTopology(
   const stageTotals = new Map<string, { index: number; value: number; raw: number; lowCarbon: boolean }>();
   let lowCarbonCount = 0;
 
-  // Aço-specific: sucata_ferrosa and ferro_esponja have an unambiguous
-  // process route just from what the product physically IS -- scrap can
-  // only feed an electric arc furnace, and DRI (redução direta) is a
-  // distinct process by definition -- unlike ferro_gusa/minerio_ferro,
-  // whose shared NCM basket can't distinguish BF-BOF (coque) from
-  // biorredução (carvão vegetal) output (see carvao_mineral_coque's
-  // rationale). These input_ids only exist in the aço catalog, so no
-  // chainName check is needed to scope this safely to that chain alone.
-  const EXPORT_ROUTE_NODE_OVERRIDES: Record<string, { id: string; label: string }> = {
-    sucata_ferrosa: { id: "route:eaf", label: "Aciaria Elétrica (EAF)" },
-    ferro_esponja: { id: "route:dri", label: "Redução Direta (DRI)" },
-  };
   // Laminados/tubos/estruturas are genuinely domestically rolled/fabricated
   // from Brazilian crude steel (unlike silício's polissilício/wafers, which
   // this same generic bypass was originally built for -- those really do
@@ -2453,7 +2459,16 @@ function buildExportsTopology(
     // Polissilício/Wafers export (re-export/trading-company volume, not
     // domestic output) skipping straight to its destination country
     // instead of through a fake "Refino solar" hop.
-    const hasRealDomesticStage = (
+    // Inputs folded into "Outros Insumos" all share ONE input node
+    // (ensureNode("input:outros-insumos", ...) below), so they must also
+    // share one routing depth -- otherwise that single node would emit
+    // links into two different columns at once (some straight to a
+    // destination, others through a stage/route node), which is what
+    // produced the "looping" artifact through Aciaria e Laminação: a
+    // single-source node with mixed-depth fan-out confuses the Sankey
+    // layout's column assignment. Collapsed inputs always skip the stage
+    // hop, regardless of what stage they'd individually route through.
+    const hasRealDomesticStage = !collapsibleExportInputIds.has(input.input_id) && (
       stagePhysicalOrder(`stage:${input.stage}`) <= BASE_MATERIAL_STAGE_ORDER_THRESHOLD
       || EXPORT_FORCE_MISTA_STAGE_INPUT_IDS.has(input.input_id)
     ) && !EXPORT_SKIP_STAGE_INPUT_IDS.has(input.input_id);
