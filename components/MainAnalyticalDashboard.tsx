@@ -786,6 +786,7 @@ function aipnetCoverageStage(nodeId: string) {
     fertilizer_blending_br: "Formulação e mistura",
     fertilizer_use_br: "Formulação e mistura",
     steel_inputs_br: "Minério de ferro",
+    steel_coal_br: "Carvão mineral e coque",
     steel_scrap_br: "Sucata ferrosa",
     steel_reduction_br: "Redução",
     steel_alloys_global: "Aciaria e ligas",

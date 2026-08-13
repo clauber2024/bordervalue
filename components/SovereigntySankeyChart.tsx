@@ -894,6 +894,14 @@ function renderNode(
   // a claim backed by Comex/PIA data like the other badges on this node.
   const showCharcoalContext = payload.id === "stage:reducao" && payload.tone === "exports";
   const badgeAboveCharcoal = payload.chokepoint || payload.criticalImport || payload.lowCarbon;
+  // Ferro-gusa is the largest-value item still stuck in the generic
+  // "reducao" stage bucket after the EAF/DRI route split above -- its NCM
+  // basket mixes coque-fired (BF-BOF) and carvão vegetal (biorredução)
+  // pig iron with no tariff-level distinction, so it stays neutral rather
+  // than inheriting either route's color. This badge makes that mixed
+  // origin explicit on the node itself instead of leaving it implicit.
+  const showFerroGusaMixNote = payload.id === "input:ferro_gusa" && payload.tone === "exports";
+  const badgeAboveFerroGusa = payload.chokepoint || payload.criticalImport || payload.lowCarbon;
 
   return (
     <motion.g
@@ -1006,6 +1014,26 @@ function renderNode(
             (Sustainable Production and Consumption, Elsevier, 2023).
           </title>
           🌳 SUBSTITUIÇÃO DOMÉSTICA POR CARVÃO VEGETAL (CONTEXTO)
+        </text>
+      ) : null}
+      {showFerroGusaMixNote ? (
+        <text
+          x={labelX}
+          y={labelY + (badgeAboveFerroGusa ? 37 : 24) + labelShift}
+          fill="#a1a1aa"
+          fontSize={9}
+          fontWeight={700}
+          letterSpacing={0.4}
+        >
+          <title>
+            Ferro-Gusa (Rota Mista): a pauta engloba tanto o gusa de usinas integradas a coque (mix IABr ~84%/16% em
+            2024 entre associados) quanto o gusa verde de produtores independentes a carvão vegetal (polos de MG, PA
+            e MA). Classificação mantida como neutra devido à ausência de distinção tarifária por NCM -- o mix IABr
+            não foi extrapolado para o total exportado no Comex Stat porque cobre só usinas associadas, não o
+            universo de guseiros independentes a carvão vegetal que respondem por parte relevante da produção
+            nacional.
+          </title>
+          ◐ ROTA MISTA (COQUE + CARVÃO VEGETAL)
         </text>
       ) : null}
     </motion.g>
@@ -1655,6 +1683,13 @@ function routeExecutiveSummary(subject: {
 // sectorStageLabel there field-for-field) -- so clicking a Sankey node/link
 // and clicking an AipnetSystemsFlow node land on the same filtered view.
 function resolveFocusStage(rawId: string, solarInputs: SolarInputMetric[]): string {
+  // route:eaf/route:dri are aço-specific export-topology overrides (see
+  // EXPORT_ROUTE_NODE_OVERRIDES) that don't correspond to a real
+  // input.stage value, so they fall outside the generic stage-key
+  // resolution below -- both are part of the reduction/aciaria macro-stage.
+  if (rawId === "route:eaf" || rawId === "route:dri" || rawId.startsWith("export-stage:route:")) {
+    return executiveStageLabel("reducao");
+  }
   const stageKey = rawId.startsWith("stage:")
     ? rawId.slice(6)
     : rawId.startsWith("export-stage:")
@@ -2350,6 +2385,22 @@ function buildExportsTopology(
   const stageTotals = new Map<string, { index: number; value: number; raw: number; lowCarbon: boolean }>();
   let lowCarbonCount = 0;
 
+  // Aço-specific: sucata_ferrosa and ferro_esponja have an unambiguous
+  // process route just from what the product physically IS -- scrap can
+  // only feed an electric arc furnace, and DRI (redução direta) is a
+  // distinct process by definition -- unlike ferro_gusa/minerio_ferro,
+  // whose shared NCM basket can't distinguish BF-BOF (coque) from
+  // biorredução (carvão vegetal) output (see carvao_mineral_coque's
+  // rationale). These input_ids only exist in the aço catalog, so no
+  // chainName check is needed to scope this safely to that chain alone.
+  const EXPORT_ROUTE_NODE_OVERRIDES: Record<string, { id: string; label: string }> = {
+    sucata_ferrosa: { id: "route:eaf", label: "Aciaria Elétrica (EAF)" },
+    ferro_esponja: { id: "route:dri", label: "Redução Direta (DRI)" },
+  };
+  const exportStageGroupKey = (input: SolarInputMetric) => EXPORT_ROUTE_NODE_OVERRIDES[input.input_id]?.id ?? input.stage;
+  const exportStageGroupLabel = (key: string) =>
+    key === "route:eaf" ? "Aciaria Elétrica (EAF)" : key === "route:dri" ? "Redução Direta (DRI)" : executiveStageLabel(key);
+
   orderedInputs.forEach((input) => {
     const domesticUse = domesticUseByInput.get(input.input_id) ?? 0;
     const exportsRaw = Math.max(input.exports_value_usd, 0);
@@ -2418,8 +2469,13 @@ function buildExportsTopology(
     }
 
     const value = visualFlowValue(rawValue);
-    const stageName = executiveStageLabel(input.stage);
-    const stageNode = ensureNode(`stage:${input.stage}`, stageName, "stage");
+    const stageGroupKey = exportStageGroupKey(input);
+    const stageName = exportStageGroupLabel(stageGroupKey);
+    const stageNode = ensureNode(
+      EXPORT_ROUTE_NODE_OVERRIDES[input.input_id]?.id ?? `stage:${input.stage}`,
+      stageName,
+      "stage",
+    );
     nodes[stageNode].rawValue = (nodes[stageNode].rawValue ?? 0) + rawValue;
     nodes[stageNode].share = (nodes[stageNode].rawValue ?? 0) / Math.max(totalProductionBasis, 1);
     if (isLowCarbon) nodes[stageNode].lowCarbon = true;
@@ -2434,11 +2490,11 @@ function buildExportsTopology(
       dataGapReason: input.data_gap_reason ?? undefined,
     });
 
-    const total = stageTotals.get(input.stage) ?? { index: stageNode, value: 0, raw: 0, lowCarbon: false };
+    const total = stageTotals.get(stageGroupKey) ?? { index: stageNode, value: 0, raw: 0, lowCarbon: false };
     total.value += value;
     total.raw += rawValue;
     total.lowCarbon = total.lowCarbon || isLowCarbon;
-    stageTotals.set(input.stage, total);
+    stageTotals.set(stageGroupKey, total);
   });
 
   // Terminal layer: real per-destination-country nodes, mirroring the
@@ -2452,12 +2508,12 @@ function buildExportsTopology(
   // not a separate branch before the stage -- beneficiation happens
   // domestically either way, the split only matters at the very end.
   stageTotals.forEach((total, stage) => {
+    const stageGroupInputs = exportableInputs.filter((input) => exportStageGroupKey(input) === stage);
     const stageColor = routeColoring
-      ? routeClassColor(dominantRouteFromInputs(exportableInputs, stage))
+      ? routeClassColor(dominantRouteFromInputs(stageGroupInputs))
       : exportAccentColor(total.lowCarbon);
     const stageDestinationTotals = new Map<string, number>();
-    exportableInputs
-      .filter((input) => input.stage === stage)
+    stageGroupInputs
       .forEach((input) => {
         const destName = resolveDestinationName(input.top_destination?.country_name ?? "Destino não informado");
         stageDestinationTotals.set(destName, (stageDestinationTotals.get(destName) ?? 0) + Math.max(input.exports_value_usd, 0));
@@ -2488,7 +2544,7 @@ function buildExportsTopology(
         tone: "exports", color: isDomesticUse ? DOMESTIC_USE_COLOR : stageColor,
         alpha: 1, alphaApplied: false, supplierName: "Produção nacional (Brasil)",
         productName: destName,
-        flowLabel: `${executiveStageLabel(stage)} → ${destName}`,
+        flowLabel: `${exportStageGroupLabel(stage)} → ${destName}`,
         share: destRaw / Math.max(totalProductionBasis, 1),
         domesticUse: isDomesticUse,
       });

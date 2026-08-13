@@ -9,6 +9,7 @@ import {
   Component,
   Cpu,
   Factory,
+  Flame,
   Layers,
   Lock,
   Plug,
@@ -363,8 +364,9 @@ const valueChains: ValueChain[] = [
     primaryVulnerability: "ligas, insumos e equipamentos críticos indicados pelo diagnóstico comercial",
     nodes: [
       { id: "steel_inputs_br", name: "Minério de Ferro", country: "Brasil", flag: "🇧🇷", stage: "Insumo", description: "Minério de ferro extraído e beneficiado no Brasil -- mineração e beneficiamento físico, sem feedstock fóssil no minério em si.", relatedInputs: ["Minério de ferro"], isCritical: false, isVulnerable: false, icon: Factory },
+      { id: "steel_coal_br", name: "Carvão Mineral e Coque", country: "Múltiplas origens", flag: "🌐", stage: "Insumo importado", description: "Redutor fóssil importado (EUA, Austrália e Colômbia respondem por ~81%, sem concentração dominante de um único país) para o alto-forno a coque -- maior componente de valor da pauta de importação da cadeia (~US$2 bi), exposto ao CBAM europeu. Contrasta com o carvão vegetal (biorredução), rota de baixo carbono estruturalmente doméstica do Brasil, que não cruza fronteira em volume comparável para virar uma métrica de comércio exterior própria.", relatedInputs: ["Carvão mineral e coque siderúrgico"], isCritical: false, isVulnerable: false, icon: Flame },
       { id: "steel_scrap_br", name: "Sucata Ferrosa", country: "Brasil", flag: "🇧🇷", stage: "Insumo reciclado", description: "Sucata ferrosa reciclada, insumo da rota elétrica (EAF) -- pegada de carbono muito menor que a rota primária a carvão. O Brasil exportou cerca de 32x mais sucata do que importou no período mapeado, sinalizando potencial de reciclagem doméstica ainda não totalmente aproveitado.", relatedInputs: ["Sucata ferrosa"], isCritical: false, isVulnerable: false, icon: Recycle },
-      { id: "steel_reduction_br", name: "Redução e Aciaria", country: "Brasil", flag: "🇧🇷", stage: "Transformação", description: "Altos-fornos a coque/carvão mineral importado, redução direta e fornos elétricos convertem a carga em aço bruto. O carvão vegetal (biorredução), rota de baixo carbono estruturalmente doméstica do Brasil, não aparece como insumo comercial rastreável nesta base -- não cruza fronteira em volume comparável ao redutor fóssil importado, então é um dado de contexto/produção, não uma métrica AIPNET de comércio exterior.", relatedInputs: ["Ferro-gusa", "Ferro-esponja e redução direta", "Carvão mineral e coque siderúrgico"], isCritical: false, isVulnerable: false, icon: Layers },
+      { id: "steel_reduction_br", name: "Redução e Aciaria", country: "Brasil", flag: "🇧🇷", stage: "Transformação", description: "Altos-fornos a coque/carvão mineral importado, redução direta e fornos elétricos convertem a carga em aço bruto. O carvão vegetal (biorredução), rota de baixo carbono estruturalmente doméstica do Brasil, não aparece como insumo comercial rastreável nesta base -- não cruza fronteira em volume comparável ao redutor fóssil importado, então é um dado de contexto/produção, não uma métrica AIPNET de comércio exterior. Fundentes (calcário/dolomita) e gás natural (redutor da rota DRI) também compõem o processo, mas com comércio exterior real e marginal demais (calcário) ou impossível de atribuir por NCM (gás natural, cesta multiuso) para virar insumo AIPNET próprio.", relatedInputs: ["Ferro-gusa", "Ferro-esponja e redução direta"], isCritical: false, isVulnerable: false, icon: Layers },
       { id: "steel_alloys_global", name: "Ligas e Tecnologia de Processo", country: "Múltiplas origens", flag: "🌐", stage: "Transformação", description: "Ferroligas, refratários e equipamentos condicionam qualidade e descarbonização.", relatedInputs: ["Ferroligas", "Eletrodos de grafite"], isCritical: true, isVulnerable: true, alertMessage: "Itens críticos são identificados pelo risco comercial observado; a topologia não atribui concentração sem homologação.", icon: ShieldAlert },
       { id: "steel_products_br", name: "Aços e Bens da Transição", country: "Brasil", flag: "🇧🇷", stage: "Equipamento e uso final", description: "Chapas, tubos, cabos e estruturas abastecem energia, mobilidade e infraestrutura verde.", relatedInputs: ["Laminados planos a quente", "Laminados planos a frio", "Tubos de aço", "Estruturas de aço"], isCritical: false, isVulnerable: false, icon: Zap },
     ],
@@ -388,6 +390,7 @@ const nodeInputStages: Record<string, string[]> = {
   fertilizer_intermediates: ["intermediarios", "nitrogenados", "fosfatados", "potassicos"],
   fertilizer_blending_br: ["formulacao"],
   steel_inputs_br: ["base_mineral"],
+  steel_coal_br: ["reducao"],
   steel_scrap_br: ["base_mineral"],
   steel_reduction_br: ["reducao"],
   steel_alloys_global: ["aciaria"],
@@ -402,7 +405,9 @@ const nodeInputStages: Record<string, string[]> = {
 // shared stage.
 const nodeInputIds: Record<string, string[]> = {
   steel_inputs_br: ["minerio_ferro"],
+  steel_coal_br: ["carvao_mineral_coque"],
   steel_scrap_br: ["sucata_ferrosa"],
+  steel_reduction_br: ["ferro_gusa", "ferro_esponja"],
 };
 
 const dashboardChainMap: Record<string, string> = {
