@@ -2383,6 +2383,16 @@ function buildExportsTopology(
   const EXPORT_ROUTE_NODE_OVERRIDES: Record<string, { id: string; label: string }> = {
     sucata_ferrosa: { id: "route:eaf", label: "Aciaria Elétrica (EAF)" },
     ferro_esponja: { id: "route:dri", label: "Redução Direta (DRI)" },
+    // minerio_ferro is the one input that genuinely skips Brazilian
+    // industry (in-natura ore export, no domestic reduction/lamination
+    // step) -- but letting it jump straight from column 1 to column 3
+    // made its long link visually cross behind/through the tall
+    // "Aciaria e Laminação" box in the middle column, reading as a phantom
+    // connection to a process it never touches. Anchoring it on its own
+    // clearly-labeled neutral node keeps every link on the same strict
+    // 3-column depth (no skips) without claiming any processing happened --
+    // it's a rendering/legibility fix, not a new production claim.
+    minerio_ferro: { id: "route:in-natura", label: "Exportação In Natura (sem processamento)" },
   };
   const EXPORT_INPUT_LONG_TAIL_SHARE_THRESHOLD = 0.005;
   const OTHER_EXPORT_INPUTS_LABEL = "Outros Insumos";
@@ -2429,9 +2439,9 @@ function buildExportsTopology(
   // eletrodos_grafite/materiais_refratarios are the same story one stage
   // earlier -- inputs consumed AT the aciaria step, not raw commodities
   // that bypass Brazilian industry. Golden rule for this chain's exports
-  // topology: only minério de ferro bruto (EXPORT_SKIP_STAGE_INPUT_IDS
-  // below) is a real in-natura commodity Brazil ships without processing.
-  // Everything else must land on a process node -- but none of these NCM
+  // topology: only minério de ferro bruto (routed to route:in-natura above)
+  // is a real in-natura commodity Brazil ships without processing --
+  // everything else must land on a process node. But none of these NCM
   // baskets, like ferro_gusa's, distinguish EAF-recycled from BF-BOF-coke
   // steel, so there's no tariff-level way to attribute a route split. They
   // all join ferro_gusa in the same neutral "reducao" group/node rather
@@ -2448,17 +2458,9 @@ function buildExportsTopology(
   const exportStageGroupLabel = (key: string) =>
     key === "route:eaf" ? "Aciaria Elétrica (EAF)"
       : key === "route:dri" ? "Redução Direta (DRI)"
-        : key === "reducao" ? "Aciaria e Laminação (Rota Mista)"
-          : executiveStageLabel(key);
-  // minerio_ferro is now the only input left in the aço catalog's
-  // base_mineral stage on the exports side -- sucata_ferrosa (the other
-  // base_mineral input) moved to route:eaf above, so the "Base mineral"
-  // stage node it used to share with minerio_ferro would otherwise become
-  // a single-item pass-through with the exact same share as the input
-  // node feeding it, adding a redundant hop with no aggregation value.
-  // Route it straight to destination like it already did before the EAF/DRI
-  // split (minério itself has no domestic reduction/lamination step to show).
-  const EXPORT_SKIP_STAGE_INPUT_IDS = new Set(["minerio_ferro"]);
+        : key === "route:in-natura" ? "Exportação In Natura (sem processamento)"
+          : key === "reducao" ? "Aciaria e Laminação (Rota Mista)"
+            : executiveStageLabel(key);
 
   orderedInputs.forEach((input) => {
     const domesticUse = domesticUseByInput.get(input.input_id) ?? 0;
@@ -2499,11 +2501,9 @@ function buildExportsTopology(
     // group per EXPORT_FORCE_MISTA_STAGE_INPUT_IDS above, so routing them
     // there uniformly satisfies both constraints at once instead of
     // fighting each other.
-    const hasRealDomesticStage = (
-      stagePhysicalOrder(`stage:${input.stage}`) <= BASE_MATERIAL_STAGE_ORDER_THRESHOLD
+    const hasRealDomesticStage = stagePhysicalOrder(`stage:${input.stage}`) <= BASE_MATERIAL_STAGE_ORDER_THRESHOLD
       || EXPORT_FORCE_MISTA_STAGE_INPUT_IDS.has(input.input_id)
-      || collapsibleExportInputIds.has(input.input_id)
-    ) && !EXPORT_SKIP_STAGE_INPUT_IDS.has(input.input_id);
+      || collapsibleExportInputIds.has(input.input_id);
 
     if (!hasRealDomesticStage) {
       if (exportsRaw > 0) {
