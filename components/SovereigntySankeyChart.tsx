@@ -883,6 +883,17 @@ function renderNode(
       ? "drop-shadow(0 0 12px rgba(16,185,129,0.5))"
       : "drop-shadow(0 8px 18px rgba(0,0,0,0.36))";
   const fillOpacity = payload.kind === "destination" && payload.tone === "exports" ? 0.72 : 0.92;
+  // Aço-specific context note: "reducao" is a stage key unique to the aço
+  // catalog (ferro_gusa/ferro_esponja/carvao_mineral_coque), so this id
+  // check alone safely scopes the badge to that chain's Redução stage node
+  // without threading chainName through the generic renderNode signature.
+  // Carvão vegetal itself was deliberately kept OUT of the AIPNET input
+  // catalog (its NCM 4402 trade is real but ~200x smaller than the fossil
+  // reductant and mixes non-siderurgical uses -- see carvao_mineral_coque's
+  // rationale), so this is a literature-sourced contextual annotation, not
+  // a claim backed by Comex/PIA data like the other badges on this node.
+  const showCharcoalContext = payload.id === "stage:reducao" && payload.tone === "exports";
+  const badgeAboveCharcoal = payload.chokepoint || payload.criticalImport || payload.lowCarbon;
 
   return (
     <motion.g
@@ -972,6 +983,29 @@ function renderNode(
       ) : payload.lowCarbon ? (
         <text x={labelX} y={labelY + 24 + labelShift} fill="#6ee7b7" fontSize={9} fontWeight={700} letterSpacing={0.4}>
           ROTA DE BAIXO CARBONO
+        </text>
+      ) : null}
+      {showCharcoalContext ? (
+        <text
+          x={labelX}
+          y={labelY + (badgeAboveCharcoal ? 37 : 24) + labelShift}
+          fill="#86efac"
+          fontSize={9}
+          fontWeight={700}
+          letterSpacing={0.4}
+        >
+          <title>
+            O carvão vegetal de florestas plantadas (biorredução), somado à eletricidade renovável do forno elétrico
+            a arco (EAF), substitui o coque mineral importado na etapa de redução -- é essa substituição, não o
+            minério bruto em si, que sustenta a leitura de baixo carbono do aço/ferro-gusa brasileiro para o mercado
+            europeu (CBAM) e internacional. É produção e consumo domésticos: o comércio exterior de carvão vegetal
+            (NCM 4402) é real mas marginal frente ao redutor fóssil importado, então não vira uma métrica AIPNET de
+            comércio exterior nesta cesta. Referência de literatura (não medição AIPNET): o mix atual da indústria
+            brasileira (carvão vegetal + coque) reduz cerca de 22% do potencial de aquecimento global (GWP) por
+            tonelada de ferro-gusa frente ao baseline 100% coque, podendo chegar a ~47% em cenários otimizados
+            (Sustainable Production and Consumption, Elsevier, 2023).
+          </title>
+          🌳 SUBSTITUIÇÃO DOMÉSTICA POR CARVÃO VEGETAL (CONTEXTO)
         </text>
       ) : null}
     </motion.g>

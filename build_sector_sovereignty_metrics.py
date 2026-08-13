@@ -118,8 +118,8 @@ CHAINS: dict[str, dict[str, object]] = {
         "version": "1.0.0-aipnet-steel",
         "definitions": (
             Definition("minerio_ferro", "Minério de ferro", "base_mineral", ("26011100", "26011210", "26011220", "26011290"), "validated", "alta",
-                       production_route_class="low_carbon_dominant",
-                       production_route_rationale="Mineração, extração física, sem feedstock fóssil no minério em si."),
+                       production_route_class="undetermined",
+                       production_route_rationale="A extração em si (mineração, beneficiamento físico) não depende de feedstock fóssil, mas a NCM não distingue minério destinado a redução direta/EAF (rota de baixo carbono) do minério granulado/sinter feed genérico que abastece majoritariamente altos-fornos a coque no exterior -- 68% das exportações vão para a China, onde a rota dominante é BF-BOF fóssil. Sem essa distinção por produto, rotular o fluxo de exportação como baixo carbono superestimaria a vantagem ambiental do minério bruto."),
             Definition("sucata_ferrosa", "Sucata ferrosa", "base_mineral", ("72041000", "72042100", "72042900", "72043000", "72044100", "72044900"), "validated", "alta",
                        production_route_class="transition_underway",
                        production_route_rationale="Reciclagem via forno elétrico a arco tem pegada muito menor que a rota primária a carvão -- principal alavanca de descarbonização do aço -- mas a eletricidade usada ainda varia por país."),
