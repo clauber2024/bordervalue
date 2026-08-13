@@ -2400,6 +2400,15 @@ function buildExportsTopology(
   const exportStageGroupKey = (input: SolarInputMetric) => EXPORT_ROUTE_NODE_OVERRIDES[input.input_id]?.id ?? input.stage;
   const exportStageGroupLabel = (key: string) =>
     key === "route:eaf" ? "Aciaria Elétrica (EAF)" : key === "route:dri" ? "Redução Direta (DRI)" : executiveStageLabel(key);
+  // minerio_ferro is now the only input left in the aço catalog's
+  // base_mineral stage on the exports side -- sucata_ferrosa (the other
+  // base_mineral input) moved to route:eaf above, so the "Base mineral"
+  // stage node it used to share with minerio_ferro would otherwise become
+  // a single-item pass-through with the exact same share as the input
+  // node feeding it, adding a redundant hop with no aggregation value.
+  // Route it straight to destination like the transformacao/bens_transicao
+  // items already do below.
+  const EXPORT_SKIP_STAGE_INPUT_IDS = new Set(["minerio_ferro"]);
 
   orderedInputs.forEach((input) => {
     const domesticUse = domesticUseByInput.get(input.input_id) ?? 0;
@@ -2429,7 +2438,8 @@ function buildExportsTopology(
     // Polissilício/Wafers export (re-export/trading-company volume, not
     // domestic output) skipping straight to its destination country
     // instead of through a fake "Refino solar" hop.
-    const hasRealDomesticStage = stagePhysicalOrder(`stage:${input.stage}`) <= BASE_MATERIAL_STAGE_ORDER_THRESHOLD;
+    const hasRealDomesticStage = stagePhysicalOrder(`stage:${input.stage}`) <= BASE_MATERIAL_STAGE_ORDER_THRESHOLD
+      && !EXPORT_SKIP_STAGE_INPUT_IDS.has(input.input_id);
 
     if (!hasRealDomesticStage) {
       if (exportsRaw > 0) {
