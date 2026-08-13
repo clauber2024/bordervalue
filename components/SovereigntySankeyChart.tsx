@@ -2089,7 +2089,24 @@ function buildImportsTopology(
     const supplierName = resolveSupplierName(input.top_supplier?.country_name ?? "Origem não informada");
     const rawValue = Math.max(input.imports_value_usd, 0);
     const chinaShare = input.global_china_share ?? input.china_share_brazilian_imports ?? 0;
-    const isChokepoint = chinaShare >= CHOKEPOINT_THRESHOLD;
+    // global_china_share is a real structural figure (e.g. "China holds 97%
+    // of world wafer capacity") that legitimately overrides materiality --
+    // that risk is real even if Brazil's own purchases are tiny or zero
+    // right now. But when it's null, chinaShare above has fallen back to
+    // china_share_brazilian_imports, which is just Brazil's own measured
+    // sample -- and an unqualified sample can be a single one-off shipment
+    // (e.g. ferro_gusa's 96.9% China share here comes from a $42,318 total
+    // import base, a rounding error next to the chain's ~US$2bi in
+    // carvão mineral e coque). Without the materiality floor in that
+    // fallback case, a stage node overwhelmingly fed by one country (here,
+    // ~70% of the chain's import value from the US) can still inherit a
+    // "≥90% China" badge from an unrelated, statistically meaningless
+    // shipment buried in the same stage -- exactly the same materiality
+    // problem isSupplierChokepoint below already guards against, just not
+    // yet applied to the input/stage/sink badge.
+    const isChokepoint = input.global_china_share !== null && input.global_china_share !== undefined
+      ? chinaShare >= CHOKEPOINT_THRESHOLD
+      : chinaShare >= CHOKEPOINT_THRESHOLD && rawValue >= SAMPLE_SHIPMENT_THRESHOLD_USD;
     // global_china_share is a structural figure independent of who Brazil
     // actually bought from (e.g. Wafers can be ~97% China-concentrated
     // globally while Brazil's own customs record a different top_supplier,
@@ -2102,7 +2119,8 @@ function buildImportsTopology(
     // needed. The input/stage/sink nodes still use the broader
     // (global-preferring) isChokepoint, since the input itself can be a
     // genuine monopoly risk even when Brazil's tiny import sample doesn't
-    // show it.
+    // show it -- now gated by the same materiality floor whenever that
+    // broader reading is itself just Brazil's own small sample.
     // Unlike isChokepoint above, this has no global_china_share fallback --
     // it's entirely Brazil's own import sample, so it needs the materiality
     // floor directly (e.g. ferro-esponja's 83.5% China share comes from a
