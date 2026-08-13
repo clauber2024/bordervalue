@@ -2425,15 +2425,26 @@ function buildExportsTopology(
   // from Brazilian crude steel (unlike silício's polissilício/wafers, which
   // this same generic bypass was originally built for -- those really do
   // skip Brazil entirely). Letting them jump straight to destination hid
-  // the one real domestic processing step they DO pass through. But their
-  // NCM baskets, like ferro_gusa's, don't distinguish EAF-recycled from
-  // BF-BOF-coke steel either -- there's no tariff-level way to attribute a
-  // route split. So they join ferro_gusa in the same neutral "reducao"
-  // group/node rather than getting a fabricated EAF/BF-BOF fraction.
-  const EXPORT_FORCE_MISTA_STAGE_INPUT_IDS = new Set(["planos_quente", "planos_frios", "tubos_aco", "estruturas_aco"]);
+  // the one real domestic processing step they DO pass through. Ferroligas/
+  // eletrodos_grafite/materiais_refratarios are the same story one stage
+  // earlier -- inputs consumed AT the aciaria step, not raw commodities
+  // that bypass Brazilian industry. Golden rule for this chain's exports
+  // topology: only minério de ferro bruto (EXPORT_SKIP_STAGE_INPUT_IDS
+  // below) is a real in-natura commodity Brazil ships without processing.
+  // Everything else must land on a process node -- but none of these NCM
+  // baskets, like ferro_gusa's, distinguish EAF-recycled from BF-BOF-coke
+  // steel, so there's no tariff-level way to attribute a route split. They
+  // all join ferro_gusa in the same neutral "reducao" group/node rather
+  // than getting a fabricated EAF/BF-BOF fraction.
+  const EXPORT_FORCE_MISTA_STAGE_INPUT_IDS = new Set([
+    "planos_quente", "planos_frios", "tubos_aco", "estruturas_aco",
+    "ferroligas", "eletrodos_grafite", "materiais_refratarios",
+  ]);
   const exportStageGroupKey = (input: SolarInputMetric) =>
     EXPORT_ROUTE_NODE_OVERRIDES[input.input_id]?.id
-    ?? (EXPORT_FORCE_MISTA_STAGE_INPUT_IDS.has(input.input_id) ? "reducao" : input.stage);
+    ?? (EXPORT_FORCE_MISTA_STAGE_INPUT_IDS.has(input.input_id) || collapsibleExportInputIds.has(input.input_id)
+      ? "reducao"
+      : input.stage);
   const exportStageGroupLabel = (key: string) =>
     key === "route:eaf" ? "Aciaria Elétrica (EAF)"
       : key === "route:dri" ? "Redução Direta (DRI)"
@@ -2481,14 +2492,17 @@ function buildExportsTopology(
     // (ensureNode("input:outros-insumos", ...) below), so they must also
     // share one routing depth -- otherwise that single node would emit
     // links into two different columns at once (some straight to a
-    // destination, others through a stage/route node), which is what
-    // produced the "looping" artifact through Aciaria e Laminação: a
-    // single-source node with mixed-depth fan-out confuses the Sankey
-    // layout's column assignment. Collapsed inputs always skip the stage
-    // hop, regardless of what stage they'd individually route through.
-    const hasRealDomesticStage = !collapsibleExportInputIds.has(input.input_id) && (
+    // destination, others through a stage/route node), which produced the
+    // "looping" artifact through Aciaria e Laminação. Everything currently
+    // collapsed here (carvão mineral e coque, eletrodos_grafite,
+    // materiais_refratarios) already belongs in the "reducao"/Rota Mista
+    // group per EXPORT_FORCE_MISTA_STAGE_INPUT_IDS above, so routing them
+    // there uniformly satisfies both constraints at once instead of
+    // fighting each other.
+    const hasRealDomesticStage = (
       stagePhysicalOrder(`stage:${input.stage}`) <= BASE_MATERIAL_STAGE_ORDER_THRESHOLD
       || EXPORT_FORCE_MISTA_STAGE_INPUT_IDS.has(input.input_id)
+      || collapsibleExportInputIds.has(input.input_id)
     ) && !EXPORT_SKIP_STAGE_INPUT_IDS.has(input.input_id);
 
     if (!hasRealDomesticStage) {
