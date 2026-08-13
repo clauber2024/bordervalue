@@ -25,6 +25,8 @@ import type { SolarInputMetric } from "../types/solar-sovereignty";
 import { transitionFuelDestinations } from "../lib/transitionFuelTopology";
 import { SAMPLE_SHIPMENT_THRESHOLD_USD } from "./SovereigntySankeyChart";
 
+type DescriptionBullet = { label: string; text: string };
+
 type SupplyNode = {
   id: string;
   name: string;
@@ -32,6 +34,12 @@ type SupplyNode = {
   flag: string;
   stage: string;
   description: string;
+  // Optional scannable variants of `description` -- when present, the card
+  // (cardBullets) and/or the detail drawer (detailBullets) render these as
+  // a labeled list instead of the plain-paragraph `description`, which
+  // still stays as the fallback for any node that doesn't set them.
+  cardBullets?: DescriptionBullet[];
+  detailBullets?: DescriptionBullet[];
   isCritical: boolean;
   isVulnerable: boolean;
   alertMessage?: string;
@@ -362,7 +370,14 @@ const valueChains: ValueChain[] = [
     hhiGlobal: "em homologação",
     primaryVulnerability: "ligas, insumos e equipamentos críticos indicados pelo diagnóstico comercial",
     nodes: [
-      { id: "steel_inputs_br", name: "Insumos Primários e Redutores", country: "Brasil + importado", flag: "🇧🇷🌐", stage: "Carga primária", description: "Minério de ferro extraído e beneficiado no Brasil (mineração física, sem feedstock fóssil no minério em si) e carvão mineral/coque importado (EUA, Austrália e Colômbia respondem por ~81%, sem concentração dominante de um único país) -- maior componente de valor da pauta de importação da cadeia (~US$2 bi), exposto ao CBAM europeu. Contrasta com o carvão vegetal (biorredução), rota de baixo carbono estruturalmente doméstica do Brasil, que não cruza fronteira em volume comparável para virar uma métrica de comércio exterior própria. Minério e carvão são insumos concomitantes (entram juntos na carga), não uma sequência entre si.", relatedInputs: ["Minério de ferro", "Carvão mineral e coque siderúrgico"], isCritical: false, isVulnerable: false, icon: Factory },
+      { id: "steel_inputs_br", name: "Insumos Primários e Redutores", country: "Brasil + importado", flag: "🇧🇷🌐", stage: "Carga primária", description: "Minério de ferro extraído e beneficiado no Brasil e carvão mineral/coque importado (~US$2 bi/ano) entram juntos na carga -- insumos concomitantes, não uma sequência entre si.", cardBullets: [
+        { label: "Carga Metálica", text: "Minério de ferro nacional extraído e beneficiado no Brasil (mineração primária)." },
+        { label: "Vulnerabilidade Fóssil", text: "Dependência de importação de coque/carvão mineral (~US$2 bi/ano -- EUA, Austrália, Colômbia) para a rota primária tradicional." },
+        { label: "Soberania Nacional", text: "Contraste direto com o carvão vegetal doméstico (biorredução), que zera a dependência do redutor fóssil importado na etapa de redução -- mas não é insumo rastreável nesta base (não cruza fronteira em volume comparável)." },
+      ], detailBullets: [
+        { label: "Combinação de Carga", text: "Minério e combustível/redutor entram de forma concomitante no processo termoquímico." },
+        { label: "Exposição ao CBAM", text: "O coque fóssil importado é o maior responsável pela pegada de carbono da siderurgia integrada nacional." },
+      ], relatedInputs: ["Minério de ferro", "Carvão mineral e coque siderúrgico"], isCritical: false, isVulnerable: false, icon: Factory },
       { id: "steel_scrap_br", name: "Sucata Ferrosa", country: "Brasil", flag: "🇧🇷", stage: "Insumo reciclado", description: "Sucata ferrosa reciclada, insumo da rota elétrica (EAF) -- pegada de carbono muito menor que a rota primária a carvão. O Brasil exportou cerca de 32x mais sucata do que importou no período mapeado, sinalizando potencial de reciclagem doméstica ainda não totalmente aproveitado.", relatedInputs: ["Sucata ferrosa"], isCritical: false, isVulnerable: false, icon: Recycle },
       { id: "steel_reduction_br", name: "Redução e Aciaria", country: "Brasil", flag: "🇧🇷", stage: "Transformação", description: "Altos-fornos a coque/carvão mineral importado, redução direta e fornos elétricos convertem a carga em aço bruto. O carvão vegetal (biorredução), rota de baixo carbono estruturalmente doméstica do Brasil, não aparece como insumo comercial rastreável nesta base -- não cruza fronteira em volume comparável ao redutor fóssil importado, então é um dado de contexto/produção, não uma métrica AIPNET de comércio exterior. Fundentes (calcário/dolomita) e gás natural (redutor da rota DRI) também compõem o processo, mas com comércio exterior real e marginal demais (calcário) ou impossível de atribuir por NCM (gás natural, cesta multiuso) para virar insumo AIPNET próprio.", relatedInputs: ["Ferro-gusa", "Ferro-esponja e redução direta"], isCritical: false, isVulnerable: false, icon: Layers },
       { id: "steel_alloys_global", name: "Ligas e Tecnologia de Processo", country: "Múltiplas origens", flag: "🌐", stage: "Transformação", description: "Ferroligas, refratários e equipamentos condicionam qualidade e descarbonização.", relatedInputs: ["Ferroligas", "Eletrodos de grafite", "Materiais refratários"], isCritical: true, isVulnerable: true, alertMessage: "Itens críticos são identificados pelo risco comercial observado; a topologia não atribui concentração sem homologação.", icon: ShieldAlert },
@@ -665,7 +680,18 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
                     <h3 className="mt-1 text-sm font-bold leading-snug text-white">{node.name}</h3>
                   </div>
                 </div>
-                <p className="mt-4 flex-1 text-xs leading-5 text-zinc-400">{node.description}</p>
+                {node.cardBullets?.length ? (
+                  <ul className="mt-4 flex-1 space-y-2">
+                    {node.cardBullets.map((bullet) => (
+                      <li key={bullet.label} className="text-xs leading-5 text-zinc-400">
+                        <span className="font-semibold text-zinc-200">{bullet.label}: </span>
+                        {bullet.text}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-4 flex-1 text-xs leading-5 text-zinc-400">{node.description}</p>
+                )}
                 <div className="mt-4 border-t border-zinc-800/70 pt-3">
                   {isChokepoint ? (
                     <Status icon={ShieldAlert} label={node.isVulnerable ? "Gargalo de Soberania" : "Concentração Crítica"} className="text-red-300" />
@@ -704,6 +730,19 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
                 <h3 className="mt-2 text-xl font-bold text-white">{selectedNode.name}</h3>
                 <p className="mt-1 text-xs text-zinc-500">{selectedNode.stage} · {selectedNode.country}</p>
                 <p className="mt-4 text-sm leading-6 text-zinc-300">{selectedNode.description}</p>
+                {selectedNode.detailBullets?.length ? (
+                  <ol className="mt-3 space-y-2">
+                    {selectedNode.detailBullets.map((bullet, index) => (
+                      <li key={bullet.label} className="flex gap-2 text-sm leading-6 text-zinc-300">
+                        <span className="font-mono text-xs text-cyan-300">{index + 1}.</span>
+                        <span>
+                          <span className="font-semibold text-zinc-100">{bullet.label}: </span>
+                          {bullet.text}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                ) : null}
                 {selectedNode.alertMessage ? (
                   <div className="mt-4 flex items-start gap-3 rounded-xl border border-red-500/25 bg-red-500/10 p-4 text-sm leading-6 text-red-100">
                     <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-red-300" />
