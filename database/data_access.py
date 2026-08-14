@@ -119,6 +119,19 @@ def get_sovereignty_graph(chain: str, filters: PublishedFilters | None = None) -
 
 _AIPNET_CHAINS = {"silicio", "fertilizantes", "combustiveis_transicao", "aco"}
 
+# Was hardcoded to "1.1.0-aipnet-solar" for every chain (a leftover default
+# from when this endpoint only served silício), so the "Método e escopo"
+# panel showed "-aipnet-solar" even for aço/fertilizantes/combustíveis.
+# These strings must match each chain's "version" in the CHAINS config of
+# build_sector_sovereignty_metrics.py, and silício's own hardcoded default
+# in build_solar_sovereignty_metrics.py (line ~586).
+_AIPNET_METHODOLOGY_VERSION_BY_CHAIN = {
+    "silicio": "1.1.0-aipnet-solar",
+    "combustiveis_transicao": "1.0.0-aipnet-transition-fuels",
+    "fertilizantes": "1.0.0-aipnet-fertilizers",
+    "aco": "1.0.0-aipnet-steel",
+}
+
 
 def get_aipnet_metrics(chain: str) -> dict:
     """Read the published AIPNET per-chain input metrics from PostgreSQL."""
@@ -157,7 +170,7 @@ def get_aipnet_metrics(chain: str) -> dict:
         result = {
             "chain_name": normalized_chain,
             "reference_period": inputs[0]["reference_period"] if inputs else "2026-H1",
-            "methodology_version": "1.1.0-aipnet-solar",
+            "methodology_version": _AIPNET_METHODOLOGY_VERSION_BY_CHAIN.get(normalized_chain, "1.1.0-aipnet-solar"),
             "inputs": inputs,
         }
         if green_jobs is not None:

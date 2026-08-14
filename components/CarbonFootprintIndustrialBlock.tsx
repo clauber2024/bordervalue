@@ -107,11 +107,21 @@ export function CarbonFootprintIndustrialBlock({
     .filter((input) => input.production_route_class === "transition_underway")
     .sort((left, right) => right.imports_value_usd - left.imports_value_usd)[0];
 
-  // silicio is the only chain currently mapped to a BEN block in
-  // build_energy_context_ben.py (ENERGIA SOLAR FOTOVOLTAICA / GWh); other
-  // chains may return no blocos at all, so this whole section is optional.
+  // Not every chain returns a BEN block (build_energy_context_ben.py only
+  // maps aço/fertilizantes/silicio/combustiveis_transicao), so this whole
+  // section is optional.
   const benBlock = energyContext?.blocos[0];
-  const benItem = benBlock?.itens[0];
+  // itens[0] used to be the pick here, but that's just whatever row the
+  // BEN workbook happens to list first for this sector -- for aço's Setor
+  // Industrial - Ferro-Gusa e Aço table that's "Alcatrão / Outras Sec.
+  // Petróleo", a real fuel line but a nonsensical highlight for a card
+  // about low-carbon exposure. Prefer the sector's own TOTAL/CONSUMO
+  // aggregate row (same pattern SiliconMassEnergyBalancePanel.tsx already
+  // uses), falling back to the first item only if no aggregate row exists.
+  const benItem = benBlock?.itens.find((item) => {
+    const label = item.fonte_energetica.trim().toUpperCase();
+    return label === "TOTAL" || label.startsWith("CONSUMO");
+  }) ?? benBlock?.itens[0];
 
   return (
     <section className="w-full space-y-6 rounded-2xl border border-white/[0.08] bg-zinc-900/40 p-6 text-zinc-100 backdrop-blur-xl md:p-8">

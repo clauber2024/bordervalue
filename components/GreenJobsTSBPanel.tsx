@@ -33,10 +33,19 @@ export function GreenJobsTSBPanel({ data, chainName = "cadeia analisada", solarI
   // covers several distinct classes at once), so multiple activities in the
   // same broad chemistry family render identical labels unless the specific
   // input(s) tied to that CNAE row are appended.
+  // Several CNAE classes in the same TSB SCN67 sector bucket share the exact
+  // same sector_names text (e.g. CNAE 2411/2421/2422/2423 all read "Produção
+  // de ferro-gusa/ferroligas, siderurgia e tubos de aço sem costura") --
+  // leading with that shared ~70-char boilerplate made every row in a list
+  // read as a duplicate at a glance, even though the input_ids differ. And
+  // input names alone aren't reliably unique either (CNAE 2599 and 2421
+  // both resolve to just "Sucata ferrosa"). The cnae_class code is the one
+  // thing guaranteed distinct per row, so it leads; the shared sector
+  // description moves to a smaller secondary line instead of the headline.
   const activityLabel = (activity: SolarGreenJobs["activities"][number]) => {
-    const base = activity.sector_names[0] ?? "Atividade produtiva associada à TSB";
     const inputNames = activity.input_ids.map((id) => inputLabelById.get(id)).filter((v): v is string => Boolean(v));
-    return inputNames.length ? `${base} — ${inputNames.join(", ")}` : base;
+    const base = inputNames.length ? inputNames.join(", ") : (activity.sector_names[0] ?? "Atividade produtiva associada à TSB");
+    return `CNAE ${activity.cnae_class} · ${base}`;
   };
 
   const maxActivityJobs = Math.max(...data.activities.map((item) => item.formal_jobs), 1);
@@ -165,10 +174,15 @@ export function GreenJobsTSBPanel({ data, chainName = "cadeia analisada", solarI
                   aria-pressed={isSelected}
                   className={`block w-full text-left transition-opacity ${isDimmed ? "opacity-30" : "opacity-100"} ${hasCrossData ? "cursor-pointer" : "cursor-default"}`}
                 >
-                  <div className="mb-1.5 flex items-end justify-between gap-4 text-xs">
+                  <div className="mb-0.5 flex items-end justify-between gap-4 text-xs">
                     <span className={`font-medium ${isSelected ? "text-emerald-200" : "text-zinc-300"}`}>{label}</span>
                     <span className="shrink-0 font-semibold text-emerald-300">{integer.format(displayedJobs)}</span>
                   </div>
+                  {activity.sector_names[0] ? (
+                    <p className="mb-1.5 truncate text-[10px] text-zinc-600" title={activity.sector_names[0]}>
+                      Setor TSB: {activity.sector_names[0]}
+                    </p>
+                  ) : null}
                   <div className={`h-2 overflow-hidden rounded-full bg-zinc-900 ${isSelected ? "ring-1 ring-emerald-300/60" : ""}`}>
                     <div
                       className="h-full rounded-full bg-emerald-400"

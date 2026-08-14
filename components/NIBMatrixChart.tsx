@@ -505,7 +505,7 @@ function MatrixLegend({
       type="button"
       onClick={onClick}
       aria-pressed={isSelected}
-      title={`Isolar quadrante "${meta.label}"`}
+      title={`${meta.label}: ${meta.body} (clique para isolar este quadrante)`}
       className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 transition ${
         isSelected
           ? "border-white/30 bg-white/[0.08] text-white"

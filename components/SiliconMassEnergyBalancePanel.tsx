@@ -106,7 +106,7 @@ const ACO_STAGES: Stage[] = [
     energyIntensity: "16–18 GJ/t aço bruto",
     brazilCapacity: "Rota dominante no parque siderúrgico nacional, com minério de ferro majoritariamente doméstico.",
     chinaConcentration: "Rota também dominante mundialmente; a China responde por cerca de 53,8% do aço bruto mundial.",
-    concentrationBadge: "~54% do aço bruto mundial produzido na China",
+    concentrationBadge: "~53,8% do aço bruto mundial produzido na China",
     concentrationBadgeTone: "risk",
     note: "Rota mais intensiva em carbono da cadeia -- o coque metalúrgico como redutor é a origem fóssil dominante do aço primário.",
   },
@@ -116,8 +116,8 @@ const ACO_STAGES: Stage[] = [
     process: "Refusão elétrica de sucata ferrosa em forno a arco",
     energyIntensity: "2,1–2,4 GJ/t aço bruto",
     brazilCapacity: "Rota em expansão, aproveitando sucata ferrosa doméstica e a matriz elétrica nacional majoritariamente renovável.",
-    chinaConcentration: "Rota historicamente minoritária na matriz mundial, dominada pela rota integrada a carvão.",
-    concentrationBadge: "≈1/8 da intensidade energética da rota integrada",
+    chinaConcentration: "Rota minoritária mas em ascensão na matriz mundial (~29,1% do aço bruto global em 2024, ante ~28,6% em 2023) -- ainda dominada pela rota integrada a carvão.",
+    concentrationBadge: "~29% do aço mundial via rota EAF",
     concentrationBadgeTone: "neutral",
     note: "A alavanca de descarbonização mais direta hoje disponível para a siderurgia -- cerca de 1/8 da energia da rota a coque.",
   },
@@ -162,7 +162,7 @@ const SOURCE_NOTE_BY_CHAIN: Record<string, string> = {
   silicio:
     "as faixas de intensidade energética e o balanço de massa acima são parâmetros típicos da manufatura solar internacional (Siemens/FBR, Czochralski)",
   aco:
-    "as faixas de intensidade energética das rotas BF-BOF e EAF acima seguem o IEA Iron and Steel Technology Roadmap (2020) e o World Steel Association (2020); a concentração da China é do World Steel in Figures 2025",
+    "as faixas de intensidade energética das rotas BF-BOF e EAF acima seguem o IEA Iron and Steel Technology Roadmap (2020) e o World Steel Association (2020); a concentração da China e a participação global da rota EAF (~29,1% em 2024) são do World Steel in Figures 2025",
   fertilizantes:
     "as faixas de intensidade energética de amônia e ureia acima seguem o IEA Ammonia Technology Roadmap (2021) e literatura de engenharia de processo para a síntese integrada de ureia",
 };
