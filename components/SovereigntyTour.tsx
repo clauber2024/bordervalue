@@ -69,10 +69,11 @@ const steps: TourStep[] = [
     targetId: "tour-vulnerability",
     title: "4. Diagnóstico de soberania industrial",
     bullets: [
+      { label: "Ferro-esponja e redução direta", text: "topo do gráfico com 74,4% — mas esse número é a participação da China nas importações, não dependência externa real: não há dado de produção doméstica para calcular o indicador completo. O fluxo em si é irrisório (US$ 3.993 no semestre); o insumo importa mais como porta de entrada da rota DRI-hidrogênio verde, ainda emergente no Brasil." },
       { label: "Eletrodos de grafite", text: "HHI de 7.636 (alta concentração) e 87,2% das importações vindas de um único país, a China — mas 'só' 26,9% de dependência externa, porque o consumo aparente nacional é robusto." },
       { label: "Minério de ferro", text: "o oposto — HHI de quase 10.000 nas importações é irrelevante (o Brasil importa quase nada, US$ 7,4 mi); a concentração real está do lado das exportações, 68% das quais vão para a China." },
     ],
-    note: "Hoje, 0 dos 12 insumos da cadeia cruzam o limiar de dependência crítica (>75%).",
+    note: "Hoje, 0 dos 12 insumos da cadeia cruzam o limiar de dependência crítica (>75%) — Ferro-esponja, com 74,4%, é o mais próximo.",
   },
   {
     targetId: "tour-mass-energy",
@@ -184,9 +185,14 @@ export function SovereigntyTour({
     if (!isOpen) return;
 
     const target = document.getElementById(activeStep.targetId);
-    const detailsAncestor = target?.closest("details");
-    if (detailsAncestor && !detailsAncestor.open) {
-      detailsAncestor.open = true;
+    // The target can be an ancestor of the collapsible content (e.g. the
+    // NIB matrix chart anchor sits inside a <details> wrapper) or a wrapper
+    // around it (e.g. TechnicalDrawer renders its own <details> as its
+    // root, nested under the tour-technical-drawer anchor div) -- check
+    // both directions instead of assuming one.
+    const detailsTarget = target?.closest("details") ?? target?.querySelector("details");
+    if (detailsTarget && !detailsTarget.open) {
+      detailsTarget.open = true;
     }
     target?.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
 

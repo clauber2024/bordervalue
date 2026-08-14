@@ -605,7 +605,7 @@ export default function MainAnalyticalDashboard() {
             </ExpandableAnalyticsPanel>
           </div>
 
-            <div id="tour-vulnerability" ref={diagnosticRef} className="scroll-mt-6">
+            <div id="tour-vulnerability" ref={diagnosticRef} className="scroll-mt-40 md:scroll-mt-28">
               <ExpandableAnalyticsPanel
                 eyebrow="Balança & dependência"
                 title="Diagnóstico de soberania industrial"
@@ -710,7 +710,7 @@ export default function MainAnalyticalDashboard() {
           ) : null}
 
           {premiumProducts.length ? (
-            <div id="tour-technical-drawer" className="scroll-mt-40 space-y-5 md:scroll-mt-28">
+            <div id="tour-technical-drawer" className="scroll-mt-40 space-y-5 pb-32 md:scroll-mt-28">
               <MacroModuleHeader
                 eyebrow="Macro-módulo 3 · NCM & CNAE"
                 title="Dados primários e governança"
