@@ -538,6 +538,18 @@ def build_payload(
         domestic = production_record["value_usd_comparable"]
         apparent = max(float(domestic or 0) + imports - exports, 0.0) if domestic is not None else None
         dependency = imports / apparent if apparent and apparent > 0 else None
+        if dependency is not None and dependency > 1.0:
+            # Apparent consumption (domestic + imports - exports) collapses
+            # toward zero when a basket aggregates sub-items with very
+            # different trade profiles -- e.g. Brazil is a heavy net
+            # exporter of commodity ferroalloys but a 100%-import taker of
+            # unrelated specialty ferroalloys within the same NCM basket
+            # (ferroligas, 2026-H1: domestic ~US$2.58bi, exports ~US$2.70bi,
+            # so apparent consumption nets to ~US$0.35mi against
+            # US$125.6mi of imports -- a >100% "dependency" that is really
+            # a basket-aggregation artifact, not a supply signal). Treat as
+            # unreliable rather than reporting an impossible >100% share.
+            dependency = None
         china = next((item for item in suppliers if item["country_iso3"] == "CHN"), None)
         hhi = sum(float(item["share"]) ** 2 for item in suppliers) * 10000
         global_hhi_floor = (
