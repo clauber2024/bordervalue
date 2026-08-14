@@ -225,17 +225,25 @@ export default function MainAnalyticalDashboard() {
     }, 80);
   }, []);
 
+  // /tour-soberania pins ?chain=aco via its own EnsureTourChain effect (the
+  // guided tour only covers the aço chain so far -- generalizing it is
+  // future work). Pushing a different chain to that same pathname just gets
+  // immediately reverted by that effect, so "Trocar cadeia" silently no-ops
+  // there. Route those switches to the unlocked general dashboard ("/")
+  // instead; on any other page this is a no-op (target === pathname).
+  const chainSwitchTarget = pathname === "/tour-soberania" ? "/" : pathname;
+
   const handleChainSelect = useCallback((chainId: string) => {
     setChainAnalysisFocus(null);
     const params = new URLSearchParams(searchParams.toString());
     params.set("chain", chainId);
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [pathname, router, searchParams]);
+    router.push(`${chainSwitchTarget}?${params.toString()}`, { scroll: false });
+  }, [chainSwitchTarget, router, searchParams]);
 
   const handleClearChain = useCallback(() => {
     setChainAnalysisFocus(null);
-    router.push(pathname, { scroll: false });
-  }, [pathname, router]);
+    router.push(chainSwitchTarget, { scroll: false });
+  }, [chainSwitchTarget, router]);
 
   const handleQuickChainSwitch = useCallback((chainId: string) => {
     setChainMenuOpen(false);
