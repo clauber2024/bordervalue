@@ -136,7 +136,8 @@ CHAINS: dict[str, dict[str, object]] = {
                        production_route_rationale="Redutor fóssil importado (majoritariamente Austrália, EUA e Canadá) para o alto-forno a coque -- exposto ao CBAM europeu. Contrasta com o carvão vegetal (biorredução), que é a rota de baixo carbono estruturalmente doméstica do Brasil, mas sem comércio exterior comparável em volume para servir de contraparte direta nesta cesta (ver nota de contexto na Espinha Dorsal)."),
             Definition("ferroligas", "Ferroligas", "aciaria", ("72021100", "72021900", "72022100", "72022900", "72023000", "72024100", "72024900", "72026000", "72027000", "72028000", "72029100", "72029200", "72029300", "72029990"), "estimated", "media", "Cesta agrega várias ligas com funções técnicas distintas.", None,
                        production_route_class="undetermined",
-                       production_route_rationale="Cesta agrega ligas com processos distintos (forno elétrico a arco em várias delas); sem rota energética dominante única defensável para a cesta agregada."),
+                       production_route_rationale="Cesta agrega ligas com processos distintos (forno elétrico a arco em várias delas); sem rota energética dominante única defensável para a cesta agregada.",
+                       sub_ncm_masking_level=1),
             Definition("eletrodos_grafite", "Eletrodos de grafite", "aciaria", ("85451100",), "validated", "alta",
                        production_route_class="fossil_dominant",
                        production_route_rationale="Fabricados a partir de coque de petróleo (needle coke) ou piche de alcatrão de hulha -- feedstock fóssil direto."),
@@ -152,7 +153,8 @@ CHAINS: dict[str, dict[str, object]] = {
                        production_route_rationale="Cerâmicas técnicas à base de magnésia/alumina/dolomita para revestimento de altos-fornos, EAF e panelas de aciaria -- Brasil tem capacidade doméstica (ex.: RHI Magnesita) mas importa itens de altíssima especificação; sem rota energética dominante única defensável para a cesta agregada."),
             Definition("planos_quente", "Laminados planos a quente", "transformacao", ("72081000", "72082500", "72082610", "72082690", "72082710", "72082790", "72083610", "72083690", "72083700", "72083810", "72083890", "72083910", "72083990"), "validated", "alta",
                        production_route_class="fossil_dominant",
-                       production_route_rationale="Herda a rota primária (alto-forno a carvão) e usa fornos de reaquecimento tipicamente a gás natural na laminação."),
+                       production_route_rationale="Herda a rota primária (alto-forno a carvão) e usa fornos de reaquecimento tipicamente a gás natural na laminação.",
+                       sub_ncm_masking_level=2),
             Definition("planos_frios", "Laminados planos a frio", "transformacao", ("72091500", "72091600", "72091700", "72091800", "72092500", "72092600", "72092700", "72092800"), "validated", "alta",
                        production_route_class="fossil_dominant",
                        production_route_rationale="Mesma herança do ferro-gusa/planos a quente; a laminação a frio usa mais eletricidade, mas a pegada upstream ainda domina."),
@@ -161,7 +163,8 @@ CHAINS: dict[str, dict[str, object]] = {
                        production_route_rationale="Herda a rota do aço primário usado na fabricação do tubo."),
             Definition("estruturas_aco", "Estruturas de aço", "bens_transicao", ("73081000", "73082000", "73083000", "73084000", "73089010", "73089090"), "estimated", "media", "Estruturas atendem usos energéticos e não energéticos.", None,
                        production_route_class="fossil_dominant",
-                       production_route_rationale="Herda a rota da siderurgia primária usada na fabricação das estruturas."),
+                       production_route_rationale="Herda a rota da siderurgia primária usada na fabricação das estruturas.",
+                       sub_ncm_masking_level=2),
         ),
         "comparable": {"ferro_gusa", "ferro_esponja", "ferroligas", "eletrodos_grafite", "materiais_refratarios", "planos_quente", "planos_frios", "tubos_aco", "estruturas_aco"},
         "global_source": {
@@ -186,9 +189,9 @@ def build_chain(chain_name: str, config: dict[str, object]) -> dict[str, object]
     core.PRODLIST_COMPARABLE_INPUTS = set(config["comparable"])
     definitions_by_ncm = {ncm: definition for definition in definitions for ncm in definition.ncm_codes}
     countries = core.load_countries()
-    trade_rows = core.aggregate_trade(definitions_by_ncm)
+    trade_rows, ncm_totals = core.aggregate_trade(definitions_by_ncm)
     production = core.load_domestic_production(definitions_by_ncm)
-    payload = core.build_payload(trade_rows, production, countries, {})
+    payload = core.build_payload(trade_rows, production, countries, {}, ncm_totals=ncm_totals)
     payload.update({
         "chain_name": chain_name,
         "methodology_version": config["version"],

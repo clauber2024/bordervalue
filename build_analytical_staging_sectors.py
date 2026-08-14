@@ -75,7 +75,7 @@ def main() -> None:
             ncm: definition for definition in definitions for ncm in definition.ncm_codes
         }
         countries = core.load_countries()
-        trade_rows = core.aggregate_trade(definitions_by_ncm)
+        trade_rows, _ncm_totals = core.aggregate_trade(definitions_by_ncm)
         production = core.load_domestic_production(definitions_by_ncm)
         green_jobs = core.load_green_jobs()
         prodlist_cnae = load_prodlist_cnae_codes(definitions_by_ncm)

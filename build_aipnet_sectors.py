@@ -44,7 +44,7 @@ def main() -> None:
             ncm: definition for definition in definitions for ncm in definition.ncm_codes
         }
         countries = core.load_countries()
-        trade_rows = core.aggregate_trade(definitions_by_ncm)
+        trade_rows, ncm_totals = core.aggregate_trade(definitions_by_ncm)
         production = core.load_domestic_production(definitions_by_ncm)
 
         payload = core.build_payload(
@@ -55,6 +55,7 @@ def main() -> None:
             chain_name=chain_name,
             global_concentration_source=config.get("global_source"),
             mineral_evidence_input_ids=frozenset(),
+            ncm_totals=ncm_totals,
         )
 
         core.write_sql(payload, output_dir)

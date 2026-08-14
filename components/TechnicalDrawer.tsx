@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { AlertTriangle, BadgeAlert, ChevronDown, Download } from "lucide-react";
 import type { ProdutoConceitual } from "../types/border-value";
 import type { SolarInputMetric } from "../types/solar-sovereignty";
@@ -249,6 +249,18 @@ function SolarInputCrosswalk({
   const ordered = [...inputs].sort((left, right) =>
     `${left.stage}-${left.label}`.localeCompare(`${right.stage}-${right.label}`, "pt-BR"),
   );
+  const [expandedInputs, setExpandedInputs] = useState<Set<string>>(new Set());
+  const toggleExpanded = (inputId: string) => {
+    setExpandedInputs((previous) => {
+      const next = new Set(previous);
+      if (next.has(inputId)) {
+        next.delete(inputId);
+      } else {
+        next.add(inputId);
+      }
+      return next;
+    });
+  };
 
   return (
     <section className="overflow-hidden rounded-lg border border-cyan-300/15 bg-cyan-400/[0.025]">
@@ -277,18 +289,38 @@ function SolarInputCrosswalk({
             </tr>
           </thead>
           <tbody className="divide-y divide-white/[0.06] bg-zinc-950/25">
-            {ordered.map((input) => (
-              <tr key={input.input_id} className="align-top">
-                <AuditCell className="min-w-48 font-semibold text-zinc-100">{input.label}</AuditCell>
-                <AuditCell><span className="whitespace-nowrap">{technicalStageLabel(input.stage)}</span></AuditCell>
-                <AuditCell><CodeList codes={input.ncm_codes} /></AuditCell>
-                <AuditCell><CodeList codes={(input.prodlist_codes ?? []).filter((code) => code !== "NCM_SEM_PONTE")} /></AuditCell>
-                <AuditCell><SolarMappingBadge input={input} /></AuditCell>
-                <AuditCell className="min-w-64 leading-5 text-zinc-400">
-                  {input.data_gap_reason ?? "Cesta específica validada para o recorte comercial publicado."}
-                </AuditCell>
-              </tr>
-            ))}
+            {ordered.map((input) => {
+              const hasSubNcm = Boolean(input.sub_ncm_masking_level && input.sub_ncm_breakdown?.length);
+              const isExpanded = expandedInputs.has(input.input_id);
+              return (
+                <Fragment key={input.input_id}>
+                  <tr className="align-top">
+                    <AuditCell className="min-w-48 font-semibold text-zinc-100">{input.label}</AuditCell>
+                    <AuditCell><span className="whitespace-nowrap">{technicalStageLabel(input.stage)}</span></AuditCell>
+                    <AuditCell><CodeList codes={input.ncm_codes} /></AuditCell>
+                    <AuditCell><CodeList codes={(input.prodlist_codes ?? []).filter((code) => code !== "NCM_SEM_PONTE")} /></AuditCell>
+                    <AuditCell><SolarMappingBadge input={input} /></AuditCell>
+                    <AuditCell className="min-w-64 leading-5 text-zinc-400">
+                      {input.data_gap_reason ?? "Cesta específica validada para o recorte comercial publicado."}
+                      {hasSubNcm ? (
+                        <SubNcmMaskingBadge
+                          input={input}
+                          expanded={isExpanded}
+                          onToggle={() => toggleExpanded(input.input_id)}
+                        />
+                      ) : null}
+                    </AuditCell>
+                  </tr>
+                  {hasSubNcm && isExpanded ? (
+                    <tr>
+                      <td colSpan={6} className="bg-zinc-950/50 px-4 py-4">
+                        <SubNcmBreakdownTable input={input} />
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -310,6 +342,115 @@ function SolarMappingBadge({ input }: { input: SolarInputMetric }) {
         {isValidated ? "Validada" : "Proxy"}
       </span>
       <p className="mt-1 text-[10px] text-zinc-500">Confiança {technicalConfidenceLabel(input.confidence_level)}</p>
+    </div>
+  );
+}
+
+function SubNcmMaskingBadge({
+  input,
+  expanded,
+  onToggle,
+}: {
+  input: SolarInputMetric;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const breakdown = input.sub_ncm_breakdown ?? [];
+  if (!breakdown.length) return null;
+
+  const aggregateDirection: "exportador" | "importador" = input.trade_balance_usd >= 0 ? "exportador" : "importador";
+  const dominant = [...breakdown].sort((left, right) =>
+    aggregateDirection === "exportador"
+      ? right.exports_value_usd - left.exports_value_usd
+      : right.imports_value_usd - left.imports_value_usd,
+  )[0];
+  const dominantShare = aggregateDirection === "exportador" ? dominant.share_of_basket_exports : dominant.share_of_basket_imports;
+  const opposing = breakdown.filter((item) => item.direction !== aggregateDirection);
+
+  // Nível 1 (ferroligas): a direção do agregado esconde sub-códigos com
+  // direção oposta e economicamente relevante -- o diagnóstico agregado
+  // pode ser lido de forma invertida. Nível 2 (planos_quente/estruturas_aco):
+  // a direção do agregado está correta, só concentra a maior parte do
+  // fluxo em um código genérico/residual -- mensagem diferente porque o
+  // risco de leitura errada é distinto.
+  const message =
+    input.sub_ncm_masking_level === 1
+      ? `Cesta mascara a direção do agregado — ${formatPercent(dominantShare)} do ${
+          aggregateDirection === "exportador" ? "superávit" : "déficit"
+        } vem do código ${dominant.ncm_code}, enquanto ${opposing.length} sub-código${opposing.length === 1 ? "" : "s"} ${
+          opposing.length === 1 ? "é" : "são"
+        } ${aggregateDirection === "exportador" ? "importador" : "exportador"}${opposing.length === 1 ? "" : "es"} líquido${
+          opposing.length === 1 ? "" : "s"
+        }.`
+      : `Cesta heterogênea — ${formatPercent(dominantShare)} da ${
+          aggregateDirection === "exportador" ? "exportação" : "importação"
+        } concentrada em 1 código (${dominant.ncm_code}).`;
+
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        className="inline-flex w-full items-start gap-1.5 rounded-md border border-amber-300/20 bg-amber-400/10 px-2 py-1.5 text-left text-[11px] font-semibold leading-4 text-amber-200 transition hover:bg-amber-400/15"
+      >
+        <span aria-hidden>⚠️</span>
+        <span>
+          {message}{" "}
+          <span className="font-normal text-amber-200/70 underline underline-offset-2">
+            {expanded ? "Ocultar detalhamento por sub-NCM" : "Ver detalhamento por sub-NCM"}
+          </span>
+        </span>
+      </button>
+    </div>
+  );
+}
+
+function SubNcmBreakdownTable({ input }: { input: SolarInputMetric }) {
+  const breakdown = input.sub_ncm_breakdown ?? [];
+  return (
+    <div className="overflow-hidden rounded-md border border-white/[0.08]">
+      <p className="border-b border-white/[0.08] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+        Detalhamento por sub-NCM — {input.label} ({input.reference_period}, direto do Comex Stat)
+      </p>
+      <table className="min-w-full border-collapse text-left text-[11px]">
+        <thead className="text-zinc-500">
+          <tr>
+            <AuditHeader>NCM</AuditHeader>
+            <AuditHeader>Importação FOB</AuditHeader>
+            <AuditHeader>Exportação FOB</AuditHeader>
+            <AuditHeader>Saldo</AuditHeader>
+            <AuditHeader>% da cesta</AuditHeader>
+            <AuditHeader>Direção</AuditHeader>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/[0.06]">
+          {breakdown.map((row) => (
+            <tr key={row.ncm_code}>
+              <AuditCell className="whitespace-nowrap font-mono text-zinc-300">{row.ncm_code}</AuditCell>
+              <AuditCell>{formatUsd(row.imports_value_usd)}</AuditCell>
+              <AuditCell>{formatUsd(row.exports_value_usd)}</AuditCell>
+              <AuditCell className={row.trade_balance_usd >= 0 ? "text-emerald-300" : "text-amber-300"}>
+                {formatUsd(row.trade_balance_usd)}
+              </AuditCell>
+              <AuditCell>
+                {formatPercent(row.direction === "exportador" ? row.share_of_basket_exports : row.share_of_basket_imports)}
+              </AuditCell>
+              <AuditCell>
+                <span
+                  className={`inline-flex rounded-md border px-1.5 py-0.5 font-semibold ${
+                    row.direction === "exportador"
+                      ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-200"
+                      : "border-amber-300/20 bg-amber-400/10 text-amber-200"
+                  }`}
+                >
+                  {row.direction === "exportador" ? "Exportador" : "Importador"}
+                </span>
+              </AuditCell>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

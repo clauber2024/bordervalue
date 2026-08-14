@@ -70,6 +70,14 @@ class SolarInputDefinition:
     # PRODUCTION_ROUTE_CLASSES for the five allowed values and their meaning.
     production_route_class: str = "undetermined"
     production_route_rationale: str = ""
+    # Set only for baskets where per-sub-NCM disaggregation showed the
+    # aggregate hides something materially different from what its top-line
+    # direction suggests. 1 = the aggregate direction itself is misleading
+    # (a dominant sub-code flips the whole basket's sign vs. its peers).
+    # 2 = the aggregate direction is correct, but a generic/residual
+    # sub-code concentrates most of the flow and masks which specific
+    # product actually drives it. None = no drill-down needed/computed.
+    sub_ncm_masking_level: int | None = None
 
 
 PRODUCTION_ROUTE_CLASSES = {
@@ -222,9 +230,9 @@ def main() -> None:
         ncm: definition for definition in SOLAR_INPUTS for ncm in definition.ncm_codes
     }
     countries = load_countries()
-    trade_rows = aggregate_trade(definitions_by_ncm)
+    trade_rows, ncm_totals = aggregate_trade(definitions_by_ncm)
     production = load_domestic_production(definitions_by_ncm)
-    payload = build_payload(trade_rows, production, countries, load_mineral_evidence())
+    payload = build_payload(trade_rows, production, countries, load_mineral_evidence(), ncm_totals=ncm_totals)
 
     write_json(payload)
     write_summary_csv(payload)
@@ -248,8 +256,20 @@ def main() -> None:
 
 def aggregate_trade(
     definitions_by_ncm: dict[str, SolarInputDefinition],
-) -> dict[tuple[str, int, int, str, str], dict[str, float]]:
+) -> tuple[
+    dict[tuple[str, int, int, str, str], dict[str, float]],
+    dict[tuple[str, str, int, str], dict[str, float]],
+]:
     totals: dict[tuple[str, int, int, str, str], dict[str, float]] = defaultdict(
+        lambda: {"value_usd": 0.0, "net_weight_kg": 0.0, "records": 0.0}
+    )
+    # Same rows, also keyed by individual NCM (input_id, ncm, year, flow) --
+    # cheap to track in the same pass, and it's the only way to answer
+    # "which sub-NCM inside this basket actually drives the number" without
+    # a second CSV read. Only surfaced downstream for baskets that flag
+    # sub_ncm_masking_level; kept unconditional here since the cost is one
+    # extra dict update per already-matched row.
+    ncm_totals: dict[tuple[str, str, int, str], dict[str, float]] = defaultdict(
         lambda: {"value_usd": 0.0, "net_weight_kg": 0.0, "records": 0.0}
     )
     for year in (2025, 2026):
@@ -270,17 +290,24 @@ def aggregate_trade(
                     definition = definitions_by_ncm.get(ncm)
                     if definition is None:
                         continue
+                    row_year = int(row["CO_ANO"])
+                    value_usd = number(row.get("VL_FOB"))
+                    net_weight_kg = number(row.get("KG_LIQUIDO"))
                     key = (
                         definition.input_id,
-                        int(row["CO_ANO"]),
+                        row_year,
                         int(row["CO_MES"]),
                         flow,
                         str(row["CO_PAIS"]).zfill(3),
                     )
-                    totals[key]["value_usd"] += number(row.get("VL_FOB"))
-                    totals[key]["net_weight_kg"] += number(row.get("KG_LIQUIDO"))
+                    totals[key]["value_usd"] += value_usd
+                    totals[key]["net_weight_kg"] += net_weight_kg
                     totals[key]["records"] += 1
-    return totals
+                    ncm_key = (definition.input_id, ncm, row_year, flow)
+                    ncm_totals[ncm_key]["value_usd"] += value_usd
+                    ncm_totals[ncm_key]["net_weight_kg"] += net_weight_kg
+                    ncm_totals[ncm_key]["records"] += 1
+    return totals, ncm_totals
 
 
 def load_countries() -> dict[str, dict[str, str]]:
@@ -519,6 +546,7 @@ def build_payload(
     chain_name: str = "silicio",
     global_concentration_source: dict[str, object] | None = None,
     mineral_evidence_input_ids: frozenset[str] = frozenset({"quartzo", "quartzito"}),
+    ncm_totals: dict[tuple[str, str, int, str], dict[str, float]] | None = None,
 ) -> dict[str, object]:
     inputs: list[dict[str, object]] = []
     for definition in SOLAR_INPUTS:
@@ -557,6 +585,26 @@ def build_payload(
             if definition.global_china_share is not None
             else None
         )
+        sub_ncm_breakdown = None
+        if ncm_totals is not None and definition.sub_ncm_masking_level is not None:
+            sub_ncm_breakdown = []
+            for ncm in definition.ncm_codes:
+                ncm_imp = ncm_totals.get((definition.input_id, ncm, 2026, "IMP"), {}).get("value_usd", 0.0)
+                ncm_exp = ncm_totals.get((definition.input_id, ncm, 2026, "EXP"), {}).get("value_usd", 0.0)
+                sub_ncm_breakdown.append(
+                    {
+                        "ncm_code": ncm,
+                        "imports_value_usd": ncm_imp,
+                        "exports_value_usd": ncm_exp,
+                        "trade_balance_usd": ncm_exp - ncm_imp,
+                        "share_of_basket_imports": (ncm_imp / imports) if imports else 0.0,
+                        "share_of_basket_exports": (ncm_exp / exports) if exports else 0.0,
+                        "direction": "exportador" if ncm_exp >= ncm_imp else "importador",
+                    }
+                )
+            sub_ncm_breakdown.sort(
+                key=lambda item: item["imports_value_usd"] + item["exports_value_usd"], reverse=True
+            )
         inputs.append(
             {
                 "input_id": definition.input_id,
@@ -590,6 +638,8 @@ def build_payload(
                 "production_route_rationale": definition.production_route_rationale,
                 "trade_record_count": int(sum(values["records"] for _, values in rows)),
                 "mineral_evidence": mineral_evidence if definition.input_id in mineral_evidence_input_ids else None,
+                "sub_ncm_masking_level": definition.sub_ncm_masking_level,
+                "sub_ncm_breakdown": sub_ncm_breakdown,
             }
         )
     return {

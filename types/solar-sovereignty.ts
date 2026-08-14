@@ -20,6 +20,16 @@ export type ProductionRouteClass =
   | "untapped_potential"
   | "undetermined";
 
+export type SubNcmBreakdownItem = {
+  ncm_code: string;
+  imports_value_usd: number;
+  exports_value_usd: number;
+  trade_balance_usd: number;
+  share_of_basket_imports: number;
+  share_of_basket_exports: number;
+  direction: "exportador" | "importador";
+};
+
 export type SolarInputMetric = {
   input_id: string;
   label: string;
@@ -50,6 +60,8 @@ export type SolarInputMetric = {
   data_gap_reason: string | null;
   production_route_class: ProductionRouteClass;
   production_route_rationale: string;
+  sub_ncm_masking_level: 1 | 2 | null;
+  sub_ncm_breakdown: SubNcmBreakdownItem[] | null;
 };
 
 export type SolarSovereigntyResponse = {

@@ -70,7 +70,7 @@ def main() -> None:
         ncm: definition for definition in SOLAR_INPUTS for ncm in definition.ncm_codes
     }
     countries = load_countries()
-    trade_rows = aggregate_trade(definitions_by_ncm)
+    trade_rows, _ncm_totals = aggregate_trade(definitions_by_ncm)
     production = load_domestic_production(definitions_by_ncm)
     green_jobs = load_green_jobs()
     prodlist_cnae = load_prodlist_cnae_codes(definitions_by_ncm)
