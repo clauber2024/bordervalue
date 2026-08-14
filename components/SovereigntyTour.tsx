@@ -5,10 +5,16 @@ import type { CSSProperties } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Sparkles, X } from "lucide-react";
 
+type TourStepBullet = {
+  label: string;
+  text: string;
+};
+
 type TourStep = {
   targetId: string;
   title: string;
-  content: string;
+  bullets: TourStepBullet[];
+  note?: string;
 };
 
 type HighlightRect = {
@@ -32,28 +38,86 @@ export type SovereigntyTourProps = {
 
 const steps: TourStep[] = [
   {
-    targetId: "nib-matrix",
-    title: "1. Matriz NIB de Adensamento",
-    content:
-      "Aqui, o motor cruza o déficit comercial com a capacidade doméstica. Repare nas Enzimas Alfa-Amilase: elas estão no quadrante 'Modernizar/Expandir', indicando que o Brasil tem mercado, mas precisa internalizar a produção biotecnológica.",
+    targetId: "tour-hero",
+    title: "1. Diagnóstico executivo",
+    bullets: [
+      { label: "Cobertura", text: "2.902 registros de comércio exterior (Jan-Jun 2026), cruzando Comex Stat, PIA e RAIS." },
+      { label: "Saldo", text: "superavitário em US$ 2,3 bi." },
+      { label: "Ponto de atenção", text: "um único insumo, Eletrodos de grafite, concentra o alerta de prioridade institucional da cadeia." },
+    ],
+    note: "Pergunta de Estado: onde o Brasil já lidera (minério, aço bruto) e onde a siderurgia ainda depende de ligas e equipamentos importados?",
   },
   {
-    targetId: "vulnerability-radar",
-    title: "2. Radar de Soberania (HHI)",
-    content:
-      "Este módulo monitora a concentração de fornecedores. Veja que para as Enzimas o HHI explodiu para 5.540 por conta do monopólio da Dinamarca. O sistema emitiu Alerta Vermelho de risco crítico de suprimento.",
+    targetId: "tour-aipnet-backbone",
+    title: "2. Espinha Dorsal de Transformação",
+    bullets: [
+      { label: "Etapa 1, Carga Primária", text: "minério de ferro é majoritariamente nacional; o redutor fóssil (coque/carvão mineral) é ~100% importado — cerca de US$ 2 bi/ano, concentrados em EUA (34,5%), Austrália (23,7%) e Colômbia (22,6%)." },
+      { label: "Etapa 2, Sucata Ferrosa", text: "base da rota elétrica (EAF). O Brasil exporta cerca de 32x mais sucata do que importa — indicando um potencial de reciclagem doméstica ainda a ser otimizado." },
+      { label: "Etapas 3–5", text: "seguem domésticas até a Etapa 4, Ligas e Tecnologia de Processo, marcada como Gargalo de Soberania: é aqui que mora a dependência real da cadeia." },
+    ],
   },
   {
-    targetId: "proportionality-toggle",
-    title: "3. Lente RenovaCalc",
-    content:
-      "Nem toda enzima vai para o combustível. Ao ativar este switch, aplicamos o Fator Proporcional da RenovaCalc, encolhendo os US$ 280M brutos para os 28,4% absorvidos estritamente pelo balanço de massa da Usina Neomille.",
+    targetId: "tour-sankey",
+    title: "3. Fluxo AIPNET por produto conceitual",
+    bullets: [
+      { label: "Leitura", text: "distribui os US$ 3 bi importados pela cadeia entre os 12 insumos mapeados e seus fornecedores; a espessura das bandas é valor FOB, não sequência produtiva." },
+      { label: "Gargalos", text: "nenhum insumo da cadeia cruza hoje o limiar de gargalo crítico (importações ≥90% concentradas em um único país)." },
+      { label: "Mais próximo do limiar", text: "Eletrodos de grafite, com 87,2% das importações vindas da China." },
+    ],
   },
   {
-    targetId: "sovereignty-sankey",
-    title: "4. Grafo AIPNET de Interdependência",
-    content:
-      "Veja a jornada da molécula. A linha tracejada cinza avisa que a produção nacional de SAF está protegida por Sigilo Estatístico da PIA, blindando a tomada de decisão de dados parciais ou distorcidos.",
+    targetId: "tour-vulnerability",
+    title: "4. Diagnóstico de soberania industrial",
+    bullets: [
+      { label: "Eletrodos de grafite", text: "HHI de 7.636 (alta concentração) e 87,2% das importações vindas de um único país, a China — mas 'só' 26,9% de dependência externa, porque o consumo aparente nacional é robusto." },
+      { label: "Minério de ferro", text: "o oposto — HHI de quase 10.000 nas importações é irrelevante (o Brasil importa quase nada, US$ 7,4 mi); a concentração real está do lado das exportações, 68% das quais vão para a China." },
+    ],
+    note: "Hoje, 0 dos 12 insumos da cadeia cruzam o limiar de dependência crítica (>75%).",
+  },
+  {
+    targetId: "tour-mass-energy",
+    title: "5. Balanço de massa e energia por etapa",
+    bullets: [
+      { label: "BF-BOF (alto-forno a coque)", text: "16–18 GJ/t de aço bruto, rota dominante no parque nacional e também globalmente — a China responde por 53,8% do aço bruto mundial, majoritariamente por essa rota." },
+      { label: "EAF (forno elétrico a arco)", text: "2,1–2,4 GJ/t — cerca de 1/8 da energia da rota a coque — alimentado por sucata doméstica e por uma matriz elétrica nacional >84% renovável." },
+    ],
+    note: "É a alavanca de descarbonização mais direta disponível hoje para a siderurgia brasileira, e já responde por ~29,1% do aço bruto mundial em 2024.",
+  },
+  {
+    targetId: "tour-nib-matrix",
+    title: "6. Matriz de priorização NIB",
+    bullets: [
+      { label: "Leitura", text: "cruza dependência externa com capacidade doméstica instalada para recomendar, por insumo, se a resposta de política é monitorar, modernizar ou expandir capacidade." },
+      { label: "Insumo em destaque", text: "Eletrodos de grafite, dado o tripé HHI 7.636 + 87,2% China + rota crítica para o forno elétrico a arco." },
+    ],
+    note: "Sua interrupção forçaria a volta à rota primária a coque, mais intensiva em carbono e mais exposta ao CBAM.",
+  },
+  {
+    targetId: "tour-carbon",
+    title: "7. Exposição de carbono da pauta importada",
+    bullets: [
+      { label: "Pauta importada", text: "99,8% ainda é de origem fóssil ou em transição." },
+      { label: "Matriz elétrica nacional", text: "mais de 84% renovável (BEN/EPE)." },
+    ],
+    note: "É esse contraste que torna a rota EAF (Etapa 2 da Espinha Dorsal) tão vantajosa no caso brasileiro: o gargalo de carbono está na pauta importada, não na eletricidade que move a produção doméstica.",
+  },
+  {
+    targetId: "tour-green-jobs",
+    title: "8. Empregos verdes e transição justa",
+    bullets: [
+      { label: "Vínculos formais", text: "262.185 (RAIS 2024) em atividades associadas à cadeia do aço, com massa salarial de R$ 1,12 bi." },
+      { label: "Alta exposição TSB", text: "siderurgia primária e tubos sem costura (CNAE 2411/2422/2423) — 'setor industrial de transição'." },
+      { label: "Exposição baixa a intermediária", text: "reciclagem de sucata e estruturas metálicas (CNAE 2599/2512), com predominância de atividades convencionais." },
+    ],
+  },
+  {
+    targetId: "tour-technical-drawer",
+    title: "9. Dados primários e governança",
+    bullets: [
+      { label: "Fontes", text: "Comex Stat (Jan-Jun 2026), IBGE PIA-Produto (2024) e MTE RAIS (2024), cruzados por NCM, CNAE e PRODLIST." },
+      { label: "Este painel", text: "é onde você audita cada número que viu nos passos anteriores." },
+    ],
+    note: "Inclui ressalvas metodológicas, como cestas NCM que agregam produtos heterogêneos.",
   },
 ];
 
@@ -120,6 +184,10 @@ export function SovereigntyTour({
     if (!isOpen) return;
 
     const target = document.getElementById(activeStep.targetId);
+    const detailsAncestor = target?.closest("details");
+    if (detailsAncestor && !detailsAncestor.open) {
+      detailsAncestor.open = true;
+    }
     target?.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
 
     const firstFrame = window.requestAnimationFrame(updateHighlight);
@@ -260,7 +328,19 @@ export function SovereigntyTour({
                   <h2 id="sovereignty-tour-title" className="text-lg font-bold tracking-tight text-white">
                     {activeStep.title}
                   </h2>
-                  <p className="mt-3 text-sm leading-6 text-zinc-300">{activeStep.content}</p>
+                  <ul className="mt-3 space-y-2 text-sm leading-6 text-zinc-300">
+                    {activeStep.bullets.map((bullet) => (
+                      <li key={bullet.label} className="flex gap-2">
+                        <span aria-hidden="true" className="mt-2 h-1 w-1 shrink-0 rounded-full bg-cyan-300" />
+                        <span>
+                          <strong className="font-semibold text-white">{bullet.label}:</strong> {bullet.text}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  {activeStep.note ? (
+                    <p className="mt-3 text-xs leading-5 text-zinc-500">{activeStep.note}</p>
+                  ) : null}
                 </motion.div>
               </AnimatePresence>
 

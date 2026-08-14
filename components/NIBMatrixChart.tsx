@@ -20,6 +20,11 @@ type NIBMatrixChartProps = {
   capacidadeThreshold?: number;
   deficitThreshold?: number;
   className?: string;
+  // Anchors just the chart block (banners + legend + scatter plot), not the
+  // per-item breakdown list below it -- that list grows with the number of
+  // conceptual products in the chain, so anchoring the whole component made
+  // the tour spotlight rectangle as tall as the entire list.
+  chartAnchorId?: string;
 };
 
 type MatrixDatum = ProdutoConceitual & {
@@ -131,6 +136,7 @@ export function NIBMatrixChart({
   capacidadeThreshold = 30000000,
   deficitThreshold = 100000000,
   className = "",
+  chartAnchorId,
 }: NIBMatrixChartProps) {
   const [expandedCluster, setExpandedCluster] = useState<string | null>(null);
   const [selectedQuadrant, setSelectedQuadrant] = useState<QuadrantLabel | null>(null);
@@ -201,6 +207,7 @@ export function NIBMatrixChart({
         </div>
       </header>
 
+      <div id={chartAnchorId} className="scroll-mt-40 md:scroll-mt-28">
       {hasCapacityCoverage ? (
         <>
       {proxyCount > 0 ? (
@@ -334,6 +341,7 @@ export function NIBMatrixChart({
       ) : (
         <CommercialExposurePanel data={matrixData} />
       )}
+      </div>
 
       {hasCapacityCoverage && (
       <div className="space-y-2 border-t border-zinc-800/60 px-4 py-4 sm:px-6">

@@ -556,7 +556,7 @@ export default function MainAnalyticalDashboard() {
           </p>
         </aside>
         <StateShell status={status} error={error} onRetry={loadData}>
-          <div ref={overviewRef} className="scroll-mt-40 md:scroll-mt-28 space-y-4">
+          <div id="tour-hero" ref={overviewRef} className="scroll-mt-40 md:scroll-mt-28 space-y-4">
             <ExecutiveMainHero
               alert={executiveHeroAlert}
               kpis={executiveHeroKpis}
@@ -571,12 +571,14 @@ export default function MainAnalyticalDashboard() {
             ) : null}
           </div>
 
-          <AipnetSystemsFlow
-            chainId={selectedChain}
-            inputs={solarSovereignty?.inputs}
-            onAnalysisFocus={handleAipnetAnalysisFocus}
-            onViewFlowEvidence={handleViewFlowEvidence}
-          />
+          <div id="tour-aipnet-backbone" className="scroll-mt-40 md:scroll-mt-28">
+            <AipnetSystemsFlow
+              chainId={selectedChain}
+              inputs={solarSovereignty?.inputs}
+              onAnalysisFocus={handleAipnetAnalysisFocus}
+              onViewFlowEvidence={handleViewFlowEvidence}
+            />
+          </div>
 
           {/* Primary entry panel for the executive read -- was previously
               buried inside the readingMode==="analytical"-gated
@@ -590,7 +592,7 @@ export default function MainAnalyticalDashboard() {
             title="Diagnóstico de soberania e balança"
             accent="cyan"
           />
-          <div ref={sankeyRef} className="scroll-mt-6">
+          <div id="tour-sankey" ref={sankeyRef} className="scroll-mt-6">
             <ExpandableAnalyticsPanel eyebrow="Soberania & rede" title="Fluxo de soberania por produto" subtitle="Rede de fornecedores, produto e capacidade nacional" defaultOpen>
               <SovereigntySankeyChart
                 dado={radarProduct ?? premiumProducts[0]}
@@ -603,7 +605,7 @@ export default function MainAnalyticalDashboard() {
             </ExpandableAnalyticsPanel>
           </div>
 
-            <div ref={diagnosticRef} className="scroll-mt-6">
+            <div id="tour-vulnerability" ref={diagnosticRef} className="scroll-mt-6">
               <ExpandableAnalyticsPanel
                 eyebrow="Balança & dependência"
                 title="Diagnóstico de soberania industrial"
@@ -649,6 +651,7 @@ export default function MainAnalyticalDashboard() {
 
               {solarSovereignty?.inputs.length ? (
                 <ExpandableAnalyticsPanel
+                  id="tour-carbon"
                   eyebrow="Meio ambiente & emissões"
                   title="Exposição de carbono da pauta importada"
                   subtitle="Distribuição real por rota produtiva declarada, cruzada com o contexto energético nacional (BEN/EPE)"
@@ -664,13 +667,14 @@ export default function MainAnalyticalDashboard() {
               {nibMatrixProducts.length ? (
                 <div ref={nibRef} className="scroll-mt-40 md:scroll-mt-28">
                   <ExpandableAnalyticsPanel eyebrow="Política industrial" title="Matriz de priorização NIB" subtitle="Posicionamento estratégico dos produtos da cadeia">
-                    <NIBMatrixChart data={nibMatrixProducts} />
+                    <NIBMatrixChart data={nibMatrixProducts} chartAnchorId="tour-nib-matrix" />
                   </ExpandableAnalyticsPanel>
                 </div>
               ) : null}
 
               {solarSovereignty?.green_jobs ? (
                 <ExpandableAnalyticsPanel
+                  id="tour-green-jobs"
                   eyebrow="Mercado de trabalho"
                   title="Empregos verdes e transição justa"
                   subtitle="Vínculos RAIS em atividades da cadeia associadas à Taxonomia Sustentável Brasileira"
@@ -685,6 +689,7 @@ export default function MainAnalyticalDashboard() {
 
               {selectedChain && MASS_ENERGY_BALANCE_CHAINS.has(selectedChain) ? (
                 <ExpandableAnalyticsPanel
+                  id="tour-mass-energy"
                   eyebrow="Balanço de processo"
                   title="Balanço de massa e energia por etapa"
                   subtitle="Intensidade energética, capacidade nacional e concentração global — etapa a etapa da cadeia"
@@ -705,7 +710,7 @@ export default function MainAnalyticalDashboard() {
           ) : null}
 
           {premiumProducts.length ? (
-            <div className="space-y-5">
+            <div id="tour-technical-drawer" className="scroll-mt-40 space-y-5 md:scroll-mt-28">
               <MacroModuleHeader
                 eyebrow="Macro-módulo 3 · NCM & CNAE"
                 title="Dados primários e governança"
@@ -728,12 +733,14 @@ export default function MainAnalyticalDashboard() {
 }
 
 function ExpandableAnalyticsPanel({
+  id,
   eyebrow,
   title,
   subtitle,
   children,
   defaultOpen = false,
 }: {
+  id?: string;
   eyebrow: string;
   title: string;
   subtitle: string;
@@ -741,7 +748,7 @@ function ExpandableAnalyticsPanel({
   defaultOpen?: boolean;
 }) {
   return (
-    <details open={defaultOpen} className="group rounded-2xl border border-white/[0.08] bg-zinc-900/30 shadow-xl backdrop-blur-xl">
+    <details id={id} open={defaultOpen} className="group scroll-mt-40 rounded-2xl border border-white/[0.08] bg-zinc-900/30 shadow-xl backdrop-blur-xl md:scroll-mt-28">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-2xl px-5 py-4 transition hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 [&::-webkit-details-marker]:hidden">
         <span>
           <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">{eyebrow}</span>
