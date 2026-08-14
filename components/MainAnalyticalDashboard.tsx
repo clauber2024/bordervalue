@@ -132,6 +132,17 @@ const money = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 1,
 });
 
+// Intl.NumberFormat's compact notation formats exactly zero differently
+// across JS engines -- confirmed live: Node (the actual SSR runtime here)
+// renders money.format(0) as "US$ 0,0", Chrome/V8 (the client) renders it
+// as "US$ 0". Both agree on every non-zero value tested. That mismatch
+// between the server-rendered HTML and the first client render is exactly
+// what triggers a React hydration warning, so any money value that can
+// legitimately be exactly 0 on first render (e.g. headerDeficitLabel below,
+// before chain data has loaded) needs to bypass compact notation for that
+// one value rather than go through the engine-dependent formatter.
+const formatMoneyCompact = (value: number) => (value === 0 ? "US$ 0" : money.format(value));
+
 const number = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
 const glass = "border border-white/[0.08] bg-zinc-900/40 shadow-2xl backdrop-blur-xl";
 
@@ -425,7 +436,7 @@ export default function MainAnalyticalDashboard() {
     ? metrics.totalImports - metrics.totalExports
     : globalSummary?.deficit;
   const headerDeficitIsSurplus = headerDeficitRaw !== undefined && headerDeficitRaw < 0;
-  const headerDeficitLabel = headerDeficitRaw !== undefined ? money.format(Math.abs(headerDeficitRaw)) : undefined;
+  const headerDeficitLabel = headerDeficitRaw !== undefined ? formatMoneyCompact(Math.abs(headerDeficitRaw)) : undefined;
   const canExportChain = Boolean(selectedChain) && nibMatrixProducts.length > 0;
 
   const handleExportChain = useCallback(() => {
