@@ -2447,7 +2447,14 @@ function buildExportsTopology(
   // all join ferro_gusa in the same neutral "reducao" group/node rather
   // than getting a fabricated EAF/BF-BOF fraction.
   const EXPORT_FORCE_MISTA_STAGE_INPUT_IDS = new Set([
-    "planos_quente", "planos_frios", "tubos_aco", "estruturas_aco",
+    // acos_eletricos_gno: "transformacao" stage like planos_quente/planos_frios
+    // right above -- same rolled-from-Brazilian-crude-steel story, so same
+    // forced hop. Its export value alone (US$10.9mi) looks long-tail, but
+    // rawValue below is exports + domestic use, and its domestic production
+    // (US$2.67bi comparable) makes its real share of the basis 7.3% --
+    // nowhere near the 0.5% collapse threshold, so it was never going to
+    // reach collapsibleExportInputIds either. Must be forced explicitly.
+    "planos_quente", "planos_frios", "tubos_aco", "estruturas_aco", "acos_eletricos_gno",
     // ferro_niobio and ferro_niquel used to be part of the "ferroligas"
     // basket and were covered by this set through it; splitting them into
     // their own Definitions (each is a distinct Brazilian mineral-processing
