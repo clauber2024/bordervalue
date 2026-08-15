@@ -55,6 +55,26 @@ PRODLIST_COMPARABLE_INPUTS = {
 
 
 @dataclass(frozen=True)
+class StrategicProfile:
+    """Forward-looking strategic narrative, decoupled from the trade-risk
+    engine on purpose: NIBMatrixChart's quadrant (matrixState) reads only
+    deficit/capacity/volume and must stay auditable against those numbers
+    alone. A thesis like powershoring (near-zero trade today, real export
+    potential from clean domestic power) would corrupt that if it changed
+    the quadrant itself -- e.g. forcing ferro_esponja into "Atrair
+    Investimento" would make the UI print "Déficit acima do corte", which
+    is false at its actual ~US$3.8k deficit. This renders as a separate,
+    explicitly-labeled "Tese Estratégica" badge instead, so the risk
+    classification and the strategic narrative can never be confused for
+    each other."""
+
+    is_powershoring_vector: bool
+    label: str
+    thesis: str
+    value_chain_links: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class SolarInputDefinition:
     input_id: str
     label: str
@@ -78,6 +98,7 @@ class SolarInputDefinition:
     # sub-code concentrates most of the flow and masks which specific
     # product actually drives it. None = no drill-down needed/computed.
     sub_ncm_masking_level: int | None = None
+    strategic_profile: StrategicProfile | None = None
 
 
 PRODUCTION_ROUTE_CLASSES = {
@@ -640,6 +661,16 @@ def build_payload(
                 "mineral_evidence": mineral_evidence if definition.input_id in mineral_evidence_input_ids else None,
                 "sub_ncm_masking_level": definition.sub_ncm_masking_level,
                 "sub_ncm_breakdown": sub_ncm_breakdown,
+                "strategic_profile": (
+                    {
+                        "is_powershoring_vector": definition.strategic_profile.is_powershoring_vector,
+                        "label": definition.strategic_profile.label,
+                        "thesis": definition.strategic_profile.thesis,
+                        "value_chain_links": list(definition.strategic_profile.value_chain_links),
+                    }
+                    if definition.strategic_profile is not None
+                    else None
+                ),
             }
         )
     return {

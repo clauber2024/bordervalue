@@ -998,6 +998,7 @@ function buildSolarNibProducts(
       chain_stage: solarContractStage(input.stage),
       ncm_codigo: input.ncm_codes[0] ?? "00000000",
       ncm_codigos: input.ncm_codes,
+      strategic_profile: input.strategic_profile,
       comercio: {
         importacao_valor_fob: input.imports_value_usd,
         importacao_peso_liquido: input.imports_net_weight_kg,

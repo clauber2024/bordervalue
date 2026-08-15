@@ -4,6 +4,7 @@ import { Fragment, useState } from "react";
 import { AlertTriangle, BadgeAlert, ChevronDown, Download } from "lucide-react";
 import type { ProdutoConceitual } from "../types/border-value";
 import type { SolarInputMetric } from "../types/solar-sovereignty";
+import { StrategicVectorBadge } from "./StrategicVectorBadge";
 
 type TechnicalDrawerProps = {
   data: ProdutoConceitual[];
@@ -309,6 +310,7 @@ function SolarInputCrosswalk({
                           onToggle={() => toggleExpanded(input.input_id)}
                         />
                       ) : null}
+                      <StrategicVectorBadge profile={input.strategic_profile} />
                     </AuditCell>
                   </tr>
                   {hasSubNcm && isExpanded ? (

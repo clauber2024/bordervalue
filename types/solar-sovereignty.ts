@@ -30,6 +30,18 @@ export type SubNcmBreakdownItem = {
   direction: "exportador" | "importador";
 };
 
+// Forward-looking strategic narrative, decoupled from the trade-risk engine
+// on purpose: NIBMatrixChart's quadrant reads only deficit/capacity/volume
+// and must stay auditable against those numbers alone. Never let this field
+// change a matrixState/status classification -- render it as its own
+// explicitly-labeled "Tese Estratégica" badge instead (StrategicVectorBadge).
+export type StrategicProfile = {
+  is_powershoring_vector: boolean;
+  label: string;
+  thesis: string;
+  value_chain_links: string[];
+};
+
 export type SolarInputMetric = {
   input_id: string;
   label: string;
@@ -62,6 +74,7 @@ export type SolarInputMetric = {
   production_route_rationale: string;
   sub_ncm_masking_level: 1 | 2 | null;
   sub_ncm_breakdown: SubNcmBreakdownItem[] | null;
+  strategic_profile: StrategicProfile | null;
 };
 
 export type SolarSovereigntyResponse = {

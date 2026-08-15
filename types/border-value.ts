@@ -1,3 +1,5 @@
+import type { StrategicProfile } from './solar-sovereignty';
+
 /**
  * Metadados de auditoria que acompanham cada produto conceitual retornado pela API Published.
  *
@@ -197,6 +199,15 @@ export interface ProdutoConceitual {
 
   /** Cesta completa de NCMs que compoe o produto conceitual. */
   ncm_codigos?: string[];
+
+  /**
+   * Tese estrategica opcional (ex.: powershoring), desacoplada da
+   * classificacao de risco comercial -- nunca deve influenciar chain_stage,
+   * comercio ou industria acima. Ausente/null para a grande maioria dos
+   * produtos; so populado quando o insumo de origem tem um strategic_profile
+   * explicito no catalogo (ver StrategicProfile em types/solar-sovereignty).
+   */
+  strategic_profile?: StrategicProfile | null;
 
   /**
    * Indicadores de comercio exterior vinculados ao produto.

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ProdutoConceitual } from "../types/border-value";
+import { StrategicVectorBadge } from "./StrategicVectorBadge";
 import {
   CartesianGrid,
   ReferenceArea,
@@ -382,6 +383,7 @@ export function NIBMatrixChart({
                   </span>
                   <p className="text-[11px] text-zinc-500">{formatCapacityPosition(item)} · {formatTradePosition(item)}</p>
                 </div>
+                <StrategicVectorBadge profile={item.strategic_profile} />
               </div>
             </summary>
             <div className="border-t border-white/[0.06] px-4 py-4 sm:pl-14">

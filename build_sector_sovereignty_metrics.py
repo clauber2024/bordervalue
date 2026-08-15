@@ -15,6 +15,7 @@ import build_solar_sovereignty_metrics as core
 
 ROOT = Path(__file__).resolve().parent
 Definition = core.SolarInputDefinition
+StrategicProfile = core.StrategicProfile
 
 
 CHAINS: dict[str, dict[str, object]] = {
@@ -128,9 +129,28 @@ CHAINS: dict[str, dict[str, object]] = {
                        None,
                        production_route_class="fossil_dominant",
                        production_route_rationale="Alto-forno a coque/carvão mineral domina a maior parte da produção mundial de aço (World Steel Association) -- classificação reflete a rota mundialmente predominante, não necessariamente o mix real do ferro-gusa brasileiro exportado (ver nota de dados)."),
-            Definition("ferro_esponja", "Ferro-esponja e redução direta", "reducao", ("72031000",), "validated", "alta",
+            Definition("ferro_esponja", "Ferro-esponja e redução direta", "reducao", ("72031000", "72039000"), "validated", "alta",
+                       "NCM 72039000 ('Outros', capítulo 7203) também cobre, pelo texto tarifário, ferro de pureza mínima 99,94% além de outros produtos ferrosos esponjosos -- a ponte oficial NCM-PRODLIST (2411.2030) trata os dois códigos como o mesmo produto industrial (ferro-esponja/redução direta), mas o texto do capítulo por si só não isola exclusivamente DRI.", None,
                        production_route_class="transition_underway",
-                       production_route_rationale="Redução direta tipicamente a gás natural (bem menos intensiva em carbono que o alto-forno a carvão) e é a porta de entrada para a rota DRI-hidrogênio verde ainda emergente."),
+                       production_route_rationale="Redução direta tipicamente a gás natural (bem menos intensiva em carbono que o alto-forno a carvão) e é a porta de entrada para a rota DRI-hidrogênio verde ainda emergente.",
+                       strategic_profile=StrategicProfile(
+                           is_powershoring_vector=True,
+                           label="Vetor de Powershoring",
+                           thesis=(
+                               "O comércio observado deste insumo é hoje irrisório (déficit de ~US$94,7 mil) -- "
+                               "isso não é ausência de relevância, é o retrato de uma rota ainda embrionária no "
+                               "Brasil. A tese de powershoring não lê o DRI pelo volume passado, mas pelo potencial: "
+                               "a rota de redução direta (gás natural hoje, hidrogênio verde na transição) usa a "
+                               "matriz elétrica nacional -- majoritariamente renovável -- e o minério de ferro de "
+                               "alta gradação que o Brasil já exporta in natura (superávit de US$15,8 bi) para "
+                               "produzir ferro pré-reduzido de baixo carbono, substituindo a rota a coque/carvão "
+                               "mineral importado (déficit de US$2,1 bi/ano) que hoje domina a siderurgia primária "
+                               "nacional. É a ponte entre a abundância mineral e energética do país e a demanda "
+                               "global por aço verde -- não uma posição de risco comercial, mas uma janela de "
+                               "atração de capital produtivo."
+                           ),
+                           value_chain_links=("minerio_ferro", "carvao_mineral_coque"),
+                       )),
             Definition("carvao_mineral_coque", "Carvão mineral e coque siderúrgico", "reducao", ("27011100", "27011200", "27011900", "27040011", "27040012", "27040090"), "estimated", "media", "NCM 2701 (hulha) também cobre carvão mineral usado fora da siderurgia (termelétricas, cimento); a cesta não isola o carvão metalúrgico/coque específico do alto-forno.", None,
                        production_route_class="fossil_dominant",
                        production_route_rationale="Redutor fóssil importado (majoritariamente Austrália, EUA e Canadá) para o alto-forno a coque -- exposto ao CBAM europeu. Contrasta com o carvão vegetal (biorredução), que é a rota de baixo carbono estruturalmente doméstica do Brasil, mas sem comércio exterior comparável em volume para servir de contraparte direta nesta cesta (ver nota de contexto na Espinha Dorsal)."),
