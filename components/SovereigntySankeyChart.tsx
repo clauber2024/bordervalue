@@ -2448,7 +2448,15 @@ function buildExportsTopology(
   // than getting a fabricated EAF/BF-BOF fraction.
   const EXPORT_FORCE_MISTA_STAGE_INPUT_IDS = new Set([
     "planos_quente", "planos_frios", "tubos_aco", "estruturas_aco",
-    "ferroligas", "eletrodos_grafite", "materiais_refratarios",
+    // ferro_niobio and ferro_niquel used to be part of the "ferroligas"
+    // basket and were covered by this set through it; splitting them into
+    // their own Definitions (each is a distinct Brazilian mineral-processing
+    // strength, not import risk) left them un-listed here, so they fell
+    // through to hasRealDomesticStage=false below and jumped straight from
+    // input to destination country, skipping the aciaria node entirely.
+    // Same golden rule as ferroligas: they're consumed AT the aciaria step,
+    // not raw commodities that bypass Brazilian industry.
+    "ferroligas", "ferro_niobio", "ferro_niquel", "eletrodos_grafite", "materiais_refratarios",
   ]);
   const exportStageGroupKey = (input: SolarInputMetric) =>
     EXPORT_ROUTE_NODE_OVERRIDES[input.input_id]?.id
