@@ -60,7 +60,7 @@ const steps: TourStep[] = [
     targetId: "tour-sankey",
     title: "3. Fluxo AIPNET por produto conceitual",
     bullets: [
-      { label: "Leitura", text: "distribui os US$ 3 bi importados pela cadeia entre os 12 insumos mapeados e seus fornecedores; a espessura das bandas é valor FOB, não sequência produtiva." },
+      { label: "Leitura", text: "distribui os US$ 3,1 bi importados pela cadeia entre os 15 insumos mapeados e seus fornecedores; a espessura das bandas é valor FOB, não sequência produtiva." },
       { label: "Gargalos", text: "nenhum insumo da cadeia cruza hoje o limiar de gargalo crítico (importações ≥90% concentradas em um único país)." },
       { label: "Mais próximo do limiar", text: "Eletrodos de grafite, com 87,2% das importações vindas da China." },
     ],
@@ -69,11 +69,11 @@ const steps: TourStep[] = [
     targetId: "tour-vulnerability",
     title: "4. Diagnóstico de soberania industrial",
     bullets: [
-      { label: "Ferro-esponja e redução direta", text: "topo do gráfico com 74,4% — mas esse número é a participação da China nas importações, não dependência externa real: não há dado de produção doméstica para calcular o indicador completo. O fluxo em si é irrisório (US$ 3.993 no semestre); o insumo importa mais como porta de entrada da rota DRI-hidrogênio verde, ainda emergente no Brasil." },
+      { label: "Ferro-esponja e redução direta", text: "topo do gráfico com 75,0% — mas esse número é a participação da China nas importações, não dependência externa real: não há dado de produção doméstica para calcular o indicador completo. O fluxo em si é irrisório (US$ 99.930 no semestre); o insumo importa mais como porta de entrada da rota DRI-hidrogênio verde, ainda emergente no Brasil." },
       { label: "Eletrodos de grafite", text: "HHI de 7.636 (alta concentração) e 87,2% das importações vindas de um único país, a China — mas 'só' 26,9% de dependência externa, porque o consumo aparente nacional é robusto." },
       { label: "Minério de ferro", text: "o oposto — HHI de quase 10.000 nas importações é irrelevante (o Brasil importa quase nada, US$ 7,4 mi); a concentração real está do lado das exportações, 68% das quais vão para a China." },
     ],
-    note: "Hoje, 0 dos 12 insumos da cadeia cruzam o limiar de dependência crítica (>75%) — Ferro-esponja, com 74,4%, é o mais próximo.",
+    note: "Hoje, 0 dos 15 insumos da cadeia cruzam o limiar de dependência crítica (>75%) — Ferro-esponja, com 75,0%, é o mais próximo.",
   },
   {
     targetId: "tour-mass-energy",
@@ -106,8 +106,8 @@ const steps: TourStep[] = [
     targetId: "tour-green-jobs",
     title: "8. Empregos verdes e transição justa",
     bullets: [
-      { label: "Vínculos formais", text: "262.185 (RAIS 2024) em atividades associadas à cadeia do aço, com massa salarial de R$ 1,12 bi." },
-      { label: "Alta exposição TSB", text: "siderurgia primária e tubos sem costura (CNAE 2411/2422/2423) — 'setor industrial de transição'." },
+      { label: "Vínculos formais", text: "275.318 (RAIS 2024) em atividades associadas à cadeia do aço, com massa salarial de R$ 1,18 bi." },
+      { label: "Alta exposição TSB", text: "siderurgia primária e tubos sem costura (CNAE 2411/2421/2422/2423/2424) — 'setor industrial de transição'." },
       { label: "Exposição baixa a intermediária", text: "reciclagem de sucata e estruturas metálicas (CNAE 2599/2512), com predominância de atividades convencionais." },
     ],
   },
