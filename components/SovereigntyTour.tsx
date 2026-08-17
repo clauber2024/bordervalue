@@ -80,9 +80,10 @@ const steps: TourStep[] = [
     title: "5. Balanço de massa e energia por etapa",
     bullets: [
       { label: "BF-BOF (alto-forno a coque)", text: "16–18 GJ/t de aço bruto, rota dominante no parque nacional e também globalmente — a China responde por 53,8% do aço bruto mundial, majoritariamente por essa rota." },
+      { label: "⚡ Alto-forno a carvão vegetal (biorredução)", text: "mesma ordem de grandeza de energia do alto-forno a coque, mas com fator de emissão de 0,7 tCO2e/t contra 2,2 tCO2e/t da rota a coque (IABr 2024) — diferencial competitivo sem paralelo global, viabilizado por floresta plantada em escala." },
       { label: "EAF (forno elétrico a arco)", text: "2,1–2,4 GJ/t — cerca de 1/8 da energia da rota a coque — alimentado por sucata doméstica e por uma matriz elétrica nacional >84% renovável." },
     ],
-    note: "É a alavanca de descarbonização mais direta disponível hoje para a siderurgia brasileira, e já responde por ~29,1% do aço bruto mundial em 2024.",
+    note: "São duas alavancas de descarbonização já disponíveis para a siderurgia brasileira -- carvão vegetal na etapa de redução e EAF na etapa elétrica -- e nenhuma das duas depende de tecnologia ainda não madura. A rota EAF já responde por ~29,1% do aço bruto mundial em 2024.",
   },
   {
     targetId: "tour-nib-matrix",

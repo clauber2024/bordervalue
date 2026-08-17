@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Info } from "lucide-react";
 import type { EnergyContextResponse } from "../types/energy-context";
 
-type StageKey = "si_gm" | "polissilicio" | "wafer" | "modulo" | "bf_bof" | "eaf" | "amonia" | "ureia";
+type StageKey = "si_gm" | "polissilicio" | "wafer" | "modulo" | "bf_bof" | "carvao_vegetal" | "eaf" | "amonia" | "ureia";
 
 type Stage = {
   key: StageKey;
@@ -111,6 +111,17 @@ const ACO_STAGES: Stage[] = [
     note: "Rota mais intensiva em carbono da cadeia -- o coque metalúrgico como redutor é a origem fóssil dominante do aço primário.",
   },
   {
+    key: "carvao_vegetal",
+    label: "Minério + carvão vegetal → Ferro-gusa (biorredução, alto-forno a carvão vegetal)",
+    process: "Redução em alto-forno a carvão vegetal (florestas plantadas) + conversão a oxigênio",
+    energyIntensity: "mesma ordem de grandeza do alto-forno a coque (16–18 GJ/t) -- o diferencial real está na origem do carbono do redutor, não na intensidade energética do processo.",
+    brazilCapacity: "Rota estruturalmente doméstica e sem paralelo global em escala -- guseiros independentes (polos de MG, PA e MA) operam majoritariamente a carvão vegetal de florestas plantadas.",
+    chinaConcentration: "Sem concentração global relevante a comparar -- rota praticamente exclusiva do parque siderúrgico brasileiro, viabilizada pela disponibilidade de floresta plantada em escala.",
+    concentrationBadge: "Rota sem paralelo global -- diferencial competitivo brasileiro",
+    concentrationBadgeTone: "neutral",
+    note: "Fator de emissão de 0,7 tCO2e/t (carvão vegetal) contra 2,2 tCO2e/t (coque fóssil) -- cerca de 1/3 da pegada de carbono da rota integrada tradicional, segundo o IABr (2024, usinas associadas: ~84% coque/~16% carvão vegetal). A NCM do ferro-gusa (7201) não distingue as duas rotas, e essa proporção cobre só usinas associadas ao IABr -- os guseiros independentes majoritariamente a carvão vegetal não estão nela --, então o mix real exportado permanece agregado, sem separação por rota no valor comercial.",
+  },
+  {
     key: "eaf",
     label: "Sucata → Aço bruto (rota elétrica, EAF)",
     process: "Refusão elétrica de sucata ferrosa em forno a arco",
@@ -162,7 +173,7 @@ const SOURCE_NOTE_BY_CHAIN: Record<string, string> = {
   silicio:
     "as faixas de intensidade energética e o balanço de massa acima são parâmetros típicos da manufatura solar internacional (Siemens/FBR, Czochralski)",
   aco:
-    "as faixas de intensidade energética das rotas BF-BOF e EAF acima seguem o IEA Iron and Steel Technology Roadmap (2020) e o World Steel Association (2020); a concentração da China e a participação global da rota EAF (~29,1% em 2024) são do World Steel in Figures 2025",
+    "as faixas de intensidade energética das rotas BF-BOF e EAF acima seguem o IEA Iron and Steel Technology Roadmap (2020) e o World Steel Association (2020); a concentração da China e a participação global da rota EAF (~29,1% em 2024) são do World Steel in Figures 2025; os fatores de emissão da rota a carvão vegetal (0,7 vs. 2,2 tCO2e/t) são do IABr (2024, usinas associadas)",
   fertilizantes:
     "as faixas de intensidade energética de amônia e ureia acima seguem o IEA Ammonia Technology Roadmap (2021) e literatura de engenharia de processo para a síntese integrada de ureia",
 };
