@@ -61,19 +61,19 @@ const steps: TourStep[] = [
     title: "3. Fluxo AIPNET por produto conceitual",
     bullets: [
       { label: "Leitura", text: "distribui os US$ 3,1 bi importados pela cadeia entre os 15 insumos mapeados e seus fornecedores; a espessura das bandas é valor FOB, não sequência produtiva." },
-      { label: "Gargalos", text: "nenhum insumo da cadeia cruza hoje o limiar de gargalo crítico (importações ≥90% concentradas em um único país)." },
-      { label: "Mais próximo do limiar", text: "Eletrodos de grafite, com 87,2% das importações vindas da China." },
+      { label: "Concentração de valor", text: "a pauta importada é dominada pelo Carvão Mineral/Coque -- US$ 2,1 bi, 66,8% de tudo o que a cadeia importa -- não porque seja o insumo mais dependente de um único fornecedor, mas porque é o de maior volume financeiro." },
     ],
+    note: "Volume em dólares e concentração geográfica de fornecedor são eixos diferentes -- avance para o Diagnóstico de Soberania (Passo 4) para ver a dependência externa real, insumo a insumo.",
   },
   {
     targetId: "tour-vulnerability",
     title: "4. Diagnóstico de soberania industrial",
     bullets: [
-      { label: "Ferro-esponja e redução direta", text: "topo do gráfico com 75,0% — mas esse número é a participação da China nas importações, não dependência externa real: não há dado de produção doméstica para calcular o indicador completo. O fluxo em si é irrisório (US$ 99.930 no semestre); o insumo importa mais como porta de entrada da rota DRI-hidrogênio verde, ainda emergente no Brasil." },
-      { label: "Eletrodos de grafite", text: "HHI de 7.636 (alta concentração) e 87,2% das importações vindas de um único país, a China — mas 'só' 26,9% de dependência externa, porque o consumo aparente nacional é robusto." },
+      { label: "Eletrodos de grafite", text: "líder real do eixo -- 26,9% de dependência externa, a maior da cadeia -- com HHI de 7.636 (alta concentração) e 87,2% das importações vindas de um único país, a China." },
       { label: "Minério de ferro", text: "o oposto — HHI de quase 10.000 nas importações é irrelevante (o Brasil importa quase nada, US$ 7,4 mi); a concentração real está do lado das exportações, 68% das quais vão para a China." },
+      { label: "⚡ Ferro-esponja e redução direta", text: "aparece com 75,0% de participação chinesa, mas isso não é dependência externa real — não há dado de produção doméstica para calcular o indicador completo, e o fluxo em si é irrisório (US$ 99.930 no semestre). O que importa aqui é outro eixo: Vetor de Powershoring da rota DRI-hidrogênio verde para substituir o Carvão Mineral/Coque importado (Passo 3)." },
     ],
-    note: "Hoje, 0 dos 15 insumos da cadeia cruzam o limiar de dependência crítica (>75%) — Ferro-esponja, com 75,0%, é o mais próximo.",
+    note: "Hoje, 0 dos 15 insumos cruzam o limiar de dependência externa crítica (>75%) real. O único número que chega perto (Ferro-esponja, 75,0%) não é dependência real -- é ruído estatístico de baixíssimo volume.",
   },
   {
     targetId: "tour-mass-energy",
@@ -97,8 +97,9 @@ const steps: TourStep[] = [
     targetId: "tour-carbon",
     title: "7. Exposição de carbono da pauta importada",
     bullets: [
-      { label: "Pauta importada", text: "99,8% ainda é de origem fóssil ou em transição." },
-      { label: "Matriz elétrica nacional", text: "mais de 84% renovável (BEN/EPE)." },
+      { label: "Pauta importada", text: "93,4% (US$ 2,9 bi) vem de insumos em rota fóssil dominante -- liderado pelo Carvão Mineral/Coque, o maior item da pauta." },
+      { label: "Matriz elétrica nacional", text: "mais de 84% renovável (BEN/EPE), oferecendo vantagem competitiva estrutural para quem produz no Brasil." },
+      { label: "⚡ Oportunidade de powershoring", text: "a rota EAF/DRI limpo desloca a pegada de carbono da pauta importada para a matriz elétrica nacional, posicionando o Brasil como fornecedor global de aço de baixo carbono." },
     ],
     note: "É esse contraste que torna a rota EAF (Etapa 2 da Espinha Dorsal) tão vantajosa no caso brasileiro: o gargalo de carbono está na pauta importada, não na eletricidade que move a produção doméstica.",
   },
@@ -126,6 +127,14 @@ const HIGHLIGHT_PADDING = 12;
 const CARD_WIDTH = 384;
 const CARD_MARGIN = 16;
 const CARD_ESTIMATED_HEIGHT = 320;
+// HeaderTopBar is sticky top-0 z-50 (px-4 py-2.5 + icon/text ~52px tall).
+// The tour card's own z-index was already above that (z-[52]), but its
+// root wrapper matched the header at z-50 -- same z-index means the later
+// DOM node wins regardless of children's z-index, and HeaderTopBar renders
+// after the tour in the page tree, so it painted over the card whenever the
+// card's computed top landed near the viewport's top edge. This floor keeps
+// the card clear of the header's band entirely, independent of that fix.
+const CARD_TOP_MIN = 72;
 
 export function SovereigntyTour({
   defaultOpen = false,
@@ -262,7 +271,7 @@ export function SovereigntyTour({
           <motion.div
             aria-labelledby="sovereignty-tour-title"
             aria-modal="true"
-            className="fixed inset-0 z-50"
+            className="fixed inset-0 z-[55]"
             role="dialog"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -390,7 +399,7 @@ export function SovereigntyTour({
 
 function getCardPosition(highlightRect: HighlightRect | null): CardPosition {
   if (typeof window === "undefined") {
-    return { top: CARD_MARGIN, left: CARD_MARGIN, width: CARD_WIDTH };
+    return { top: CARD_TOP_MIN, left: CARD_MARGIN, width: CARD_WIDTH };
   }
 
   const viewportWidth = window.innerWidth;
@@ -399,7 +408,7 @@ function getCardPosition(highlightRect: HighlightRect | null): CardPosition {
 
   if (!highlightRect) {
     return {
-      top: Math.max((viewportHeight - CARD_ESTIMATED_HEIGHT) / 2, CARD_MARGIN),
+      top: Math.max((viewportHeight - CARD_ESTIMATED_HEIGHT) / 2, CARD_TOP_MIN),
       left: Math.max((viewportWidth - width) / 2, CARD_MARGIN),
       width,
     };
@@ -407,12 +416,12 @@ function getCardPosition(highlightRect: HighlightRect | null): CardPosition {
 
   const rightSlot = highlightRect.left + highlightRect.width + CARD_MARGIN;
   const leftSlot = highlightRect.left - width - CARD_MARGIN;
-  const belowSlot = highlightRect.top + highlightRect.height + CARD_MARGIN;
+  const belowSlot = Math.max(highlightRect.top + highlightRect.height + CARD_MARGIN, CARD_TOP_MIN);
   const aboveSlot = highlightRect.top - CARD_ESTIMATED_HEIGHT - CARD_MARGIN;
 
   if (rightSlot + width <= viewportWidth - CARD_MARGIN) {
     return {
-      top: clamp(highlightRect.top, CARD_MARGIN, viewportHeight - CARD_ESTIMATED_HEIGHT - CARD_MARGIN),
+      top: clamp(highlightRect.top, CARD_TOP_MIN, viewportHeight - CARD_ESTIMATED_HEIGHT - CARD_MARGIN),
       left: rightSlot,
       width,
     };
@@ -420,7 +429,7 @@ function getCardPosition(highlightRect: HighlightRect | null): CardPosition {
 
   if (leftSlot >= CARD_MARGIN) {
     return {
-      top: clamp(highlightRect.top, CARD_MARGIN, viewportHeight - CARD_ESTIMATED_HEIGHT - CARD_MARGIN),
+      top: clamp(highlightRect.top, CARD_TOP_MIN, viewportHeight - CARD_ESTIMATED_HEIGHT - CARD_MARGIN),
       left: leftSlot,
       width,
     };
@@ -434,7 +443,7 @@ function getCardPosition(highlightRect: HighlightRect | null): CardPosition {
     };
   }
 
-  if (aboveSlot >= CARD_MARGIN) {
+  if (aboveSlot >= CARD_TOP_MIN) {
     return {
       top: aboveSlot,
       left: clamp(highlightRect.left, CARD_MARGIN, viewportWidth - width - CARD_MARGIN),
@@ -443,7 +452,7 @@ function getCardPosition(highlightRect: HighlightRect | null): CardPosition {
   }
 
   return {
-    top: CARD_MARGIN,
+    top: CARD_TOP_MIN,
     left: clamp((viewportWidth - width) / 2, CARD_MARGIN, viewportWidth - width - CARD_MARGIN),
     width,
   };

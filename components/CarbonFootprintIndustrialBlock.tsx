@@ -2,6 +2,7 @@
 
 import { Clock } from "lucide-react";
 import { ROUTE_CLASS_COLORS, ROUTE_CLASS_LABELS } from "./SovereigntySankeyChart";
+import { StrategicVectorBadge } from "./StrategicVectorBadge";
 import type { EnergyContextResponse } from "../types/energy-context";
 import type { ProductionRouteClass, SolarInputMetric } from "../types/solar-sovereignty";
 
@@ -183,6 +184,7 @@ export function CarbonFootprintIndustrialBlock({
                   "{transitionLeadInput.production_route_rationale}" — {transitionLeadInput.label}
                 </p>
               ) : null}
+              <StrategicVectorBadge profile={transitionLeadInput?.strategic_profile} />
             </>
           ) : (
             <p className="text-xs leading-relaxed text-zinc-300">
