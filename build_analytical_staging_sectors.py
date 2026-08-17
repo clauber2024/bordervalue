@@ -191,7 +191,7 @@ def build_industry_rows(
             {
                 "conceptual_product_id": resolve_product_id(chain_name, definition.input_id),
                 "produto_nome": definition.label,
-                "ncm_codigo": definition.ncm_codes[0],
+                "ncm_codigo": definition.ncm_codes[0] if definition.ncm_codes else "00000000",
                 "cnae_codigo": codes.get("cnae_codigo", ""),
                 "prodlist_codigo": codes.get("prodlist_codigo", ""),
                 "valor_producao_pia": value_brl,
