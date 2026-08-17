@@ -564,7 +564,7 @@ export default function MainAnalyticalDashboard() {
           </p>
         </aside>
         <StateShell status={status} error={error} onRetry={loadData}>
-          <div id="tour-hero" ref={overviewRef} className="scroll-mt-40 md:scroll-mt-28 space-y-4">
+          <div id="tour-hero" ref={overviewRef} className="scroll-mt-40 md:scroll-mt-32 space-y-4">
             <ExecutiveMainHero
               alert={executiveHeroAlert}
               kpis={executiveHeroKpis}
@@ -579,7 +579,7 @@ export default function MainAnalyticalDashboard() {
             ) : null}
           </div>
 
-          <div id="tour-aipnet-backbone" className="scroll-mt-40 md:scroll-mt-28">
+          <div id="tour-aipnet-backbone" className="scroll-mt-40 md:scroll-mt-32">
             <AipnetSystemsFlow
               chainId={selectedChain}
               inputs={solarSovereignty?.inputs}
@@ -613,7 +613,7 @@ export default function MainAnalyticalDashboard() {
             </ExpandableAnalyticsPanel>
           </div>
 
-            <div id="tour-vulnerability" ref={diagnosticRef} className="scroll-mt-40 md:scroll-mt-28">
+            <div id="tour-vulnerability" ref={diagnosticRef} className="scroll-mt-40 md:scroll-mt-32">
               <ExpandableAnalyticsPanel
                 eyebrow="Balança & dependência"
                 title="Diagnóstico de soberania industrial"
@@ -639,7 +639,7 @@ export default function MainAnalyticalDashboard() {
             </div>
 
           {readingMode === "analytical" && (premiumProducts.length || selectedChain === "silicio") ? (
-            <section ref={advancedRef} className="scroll-mt-40 space-y-5 md:scroll-mt-28">
+            <section ref={advancedRef} className="scroll-mt-40 space-y-5 md:scroll-mt-32">
               <MacroModuleHeader
                 eyebrow="Macro-módulo 2 · NIB & TSB"
                 title="Sustentabilidade e política industrial"
@@ -673,7 +673,7 @@ export default function MainAnalyticalDashboard() {
               ) : null}
 
               {nibMatrixProducts.length ? (
-                <div ref={nibRef} className="scroll-mt-40 md:scroll-mt-28">
+                <div ref={nibRef} className="scroll-mt-40 md:scroll-mt-32">
                   <ExpandableAnalyticsPanel eyebrow="Política industrial" title="Matriz de priorização NIB" subtitle="Posicionamento estratégico dos produtos da cadeia">
                     <NIBMatrixChart data={nibMatrixProducts} chartAnchorId="tour-nib-matrix" />
                   </ExpandableAnalyticsPanel>
@@ -718,7 +718,7 @@ export default function MainAnalyticalDashboard() {
           ) : null}
 
           {premiumProducts.length ? (
-            <div id="tour-technical-drawer" className="scroll-mt-40 space-y-5 pb-32 md:scroll-mt-28">
+            <div id="tour-technical-drawer" className="scroll-mt-40 space-y-5 pb-32 md:scroll-mt-32">
               <MacroModuleHeader
                 eyebrow="Macro-módulo 3 · NCM & CNAE"
                 title="Dados primários e governança"
@@ -756,7 +756,7 @@ function ExpandableAnalyticsPanel({
   defaultOpen?: boolean;
 }) {
   return (
-    <details id={id} open={defaultOpen} className="group scroll-mt-40 rounded-2xl border border-white/[0.08] bg-zinc-900/30 shadow-xl backdrop-blur-xl md:scroll-mt-28">
+    <details id={id} open={defaultOpen} className="group scroll-mt-40 rounded-2xl border border-white/[0.08] bg-zinc-900/30 shadow-xl backdrop-blur-xl md:scroll-mt-32">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-2xl px-5 py-4 transition hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 [&::-webkit-details-marker]:hidden">
         <span>
           <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">{eyebrow}</span>

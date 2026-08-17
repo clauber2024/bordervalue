@@ -1031,7 +1031,9 @@ function renderNode(
             e MA). Classificação mantida como neutra devido à ausência de distinção tarifária por NCM -- o mix IABr
             não foi extrapolado para o total exportado no Comex Stat porque cobre só usinas associadas, não o
             universo de guseiros independentes a carvão vegetal que respondem por parte relevante da produção
-            nacional.
+            nacional. O BEN/EPE (2024) inclui esses guseiros independentes, mas mede energia de todo o setor
+            Ferro-Gusa e Aço, não isolada à redução: carvão vegetal já é 16,5% do consumo do setor, coque de carvão
+            mineral 42,7%.
           </title>
           ◐ ROTA MISTA (COQUE + CARVÃO VEGETAL)
         </text>

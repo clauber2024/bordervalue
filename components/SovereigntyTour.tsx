@@ -204,7 +204,16 @@ export function SovereigntyTour({
     if (detailsTarget && !detailsTarget.open) {
       detailsTarget.open = true;
     }
-    target?.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    // "center" reads nicely for a short target, but a tall one (e.g. the
+    // vulnerability chart with many bars) can be taller than the viewport
+    // itself -- centering it then pushes its top edge above the visible
+    // area, under the sticky HeaderTopBar, regardless of scroll-margin
+    // (which only fully applies to "start"/"nearest"). Fall back to "start"
+    // whenever the target won't fit, so scroll-mt-* actually keeps the
+    // header clear of it.
+    const targetHeight = target?.getBoundingClientRect().height ?? 0;
+    const fitsInViewport = targetHeight <= window.innerHeight - CARD_TOP_MIN;
+    target?.scrollIntoView({ behavior: "smooth", block: fitsInViewport ? "center" : "start", inline: "nearest" });
 
     const firstFrame = window.requestAnimationFrame(updateHighlight);
     const secondFrame = window.setTimeout(updateHighlight, 420);

@@ -208,7 +208,7 @@ export function NIBMatrixChart({
         </div>
       </header>
 
-      <div id={chartAnchorId} className="scroll-mt-40 md:scroll-mt-28">
+      <div id={chartAnchorId} className="scroll-mt-40 md:scroll-mt-32">
       {hasCapacityCoverage ? (
         <>
       {proxyCount > 0 ? (
