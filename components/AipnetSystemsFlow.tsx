@@ -373,7 +373,7 @@ const valueChains: ValueChain[] = [
       { id: "steel_inputs_br", name: "Insumos Primários e Redutores", country: "Brasil + importado", flag: "🇧🇷🌐", stage: "Carga primária", description: "Minério de ferro extraído e beneficiado no Brasil e carvão mineral/coque importado (~US$2 bi/ano) entram juntos na carga -- insumos concomitantes, não uma sequência entre si.", cardBullets: [
         { label: "Carga Metálica", text: "Minério de ferro nacional extraído e beneficiado no Brasil (mineração primária)." },
         { label: "Vulnerabilidade Fóssil", text: "Dependência de importação de coque/carvão mineral (~US$2 bi/ano -- EUA, Austrália, Colômbia) para a rota primária tradicional." },
-        { label: "Soberania Nacional", text: "Contraste direto com o carvão vegetal doméstico (biorredução), que zera a dependência do redutor fóssil importado na etapa de redução -- mas não é insumo rastreável nesta base (não cruza fronteira em volume comparável)." },
+        { label: "Soberania Nacional", text: "Contraste direto com o carvão vegetal doméstico (biorredução), que zera a dependência do redutor fóssil importado na etapa de redução -- já responde por 16,5% do consumo energético do setor Ferro-Gusa e Aço no Brasil (BEN/EPE 2024). Ver Etapa 3 para o detalhamento." },
       ], detailBullets: [
         { label: "Combinação de Carga", text: "Minério e combustível/redutor entram de forma concomitante no processo termoquímico." },
         { label: "Exposição ao CBAM", text: "O coque fóssil importado é o maior responsável pela pegada de carbono da siderurgia integrada nacional." },
@@ -386,14 +386,14 @@ const valueChains: ValueChain[] = [
         { label: "Potencial de Reciclagem", text: "O Brasil exportou cerca de 32x mais sucata do que importou no período mapeado, sinalizando reciclagem doméstica ainda não totalmente aproveitada." },
       ], relatedInputs: ["Sucata ferrosa"], isCritical: false, isVulnerable: false, icon: Recycle },
       { id: "steel_reduction_br", name: "Redução e Aciaria", country: "Brasil", flag: "🇧🇷", stage: "Transformação", description: "Altos-fornos (coque/carvão mineral), redução direta (DRI) e fornos elétricos (EAF) convertem a carga em aço bruto.", cardBullets: [
-        { label: "Carvão Vegetal (Biorredução)", text: "Rota de baixo carbono estruturalmente doméstica -- não cruza fronteira em volume relevante, então entra como dado de contexto/produção, não como métrica de comércio exterior." },
+        { label: "Carvão Vegetal (Biorredução)", text: "Rota de baixo carbono estruturalmente doméstica -- 16,5% do consumo energético do setor Ferro-Gusa e Aço em 2024 (BEN/EPE), sem código NCM próprio, então entra como dado de produção/energia, não como métrica de comércio exterior." },
         { label: "Gás Natural (Rota DRI)", text: "Redutor importante, mas impossível de isolar via NCM por ser uma cesta comercial multiuso." },
         { label: "Fundentes (Calcário/Dolomita)", text: "Compõem o processo, mas têm comércio exterior marginal nesta pauta." },
       ], detailBullets: [
-        { label: "Carvão Vegetal (Biorredução)", text: "Rota de baixo carbono estruturalmente doméstica -- não cruza fronteira em volume relevante, então entra como dado de contexto/produção, não como métrica de comércio exterior." },
+        { label: "Carvão Vegetal (Biorredução)", text: "Rota de baixo carbono estruturalmente doméstica -- 16,5% do consumo energético do setor Ferro-Gusa e Aço em 2024 (BEN/EPE), sem código NCM próprio, então entra como dado de produção/energia, não como métrica de comércio exterior." },
         { label: "Gás Natural (Rota DRI)", text: "Redutor importante, mas impossível de isolar via NCM por ser uma cesta comercial multiuso." },
         { label: "Fundentes (Calcário/Dolomita)", text: "Compõem o processo, mas têm comércio exterior marginal nesta pauta." },
-      ], relatedInputs: ["Ferro-gusa", "Ferro-esponja e redução direta"], isCritical: false, isVulnerable: false, icon: Layers },
+      ], relatedInputs: ["Ferro-gusa", "Carvão vegetal (biorredução)", "Ferro-esponja e redução direta"], isCritical: false, isVulnerable: false, icon: Layers },
       { id: "steel_alloys_global", name: "Ligas e Tecnologia de Processo", country: "Múltiplas origens", flag: "🌐", stage: "Transformação", description: "Ferroligas, refratários e equipamentos condicionam qualidade e descarbonização.", cardBullets: [
         { label: "🟢 Ferro-Nióbio e Ferro-Níquel", text: "Ativos de soberania, não gargalo -- juntos, US$2,3 bi de saldo comercial positivo (CBMM domina a oferta mundial de nióbio; Brasil processa níquel doméstico para ligas de inoxidável). Estavam escondidos dentro da cesta agregada \"Ferroligas\" até esta apuração." },
         { label: "🔴 Eletrodos de Grafite", text: "87,2% das importações vêm da China -- maior exposição desta etapa." },
@@ -442,7 +442,7 @@ const nodeInputStages: Record<string, string[]> = {
 const nodeInputIds: Record<string, string[]> = {
   steel_inputs_br: ["minerio_ferro", "carvao_mineral_coque"],
   steel_scrap_br: ["sucata_ferrosa"],
-  steel_reduction_br: ["ferro_gusa", "ferro_esponja"],
+  steel_reduction_br: ["ferro_gusa", "carvao_vegetal", "ferro_esponja"],
 };
 
 const dashboardChainMap: Record<string, string> = {

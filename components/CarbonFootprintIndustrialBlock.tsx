@@ -89,8 +89,13 @@ export function CarbonFootprintIndustrialBlock({
   const fossilExposure = exposure.find((item) => item.routeClass === "fossil_dominant");
   const transitionExposure = exposure.find((item) => item.routeClass === "transition_underway");
   const lowCarbonExposure = exposure.find((item) => item.routeClass === "low_carbon_dominant");
+  // imports_value_usd > 0 matters here, not just the route class: this list
+  // backs the "já é suprida por X, Y" sentence for lowCarbonExposure's
+  // import-value share, so an input with zero import value (e.g.
+  // carvao_vegetal, which has no NCM/comex trade at all) would get named as
+  // if it contributed to that dollar figure when it structurally can't.
   const lowCarbonInputs = solarInputs
-    .filter((input) => input.production_route_class === "low_carbon_dominant")
+    .filter((input) => input.production_route_class === "low_carbon_dominant" && input.imports_value_usd > 0)
     .sort((left, right) => right.imports_value_usd - left.imports_value_usd);
 
   // Top-value input driving each share -- quoting its own

@@ -129,6 +129,27 @@ CHAINS: dict[str, dict[str, object]] = {
                        None,
                        production_route_class="fossil_dominant",
                        production_route_rationale="Alto-forno a coque/carvão mineral domina a maior parte da produção mundial de aço (World Steel Association) -- classificação reflete a rota mundialmente predominante, não necessariamente o mix real do ferro-gusa brasileiro exportado (ver nota de dados)."),
+            Definition("carvao_vegetal", "Carvão vegetal (biorredução)", "reducao", (), "validated", "alta",
+                       "Sem código NCM próprio -- produção e consumo são 100% domésticos, não cruza fronteira em volume comparável. Os campos de comércio exterior (importação, exportação, HHI, fornecedor) ficam zerados/não aplicáveis por desenho, não por ausência de dado real: a métrica deste insumo vem do BEN/EPE (Balanço Energético Nacional) e do IBGE PEVS (Produção da Extração Vegetal e da Silvicultura), não do Comex Stat -- ver tese estratégica.", None,
+                       production_route_class="low_carbon_dominant",
+                       production_route_rationale="Biorredução em alto-forno a carvão vegetal de floresta plantada (eucalipto) -- fator de emissão de 0,7 tCO2e/t contra 2,2 tCO2e/t da rota a coque fóssil (IABr 2024), sem feedstock fóssil na cadeia do redutor.",
+                       strategic_profile=StrategicProfile(
+                           is_powershoring_vector=True,
+                           label="Diferencial Competitivo de Baixo Carbono",
+                           thesis=(
+                               "Já responde por 16,5% de todo o consumo energético do setor Ferro-Gusa e Aço no "
+                               "Brasil -- 2.690,76 mil tep em 2024, atrás apenas do coque de carvão mineral "
+                               "(42,7%) e à frente de qualquer outra fonte renovável da matriz do setor (BEN/EPE "
+                               "2024). É rota estruturalmente doméstica, viabilizada por floresta plantada em "
+                               "escala, sem paralelo global -- não uma oportunidade futura, mas vantagem "
+                               "competitiva já em produção. A produção nacional de carvão vegetal (todos os usos) "
+                               "somou 6,68 milhões de toneladas e R$ 7,96 bilhões em 2024 (IBGE PEVS) -- não é "
+                               "possível isolar dessa base nacional a fatia específica consumida pela siderurgia, "
+                               "então os dois números (BEN, por setor consumidor; PEVS, produção nacional total) "
+                               "são citados separadamente, sem combiná-los em um valor derivado."
+                           ),
+                           value_chain_links=("ferro_gusa", "carvao_mineral_coque"),
+                       )),
             Definition("ferro_esponja", "Ferro-esponja e redução direta", "reducao", ("72031000", "72039000"), "validated", "alta",
                        "NCM 72039000 ('Outros', capítulo 7203) também cobre, pelo texto tarifário, ferro de pureza mínima 99,94% além de outros produtos ferrosos esponjosos -- a ponte oficial NCM-PRODLIST (2411.2030) trata os dois códigos como o mesmo produto industrial (ferro-esponja/redução direta), mas o texto do capítulo por si só não isola exclusivamente DRI.", None,
                        production_route_class="transition_underway",

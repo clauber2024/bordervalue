@@ -60,7 +60,7 @@ const steps: TourStep[] = [
     targetId: "tour-sankey",
     title: "3. Fluxo AIPNET por produto conceitual",
     bullets: [
-      { label: "Leitura", text: "distribui os US$ 3,1 bi importados pela cadeia entre os 15 insumos mapeados e seus fornecedores; a espessura das bandas é valor FOB, não sequência produtiva." },
+      { label: "Leitura", text: "distribui os US$ 3,1 bi importados pela cadeia entre os 16 insumos mapeados e seus fornecedores; a espessura das bandas é valor FOB, não sequência produtiva. Carvão vegetal (biorredução) é o único sem comércio exterior -- não aparece aqui, só nos painéis de produção doméstica." },
       { label: "Concentração de valor", text: "a pauta importada é dominada pelo Carvão Mineral/Coque -- US$ 2,1 bi, 66,8% de tudo o que a cadeia importa -- não porque seja o insumo mais dependente de um único fornecedor, mas porque é o de maior volume financeiro." },
     ],
     note: "Volume em dólares e concentração geográfica de fornecedor são eixos diferentes -- avance para o Diagnóstico de Soberania (Passo 4) para ver a dependência externa real, insumo a insumo.",
@@ -73,14 +73,14 @@ const steps: TourStep[] = [
       { label: "Minério de ferro", text: "o oposto — HHI de quase 10.000 nas importações é irrelevante (o Brasil importa quase nada, US$ 7,4 mi); a concentração real está do lado das exportações, 68% das quais vão para a China." },
       { label: "⚡ Ferro-esponja e redução direta", text: "aparece com 75,0% de participação chinesa, mas isso não é dependência externa real — não há dado de produção doméstica para calcular o indicador completo, e o fluxo em si é irrisório (US$ 99.930 no semestre). O que importa aqui é outro eixo: Vetor de Powershoring da rota DRI-hidrogênio verde para substituir o Carvão Mineral/Coque importado (Passo 3)." },
     ],
-    note: "Hoje, 0 dos 15 insumos cruzam o limiar de dependência externa crítica (>75%) real. O único número que chega perto (Ferro-esponja, 75,0%) não é dependência real -- é ruído estatístico de baixíssimo volume.",
+    note: "Hoje, 0 dos 16 insumos cruzam o limiar de dependência externa crítica (>75%) real. O único número que chega perto (Ferro-esponja, 75,0%) não é dependência real -- é ruído estatístico de baixíssimo volume.",
   },
   {
     targetId: "tour-mass-energy",
     title: "5. Balanço de massa e energia por etapa",
     bullets: [
       { label: "BF-BOF (alto-forno a coque)", text: "16–18 GJ/t de aço bruto, rota dominante no parque nacional e também globalmente — a China responde por 53,8% do aço bruto mundial, majoritariamente por essa rota." },
-      { label: "⚡ Alto-forno a carvão vegetal (biorredução)", text: "mesma ordem de grandeza de energia do alto-forno a coque, mas com fator de emissão de 0,7 tCO2e/t contra 2,2 tCO2e/t da rota a coque (IABr 2024) — diferencial competitivo sem paralelo global, viabilizado por floresta plantada em escala." },
+      { label: "⚡ Alto-forno a carvão vegetal (biorredução)", text: "já é 16,5% de todo o consumo energético do setor Ferro-Gusa e Aço no Brasil (BEN/EPE 2024) — mesma ordem de grandeza de energia do alto-forno a coque, mas com fator de emissão de 0,7 tCO2e/t contra 2,2 tCO2e/t da rota a coque (IABr 2024). Agora é insumo próprio do catálogo (16º), sem código NCM porque não cruza fronteira — ver Diagnóstico de Soberania para a tese completa." },
       { label: "EAF (forno elétrico a arco)", text: "2,1–2,4 GJ/t — cerca de 1/8 da energia da rota a coque — alimentado por sucata doméstica e por uma matriz elétrica nacional >84% renovável." },
     ],
     note: "São duas alavancas de descarbonização já disponíveis para a siderurgia brasileira -- carvão vegetal na etapa de redução e EAF na etapa elétrica -- e nenhuma das duas depende de tecnologia ainda não madura. A rota EAF já responde por ~29,1% do aço bruto mundial em 2024.",

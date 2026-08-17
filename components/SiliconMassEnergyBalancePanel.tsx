@@ -115,11 +115,11 @@ const ACO_STAGES: Stage[] = [
     label: "Minério + carvão vegetal → Ferro-gusa (biorredução, alto-forno a carvão vegetal)",
     process: "Redução em alto-forno a carvão vegetal (florestas plantadas) + conversão a oxigênio",
     energyIntensity: "mesma ordem de grandeza do alto-forno a coque (16–18 GJ/t) -- o diferencial real está na origem do carbono do redutor, não na intensidade energética do processo.",
-    brazilCapacity: "Rota estruturalmente doméstica e sem paralelo global em escala -- guseiros independentes (polos de MG, PA e MA) operam majoritariamente a carvão vegetal de florestas plantadas.",
+    brazilCapacity: "Já é 16,5% de todo o consumo energético do setor Ferro-Gusa e Aço no Brasil -- 2.690,76 mil tep em 2024 (BEN/EPE), atrás só do coque de carvão mineral (42,7%) e à frente de qualquer outra fonte renovável do setor. Guseiros independentes (polos de MG, PA e MA) operam majoritariamente a carvão vegetal de florestas plantadas.",
     chinaConcentration: "Sem concentração global relevante a comparar -- rota praticamente exclusiva do parque siderúrgico brasileiro, viabilizada pela disponibilidade de floresta plantada em escala.",
     concentrationBadge: "Rota sem paralelo global -- diferencial competitivo brasileiro",
     concentrationBadgeTone: "neutral",
-    note: "Fator de emissão de 0,7 tCO2e/t (carvão vegetal) contra 2,2 tCO2e/t (coque fóssil) -- cerca de 1/3 da pegada de carbono da rota integrada tradicional, segundo o IABr (2024, usinas associadas: ~84% coque/~16% carvão vegetal). A NCM do ferro-gusa (7201) não distingue as duas rotas, e essa proporção cobre só usinas associadas ao IABr -- os guseiros independentes majoritariamente a carvão vegetal não estão nela --, então o mix real exportado permanece agregado, sem separação por rota no valor comercial.",
+    note: "Fator de emissão de 0,7 tCO2e/t (carvão vegetal) contra 2,2 tCO2e/t (coque fóssil) -- cerca de 1/3 da pegada de carbono da rota integrada tradicional, segundo o IABr (2024, usinas associadas: ~84% coque/~16% carvão vegetal). A NCM do ferro-gusa (7201) não distingue as duas rotas, e essa proporção cobre só usinas associadas ao IABr -- os guseiros independentes majoritariamente a carvão vegetal não estão nela --, então o mix real exportado permanece agregado, sem separação por rota no valor comercial. Produção nacional de carvão vegetal (todos os usos, não só siderurgia): 6,68 milhões de toneladas e R$ 7,96 bilhões em 2024 (IBGE PEVS) -- não combinado com o dado do BEN acima porque não há fator de conversão tep↔tonelada verificado nesta base para isolar a fatia específica do setor.",
   },
   {
     key: "eaf",
