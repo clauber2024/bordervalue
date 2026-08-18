@@ -5,6 +5,7 @@ import { AlertTriangle, BadgeAlert, ChevronDown, Download } from "lucide-react";
 import type { ProdutoConceitual } from "../types/border-value";
 import type { SolarInputMetric } from "../types/solar-sovereignty";
 import { StrategicVectorBadge } from "./StrategicVectorBadge";
+import { CodeTooltip } from "./CodeTooltip";
 
 type TechnicalDrawerProps = {
   data: ProdutoConceitual[];
@@ -116,6 +117,20 @@ export function TechnicalDrawer({ data, solarInputs, solarMethodologyVersion, cl
                     </span>
                   ))}
                 </div>
+                {methodologies.map((methodology) => {
+                  const href = methodologyPdfHref(methodology);
+                  return href ? (
+                    <a
+                      key={`pdf-${methodology}`}
+                      href={href}
+                      download
+                      className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-cyan-300/20 bg-cyan-400/10 px-2.5 py-1.5 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/15"
+                    >
+                      <Download className="h-3.5 w-3.5" strokeWidth={1.7} />
+                      Baixar metodologia em PDF ({methodology})
+                    </a>
+                  ) : null;
+                })}
               </section>
             </div>
           </div>
@@ -216,12 +231,16 @@ function TradeMatrixTable({ data, referenceYears }: { data: ProdutoConceitual[];
                 <AuditCell>
                   {isResidualCode(product.ncm_codigo)
                     ? <UnvalidatedCode />
-                    : <CodeList codes={product.ncm_codigos?.length ? product.ncm_codigos : [product.ncm_codigo]} />}
+                    : <CodeList kind="ncm" codes={product.ncm_codigos?.length ? product.ncm_codigos : [product.ncm_codigo]} />}
                 </AuditCell>
                 <AuditCell><MappingStatus product={product} /></AuditCell>
-                <AuditCell>{product.industria.cnae_codigo || "N/D"}</AuditCell>
                 <AuditCell>
-                  <CodeList codes={product.industria.prodlist_codigos?.length
+                  {product.industria.cnae_codigo
+                    ? <CodeTooltip kind="cnae" code={product.industria.cnae_codigo} />
+                    : "N/D"}
+                </AuditCell>
+                <AuditCell>
+                  <CodeList kind="prodlist" codes={product.industria.prodlist_codigos?.length
                     ? product.industria.prodlist_codigos
                     : [product.industria.prodlist_codigo].filter(Boolean)} />
                 </AuditCell>
@@ -298,8 +317,8 @@ function SolarInputCrosswalk({
                   <tr className="align-top">
                     <AuditCell className="min-w-48 font-semibold text-zinc-100">{input.label}</AuditCell>
                     <AuditCell><span className="whitespace-nowrap">{technicalStageLabel(input.stage)}</span></AuditCell>
-                    <AuditCell><CodeList codes={input.ncm_codes} /></AuditCell>
-                    <AuditCell><CodeList codes={(input.prodlist_codes ?? []).filter((code) => code !== "NCM_SEM_PONTE")} /></AuditCell>
+                    <AuditCell><CodeList kind="ncm" codes={input.ncm_codes} /></AuditCell>
+                    <AuditCell><CodeList kind="prodlist" codes={(input.prodlist_codes ?? []).filter((code) => code !== "NCM_SEM_PONTE")} /></AuditCell>
                     <AuditCell><SolarMappingBadge input={input} /></AuditCell>
                     <AuditCell className="min-w-64 leading-5 text-zinc-400">
                       {input.data_gap_reason ?? "Cesta específica validada para o recorte comercial publicado."}
@@ -429,7 +448,9 @@ function SubNcmBreakdownTable({ input }: { input: SolarInputMetric }) {
         <tbody className="divide-y divide-white/[0.06]">
           {breakdown.map((row) => (
             <tr key={row.ncm_code}>
-              <AuditCell className="whitespace-nowrap font-mono text-zinc-300">{row.ncm_code}</AuditCell>
+              <AuditCell className="whitespace-nowrap font-mono text-zinc-300">
+                <CodeTooltip kind="ncm" code={row.ncm_code} />
+              </AuditCell>
               <AuditCell>{formatUsd(row.imports_value_usd)}</AuditCell>
               <AuditCell>{formatUsd(row.exports_value_usd)}</AuditCell>
               <AuditCell className={row.trade_balance_usd >= 0 ? "text-emerald-300" : "text-amber-300"}>
@@ -496,13 +517,13 @@ function humanizeTechnicalLabel(value: string) {
   return words ? words.charAt(0).toLocaleUpperCase("pt-BR") + words.slice(1) : "Não informado";
 }
 
-function CodeList({ codes }: { codes: string[] }) {
+function CodeList({ codes, kind }: { codes: string[]; kind: "ncm" | "prodlist" }) {
   if (!codes.length || codes.every(isResidualCode)) return <span className="text-zinc-500">N/D</span>;
   return (
     <div className="flex min-w-28 flex-wrap gap-1">
       {codes.filter((code) => !isResidualCode(code)).map((code) => (
         <span key={code} className="whitespace-nowrap rounded border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 font-mono text-[11px] text-zinc-300">
-          {code}
+          <CodeTooltip kind={kind} code={code} />
         </span>
       ))}
     </div>
@@ -591,6 +612,20 @@ function isResidualCode(value: string | null | undefined) {
   if (!value) return true;
   const normalized = value.replace(/\D/g, "");
   return !normalized || /^0+$/.test(normalized);
+}
+
+// Static, pre-generated PDFs (build_methodology_pdfs.py) in public/metodologia/
+// -- one per AIPNET chain, keyed by the exact methodology_version string each
+// chain's build_*.py already stamps on its payload (e.g. "1.0.0-aipnet-steel").
+const METHODOLOGY_PDF_BY_VERSION: Record<string, string> = {
+  "1.0.0-aipnet-steel": "/metodologia/aco.pdf",
+  "1.1.0-aipnet-solar": "/metodologia/silicio.pdf",
+  "1.0.0-aipnet-fertilizers": "/metodologia/fertilizantes.pdf",
+  "1.0.0-aipnet-transition-fuels": "/metodologia/combustiveis_transicao.pdf",
+};
+
+function methodologyPdfHref(version: string): string | null {
+  return METHODOLOGY_PDF_BY_VERSION[version] ?? null;
 }
 
 function TraceabilitySummary({ label, value, hint }: { label: string; value: string; hint?: string }) {

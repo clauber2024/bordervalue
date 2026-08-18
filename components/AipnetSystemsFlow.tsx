@@ -106,6 +106,11 @@ const solarNodes: SupplyNode[] = [
     flag: "🇧🇷",
     stage: "Extração",
     description: "Matéria-prima abundante no território nacional.",
+    cardBullets: [
+      { label: "🟢 Quartzito", text: "Superávit de US$94,9 mi -- extração nacional dominante, importação irrelevante (1,5% da amostra vem da China)." },
+      { label: "🟢 Quartzo", text: "Superávit de US$15,0 mi, fornecedor pouco concentrado (0,5% China)." },
+      { label: "Sílica Industrial", text: "Comércio marginal (déficit residual de US$1,3 mi) -- volume pequeno demais para sinalizar risco." },
+    ],
     relatedInputs: ["Quartzo de alta pureza", "Sílica industrial", "Energia e logística mineral"],
     isCritical: false,
     isVulnerable: false,
@@ -118,9 +123,18 @@ const solarNodes: SupplyNode[] = [
     flag: "🇧🇷",
     stage: "Processamento",
     description: "Redução carbotérmica inicial da sílica.",
+    cardBullets: [
+      { label: "🟢 Silício Grau Metalúrgico", text: "Superávit de US$211,2 mi -- Brasil é exportador líquido; a fração que é importada vem majoritariamente da China (84,1%), mas é pequena frente ao volume exportado." },
+      { label: "🔴 Eletrodos de Carbono", text: "87,7% das importações vêm da China -- déficit de US$24,2 mi neste insumo de processo (redução carbotérmica)." },
+    ],
+    detailBullets: [
+      { label: "🟢 Silício Grau Metalúrgico", text: "US$222,6 mi exportados contra US$11,4 mi importados -- saldo positivo de US$211,2 mi. Concentração de 84,1% China aplica-se só à fatia importada, residual frente à exportação." },
+      { label: "🔴 Eletrodos de Carbono", text: "US$28,7 mi importados contra US$4,5 mi exportados -- déficit de US$24,2 mi, com 87,7% de origem chinesa. Insumo de processo (redutor), não o produto final da etapa." },
+    ],
     relatedInputs: ["Quartzo de alta pureza", "Carvão vegetal e redutores", "Eletrodos de carbono", "Energia elétrica"],
-    isCritical: false,
+    isCritical: true,
     isVulnerable: false,
+    alertMessage: "O Si-GM em si é superavitário e soberano; o gargalo real desta etapa está nos eletrodos de carbono importados para a redução, concentrados na China.",
     icon: Layers,
   },
   {
@@ -133,7 +147,7 @@ const solarNodes: SupplyNode[] = [
     isCritical: true,
     isVulnerable: false,
     alertMessage:
-      "Alerta HHI Extremo: monopólio chinês de mais de 97% na produção global de wafers.",
+      "Alerta HHI Extremo: concentração global de 85% na produção de polissilício grau solar (estrutural, independente do volume ainda pequeno comercializado pelo Brasil).",
     relatedInputs: ["Silício grau metalúrgico", "Triclorossilano", "Hidrogênio de alta pureza", "Ácido clorídrico", "Reatores de deposição"],
     icon: Cpu,
   },
@@ -161,7 +175,7 @@ const solarNodes: SupplyNode[] = [
     isCritical: true,
     isVulnerable: true,
     alertMessage:
-      "Risco Geopolítico Crítico: A China detém o monopólio extremo de mais de 97% da capacidade mundial de produção de Wafers fotovoltaicos, criando um estrangulamento de soberania para a montagem nacional.",
+      "Risco Geopolítico Crítico: A China detém 95% da capacidade mundial de produção de Wafers fotovoltaicos, criando um estrangulamento de soberania para a montagem nacional.",
     relatedInputs: ["Lingotes monocristalinos", "Cadinho de quartzo", "Fio diamantado", "Equipamentos de corte e limpeza"],
     icon: ShieldAlert,
   },
@@ -186,9 +200,22 @@ const solarNodes: SupplyNode[] = [
     flag: "🇧🇷",
     stage: "Montagem",
     description: "Encapsulamento e montagem final de módulos a partir de células majoritariamente importadas -- capacidade nacional real, mas não elimina a dependência a montante.",
+    cardBullets: [
+      { label: "🔴 Módulo Fotovoltaico Pronto", text: "98,4% das importações vêm da China -- déficit de US$598,7 mi, o maior valor importado da cadeia inteira; 63,8% de dependência externa aparente." },
+      { label: "🔴 Vidro Solar e Molduras de Alumínio", text: "87,1% e 82,0% de origem chinesa, respectivamente -- componentes de montagem também concentrados." },
+      { label: "🟢 Fitas de Cobre", text: "Único item superavitário desta etapa (US$7,2 mi), com fornecedor menos concentrado (16,4% China)." },
+    ],
+    detailBullets: [
+      { label: "🔴 Módulo Fotovoltaico Pronto", text: "US$598,9 mi importados contra US$0,26 mi exportados -- o Brasil monta parte da demanda internamente, mas importa o módulo já pronto em volume muito maior do que monta a partir de componentes." },
+      { label: "🔴 Vidro Solar", text: "87,1% de origem chinesa, déficit de US$20,3 mi." },
+      { label: "🔴 Molduras de Alumínio", text: "82,0% de origem chinesa, déficit de US$20,5 mi." },
+      { label: "Encapsulantes EVA/POE", text: "Déficit de US$12,2 mi, concentração moderada (19,0% China)." },
+      { label: "🟢 Fitas de Cobre", text: "Superávit de US$7,2 mi -- único componente de montagem em que o Brasil exporta mais do que importa." },
+    ],
     relatedInputs: ["Células fotovoltaicas", "Vidro solar", "Encapsulantes EVA/POE", "Fitas de cobre", "Molduras de alumínio", "Backsheet", "Caixa de junção"],
-    isCritical: false,
-    isVulnerable: false,
+    isCritical: true,
+    isVulnerable: true,
+    alertMessage: "A montagem final é onde a cadeia solar brasileira concentra o maior valor de importação: US$598,7 mi em módulos prontos, majoritariamente da China (98,4%), acima da soma de todos os componentes importados separadamente -- a 'capacidade nacional' de montagem convive com uma rota paralela de módulo importado pronto que hoje domina em valor.",
     icon: Zap,
   },
 ];
@@ -343,11 +370,25 @@ const valueChains: ValueChain[] = [
     hhiGlobal: "em homologação",
     primaryVulnerability: "insumos importados com maior dependência no diagnóstico comercial",
     nodes: [
-      { id: "fuel_feedstocks_br", name: "Biomassa e Insumos", country: "Brasil", flag: "🇧🇷", stage: "Insumo", description: "Base agroindustrial, resíduos e insumos necessários às rotas de baixo carbono.", relatedInputs: ["Gás natural / proxy biometano"], isCritical: false, isVulnerable: false, icon: Factory },
-      { id: "fuel_conversion_br", name: "Conversão e Bioprocessos Nacional", country: "Brasil", flag: "🇧🇷", stage: "Insumo", description: "Fermentação e transesterificação com base agroindustrial consolidada -- rota de baixo carbono já operada em escala no Brasil.", relatedInputs: ["Etanol", "Biodiesel"], isCritical: false, isVulnerable: false, icon: Layers },
-      { id: "fuel_conversion_imported", name: "Moléculas de Base Importadas", country: "Múltiplas origens", flag: "🌐", stage: "Insumo", description: "Hidrogênio, amônia e metanol comercializados hoje dependem majoritariamente de produção ou insumo importado, mesmo quando servem de base a rotas de baixo carbono.", relatedInputs: ["Hidrogênio", "Amônia", "Metanol"], isCritical: true, isVulnerable: true, alertMessage: "O diagnóstico comercial mostra dependência externa elevada para amônia e metanol e ausência de produção doméstica comparável para hidrogênio -- diferente da rota consolidada de etanol/biodiesel.", icon: ShieldAlert },
-      { id: "fuel_advanced_inputs", name: "Tecnologias de Conversão", country: "Múltiplas origens", flag: "🌐", stage: "Tecnologia habilitadora", description: "Catalisadores, enzimas e eletrolisadores condicionam a escala, a produtividade e a intensidade de carbono das rotas.", relatedInputs: ["Enzimas e biocatalisadores", "Catalisadores preparados", "Eletrolisadores / proxy de equipamentos"], isCritical: true, isVulnerable: true, alertMessage: "Evidência disponível: a IEA estima que a China reúne quase 60% da capacidade mundial de fabricação de eletrolisadores. Essa é uma concentração geográfica publicada, não um HHI por empresa. Para enzimas e catalisadores, a leitura permanece baseada na dependência e nos fornecedores observados nas importações brasileiras.", icon: ShieldAlert },
-      { id: "fuel_final_br", name: "Combustíveis e Usos Finais", country: "Brasil", flag: "🇧🇷", stage: "Aplicação final", description: "Hidrogênio renovável, SAF, biometano e e-combustíveis abastecem aviação, indústria e transporte pesado.", relatedInputs: ["Combustíveis de aviação / proxy SAF"], relatedDestinations: transitionFuelDestinations, isCritical: false, isVulnerable: false, icon: Zap },
+      { id: "fuel_feedstocks_br", name: "Biomassa e Insumos", country: "Brasil", flag: "🇧🇷", stage: "Insumo", description: "Base agroindustrial, resíduos e insumos necessários às rotas de baixo carbono.", cardBullets: [
+        { label: "🔴 Gás Natural / Proxy Biometano", text: "Déficit de US$1,01 bi -- sem concentração chinesa (0% da amostra), mas dependente de importação para cobrir a demanda das rotas que usam gás como base." },
+      ], relatedInputs: ["Gás natural / proxy biometano"], isCritical: true, isVulnerable: false, alertMessage: "Déficit real, mas de fornecedor diversificado -- não é uma concentração geográfica de risco.", icon: Factory },
+      { id: "fuel_conversion_br", name: "Conversão e Bioprocessos Nacional", country: "Brasil", flag: "🇧🇷", stage: "Insumo", description: "Fermentação e transesterificação com base agroindustrial consolidada -- rota de baixo carbono já operada em escala no Brasil.", cardBullets: [
+        { label: "🟢 Etanol", text: "Superávit de US$117,4 mi, sem concentração chinesa -- rota consolidada da agroindústria nacional." },
+        { label: "🟢 Biodiesel", text: "Superávit de US$84,7 mi, comércio exterior praticamente sem participação chinesa." },
+      ], relatedInputs: ["Etanol", "Biodiesel"], isCritical: false, isVulnerable: false, icon: Layers },
+      { id: "fuel_conversion_imported", name: "Moléculas de Base Importadas", country: "Múltiplas origens", flag: "🌐", stage: "Insumo", description: "Hidrogênio, amônia e metanol comercializados hoje dependem majoritariamente de produção ou insumo importado, mesmo quando servem de base a rotas de baixo carbono.", cardBullets: [
+        { label: "🔴 Metanol", text: "98,6% de dependência externa -- déficit de US$367,9 mi, a maior exposição desta etapa." },
+        { label: "🔴 Amônia", text: "Déficit de US$72,4 mi -- concentração global (não da amostra brasileira) de 30% na China." },
+        { label: "Hidrogênio", text: "Comércio quase inexistente na amostra (US$1,8 mil importados) -- reflete ausência de produção/mercado doméstico comparável, não uma métrica de dependência percentual." },
+      ], relatedInputs: ["Hidrogênio", "Amônia", "Metanol"], isCritical: true, isVulnerable: true, alertMessage: "O diagnóstico comercial mostra dependência externa elevada para amônia e, sobretudo, metanol (98,6%) -- e ausência de produção doméstica comparável para hidrogênio -- diferente da rota consolidada de etanol/biodiesel.", icon: ShieldAlert },
+      { id: "fuel_advanced_inputs", name: "Tecnologias de Conversão", country: "Múltiplas origens", flag: "🌐", stage: "Tecnologia habilitadora", description: "Catalisadores, enzimas e eletrolisadores condicionam a escala, a produtividade e a intensidade de carbono das rotas.", cardBullets: [
+        { label: "Eletrolisadores", text: "Déficit de US$76,3 mi -- 15,9% da amostra brasileira vem da China, mas a IEA estima concentração global de ~60% da capacidade de fabricação." },
+        { label: "Enzimas e Catalisadores", text: "Déficits de US$152,0 mi e US$215,3 mi -- fornecedor relativamente diversificado na amostra brasileira (22,9% e 11,6% China)." },
+      ], relatedInputs: ["Enzimas e biocatalisadores", "Catalisadores preparados", "Eletrolisadores / proxy de equipamentos"], isCritical: true, isVulnerable: true, alertMessage: "Evidência disponível: a IEA estima que a China reúne quase 60% da capacidade mundial de fabricação de eletrolisadores. Essa é uma concentração geográfica publicada, não um HHI por empresa. Para enzimas e catalisadores, a leitura permanece baseada na dependência e nos fornecedores observados nas importações brasileiras.", icon: ShieldAlert },
+      { id: "fuel_final_br", name: "Combustíveis e Usos Finais", country: "Brasil", flag: "🇧🇷", stage: "Aplicação final", description: "Hidrogênio renovável, SAF, biometano e e-combustíveis abastecem aviação, indústria e transporte pesado.", cardBullets: [
+        { label: "🟢 Combustíveis de Aviação / Proxy SAF", text: "Superávit de US$1,43 bi -- maior saldo positivo em valor desta cadeia, sem concentração chinesa." },
+      ], relatedInputs: ["Combustíveis de aviação / proxy SAF"], relatedDestinations: transitionFuelDestinations, isCritical: false, isVulnerable: false, icon: Zap },
     ],
   },
   {
@@ -357,9 +398,31 @@ const valueChains: ValueChain[] = [
     hhiGlobal: "em homologação",
     primaryVulnerability: "nutrientes e intermediários com alta exposição externa",
     nodes: [
-      { id: "fertilizer_resources", name: "Recursos Minerais e Gás", country: "Brasil", flag: "🇧🇷", stage: "Matéria-prima", description: "Gás natural, rocha fosfática e recursos potássicos formam a base da cadeia.", relatedInputs: ["Gás natural", "Rocha fosfática"], isCritical: false, isVulnerable: false, icon: Factory },
-      { id: "fertilizer_intermediates", name: "Intermediários Químicos", country: "Múltiplas origens", flag: "🌐", stage: "Insumo", description: "Amônia, ureia, ácido fosfórico e sais potássicos concentram a exposição comercial.", relatedInputs: ["Amônia", "Ureia fertilizante", "Sulfato de amônio", "Fosfato diamônico (DAP)", "Fosfato monoamônico (MAP)", "Superfosfatos", "Cloreto de potássio"], isCritical: true, isVulnerable: true, alertMessage: "O grau de dependência e concentração varia por nutriente e deve ser consultado no diagnóstico abaixo.", icon: ShieldAlert },
-      { id: "fertilizer_blending_br", name: "Formulação e Mistura", country: "Brasil", flag: "🇧🇷", stage: "Transformação", description: "Mistura, granulação e formulação adaptam nutrientes às necessidades agronômicas.", relatedInputs: ["Fertilizantes NPK"], isCritical: false, isVulnerable: false, icon: Layers },
+      { id: "fertilizer_resources", name: "Recursos Minerais e Gás", country: "Brasil", flag: "🇧🇷", stage: "Matéria-prima", description: "Gás natural, rocha fosfática e recursos potássicos formam a base da cadeia.", cardBullets: [
+        { label: "🔴 Gás Natural", text: "Déficit de US$1,01 bi -- sem concentração chinesa (0% da amostra), mas dependente de importação para cobrir a demanda da cadeia." },
+        { label: "🔴 Rocha Fosfática", text: "Déficit de US$83,3 mi, concentração de fornecedor moderada-alta (HHI 5.660), sem participação chinesa relevante." },
+      ], detailBullets: [
+        { label: "🔴 Gás Natural", text: "US$1,01 bi importados contra US$1,9 mi exportados -- déficit quase total, fornecedor diversificado (não chinês)." },
+        { label: "🔴 Rocha Fosfática", text: "US$83,4 mi importados contra US$87,1 mil exportados -- déficit de US$83,3 mi, HHI 5.660 indica concentração de fornecedor relevante mesmo sem predominância chinesa." },
+      ], relatedInputs: ["Gás natural", "Rocha fosfática"], isCritical: true, isVulnerable: false, alertMessage: "Déficit real nas duas matérias-primas de base -- risco de dependência de importação, não de concentração chinesa especificamente.", icon: Factory },
+      { id: "fertilizer_intermediates", name: "Intermediários Químicos", country: "Múltiplas origens", flag: "🌐", stage: "Insumo", description: "Amônia, ureia, ácido fosfórico e sais potássicos concentram a exposição comercial.", cardBullets: [
+        { label: "🔴 Cloreto de Potássio", text: "Maior déficit em valor de toda a cadeia de fertilizantes -- US$2,99 bi, 70,8% de dependência externa; sem produção doméstica de potássio em escala." },
+        { label: "🔴 Sulfato de Amônio", text: "99,8% das importações vêm da China -- maior concentração de fornecedor único da cadeia (déficit de US$556,5 mi, 77,5% de dependência externa)." },
+        { label: "🔴 Ureia, MAP e Superfosfatos", text: "Déficits de US$1,07 bi, US$1,29 bi e US$1,32 bi -- entre 56% e 74% de dependência externa cada, com fornecedor diversificado (não concentrado na China)." },
+      ], detailBullets: [
+        { label: "🔴 Cloreto de Potássio (Potássicos)", text: "US$2,997 bi importados contra US$10,1 mi exportados -- maior linha de importação isolada da cadeia de fertilizantes; extração/produção doméstica de potássio ainda incipiente." },
+        { label: "🔴 Sulfato de Amônio (Nitrogenados)", text: "US$562,9 mi importados, 99,8% de origem chinesa -- fornecedor único de fato, déficit de US$556,5 mi." },
+        { label: "🔴 Ureia (Nitrogenados)", text: "Déficit de US$1,07 bi, 73,7% de dependência externa; apenas 3,3% das importações vêm da China -- risco de volume, não de concentração geográfica." },
+        { label: "🔴 Fosfato Monoamônico / MAP", text: "Déficit de US$1,29 bi, 56,0% de dependência externa, fornecedor diversificado (0,98% China)." },
+        { label: "🔴 Superfosfatos", text: "Déficit de US$1,32 bi, 56,5% de dependência externa, 9,8% de origem chinesa." },
+        { label: "Amônia", text: "Déficit de US$72,4 mi -- concentração global de 30% na China (estrutural), mas a amostra de importação brasileira não aponta a China como fornecedor principal." },
+        { label: "Fosfato Diamônico / DAP", text: "Comércio residual (déficit de US$15,7 mi) -- menor volume da cesta de intermediários." },
+      ], relatedInputs: ["Amônia", "Ureia fertilizante", "Sulfato de amônio", "Fosfato diamônico (DAP)", "Fosfato monoamônico (MAP)", "Superfosfatos", "Cloreto de potássio"], isCritical: true, isVulnerable: true, alertMessage: "Nutriente por nutriente: o maior risco de valor está no cloreto de potássio (US$2,99 bi, sem produção doméstica em escala); o maior risco de concentração de fornecedor está no sulfato de amônio (99,8% China). Os demais têm déficit relevante mas fornecedor diversificado.", icon: ShieldAlert },
+      { id: "fertilizer_blending_br", name: "Formulação e Mistura", country: "Brasil", flag: "🇧🇷", stage: "Transformação", description: "Mistura, granulação e formulação adaptam nutrientes às necessidades agronômicas.", cardBullets: [
+        { label: "🟢 Fertilizantes NPK", text: "Dependência externa de apenas 1,9% -- a formulação final (mistura/granulação) é majoritariamente doméstica, mesmo com os intermediários importados a montante." },
+      ], detailBullets: [
+        { label: "🟢 Fertilizantes NPK", text: "Déficit de US$221,5 mi frente a uma cesta de intermediários que soma bilhões -- a etapa de formulação em si tem dependência externa de só 1,9%, evidência de capacidade real de mistura e granulação nacional." },
+      ], relatedInputs: ["Fertilizantes NPK"], isCritical: false, isVulnerable: false, icon: Layers },
       { id: "fertilizer_use_br", name: "Oferta ao Setor Agropecuário", country: "Brasil", flag: "🇧🇷", stage: "Transformação", description: "Distribuição e aplicação conectam a segurança de suprimento à produção de alimentos.", isCritical: false, isVulnerable: false, icon: Zap },
     ],
   },
@@ -371,26 +434,31 @@ const valueChains: ValueChain[] = [
     primaryVulnerability: "ligas, insumos e equipamentos críticos indicados pelo diagnóstico comercial",
     nodes: [
       { id: "steel_inputs_br", name: "Insumos Primários e Redutores", country: "Brasil + importado", flag: "🇧🇷🌐", stage: "Carga primária", description: "Minério de ferro extraído e beneficiado no Brasil e carvão mineral/coque importado (~US$2 bi/ano) entram juntos na carga -- insumos concomitantes, não uma sequência entre si.", cardBullets: [
-        { label: "Carga Metálica", text: "Minério de ferro nacional extraído e beneficiado no Brasil (mineração primária)." },
-        { label: "Vulnerabilidade Fóssil", text: "Dependência de importação de coque/carvão mineral (~US$2 bi/ano -- EUA, Austrália, Colômbia) para a rota primária tradicional." },
+        { label: "🟢 Minério de Ferro", text: "Superávit de US$15,8 bi -- extraído e beneficiado no Brasil (mineração primária), importação irrelevante (0,008% da amostra)." },
+        { label: "🔴 Carvão Mineral e Coque", text: "Déficit de US$2,05 bi -- ~100% importado (EUA, Austrália, Colômbia) para a rota primária tradicional; concentração de fornecedor não é chinesa." },
         { label: "Soberania Nacional", text: "Contraste direto com o carvão vegetal doméstico (biorredução), que zera a dependência do redutor fóssil importado na etapa de redução -- já responde por 16,5% do consumo energético do setor Ferro-Gusa e Aço no Brasil (BEN/EPE 2024). Ver Etapa 3 para o detalhamento." },
       ], detailBullets: [
+        { label: "🟢 Minério de Ferro", text: "US$15,84 bi de exportação contra US$7,4 mi de importação -- soberania plena na base mineral, maior ativo de saldo comercial da cadeia." },
+        { label: "🔴 Carvão Mineral e Coque Siderúrgico", text: "US$2,05 bi de importação anual, quase sem contrapartida de exportação (US$126 mil) -- 100% dependente de fornecimento externo (EUA, Austrália, Colômbia), sem substituto doméstico na rota a coque." },
         { label: "Combinação de Carga", text: "Minério e combustível/redutor entram de forma concomitante no processo termoquímico." },
         { label: "Exposição ao CBAM", text: "O coque fóssil importado é o maior responsável pela pegada de carbono da siderurgia integrada nacional." },
-      ], relatedInputs: ["Minério de ferro", "Carvão mineral e coque siderúrgico"], isCritical: false, isVulnerable: false, icon: Factory },
+      ], relatedInputs: ["Minério de ferro", "Carvão mineral e coque siderúrgico"], isCritical: true, isVulnerable: false, alertMessage: "Déficit real de US$2,05 bi em carvão mineral e coque -- fornecedor diversificado (EUA, Austrália, Colômbia), não concentração chinesa. O minério de ferro, em contraste, é soberania plena.", icon: Factory },
       { id: "steel_scrap_br", name: "Sucata Ferrosa", country: "Brasil", flag: "🇧🇷", stage: "Insumo reciclado", description: "Sucata ferrosa reciclada, insumo da rota elétrica (EAF).", cardBullets: [
         { label: "Rota Elétrica (EAF)", text: "Pegada de carbono muito menor que a rota primária a carvão -- roda na matriz elétrica nacional, majoritariamente renovável." },
-        { label: "Potencial de Reciclagem", text: "O Brasil exportou cerca de 32x mais sucata do que importou no período mapeado, sinalizando reciclagem doméstica ainda não totalmente aproveitada." },
+        { label: "🟢 Potencial de Reciclagem", text: "Superávit de US$173,2 mi -- o Brasil exportou cerca de 32x mais sucata do que importou no período mapeado, sinalizando reciclagem doméstica ainda não totalmente aproveitada." },
       ], detailBullets: [
         { label: "Rota Elétrica (EAF)", text: "Pegada de carbono muito menor que a rota primária a carvão -- roda na matriz elétrica nacional, majoritariamente renovável." },
-        { label: "Potencial de Reciclagem", text: "O Brasil exportou cerca de 32x mais sucata do que importou no período mapeado, sinalizando reciclagem doméstica ainda não totalmente aproveitada." },
+        { label: "🟢 Potencial de Reciclagem", text: "US$178,8 mi exportados contra US$5,6 mi importados (32x) -- reciclagem doméstica consolidada, fornecedor pouco concentrado (0,45% China)." },
       ], relatedInputs: ["Sucata ferrosa"], isCritical: false, isVulnerable: false, icon: Recycle },
       { id: "steel_reduction_br", name: "Redução e Aciaria", country: "Brasil", flag: "🇧🇷", stage: "Transformação", description: "Altos-fornos (coque/carvão mineral), redução direta (DRI) e fornos elétricos (EAF) convertem a carga em aço bruto.", cardBullets: [
-        { label: "Carvão Vegetal (Biorredução)", text: "Rota de baixo carbono estruturalmente doméstica -- 16,5% do consumo energético do setor Ferro-Gusa e Aço em 2024 (BEN/EPE), sem código NCM próprio, então entra como dado de produção/energia, não como métrica de comércio exterior." },
+        { label: "🟢 Ferro-Gusa", text: "Superávit de US$965,2 mi -- Brasil exporta o excedente da rota integrada; os 96,9% de \"origem China\" na amostra de importação vêm de uma base de apenas US$42 mil, sem significado estatístico." },
+        { label: "🟢 Carvão Vegetal (Biorredução)", text: "Rota de baixo carbono estruturalmente doméstica -- 16,5% do consumo energético do setor Ferro-Gusa e Aço em 2024 (BEN/EPE), sem código NCM próprio, então entra como dado de produção/energia, não como métrica de comércio exterior." },
         { label: "Gás Natural (Rota DRI)", text: "Redutor importante, mas impossível de isolar via NCM por ser uma cesta comercial multiuso." },
         { label: "Fundentes (Calcário/Dolomita)", text: "Compõem o processo, mas têm comércio exterior marginal nesta pauta." },
       ], detailBullets: [
-        { label: "Carvão Vegetal (Biorredução)", text: "Rota de baixo carbono estruturalmente doméstica -- 16,5% do consumo energético do setor Ferro-Gusa e Aço em 2024 (BEN/EPE), sem código NCM próprio, então entra como dado de produção/energia, não como métrica de comércio exterior." },
+        { label: "🟢 Ferro-Gusa (NCM 7201)", text: "US$965,2 mi de saldo positivo (US$965,2 mi exportados contra US$42,3 mil importados) -- item estruturalmente exportador da cadeia." },
+        { label: "🟢 Carvão Vegetal (Biorredução)", text: "Rota de baixo carbono estruturalmente doméstica -- 16,5% do consumo energético do setor Ferro-Gusa e Aço em 2024 (BEN/EPE), sem código NCM próprio, então entra como dado de produção/energia, não como métrica de comércio exterior." },
+        { label: "Ferro-Esponja e Redução Direta", text: "Comércio residual (déficit de US$94,7 mil) -- amostra pequena demais (base de US$99,9 mil) para atribuir concentração de fornecedor com confiança." },
         { label: "Gás Natural (Rota DRI)", text: "Redutor importante, mas impossível de isolar via NCM por ser uma cesta comercial multiuso." },
         { label: "Fundentes (Calcário/Dolomita)", text: "Compõem o processo, mas têm comércio exterior marginal nesta pauta." },
       ], relatedInputs: ["Ferro-gusa", "Carvão vegetal (biorredução)", "Ferro-esponja e redução direta"], isCritical: false, isVulnerable: false, icon: Layers },
@@ -405,7 +473,17 @@ const valueChains: ValueChain[] = [
         { label: "🔴 Materiais Refratários", text: "48,8% de importação chinesa e déficit comercial de US$33 mi; cesta cobre também usos em cimento, vidro e fundição fora da siderurgia." },
         { label: "🔴 Ferroligas remanescentes", text: "Sem nióbio/níquel, a cesta ainda é superavitária (US$262 mi), mas o superávit concentra em ferrossilício (72022100) enquanto 5 sub-códigos seguem importadores líquidos -- ver detalhamento técnico." },
       ], relatedInputs: ["Ferroligas", "Ferro-nióbio", "Ferro-níquel", "Eletrodos de grafite", "Materiais refratários"], isCritical: true, isVulnerable: true, alertMessage: "Itens críticos são identificados pelo risco comercial observado; a topologia não atribui concentração sem homologação. Ferro-nióbio e ferro-níquel são exceção deliberada -- ver cesta detalhada no card.", icon: ShieldAlert },
-      { id: "steel_products_br", name: "Aços e Bens da Transição", country: "Brasil", flag: "🇧🇷", stage: "Equipamento e uso final", description: "Chapas, tubos, cabos e estruturas abastecem energia, mobilidade e infraestrutura verde.", relatedInputs: ["Laminados planos a quente", "Laminados planos a frio", "Tubos de aço", "Estruturas de aço"], isCritical: false, isVulnerable: false, icon: Zap },
+      { id: "steel_products_br", name: "Aços e Bens da Transição", country: "Brasil", flag: "🇧🇷", stage: "Equipamento e uso final", description: "Chapas, tubos, cabos e estruturas abastecem energia, mobilidade e infraestrutura verde.", cardBullets: [
+        { label: "🔴 Aços Elétricos (GO/GNO)", text: "60,1% das importações vêm da China -- maior concentração de fornecedor desta etapa (déficit de US$92,6 mi)." },
+        { label: "🔴 Estruturas de Aço", text: "57,5% das importações vêm da China -- déficit de US$69,2 mi." },
+        { label: "Tubos e Laminados Planos", text: "Déficits relevantes (destaque para US$251,9 mi em tubos de aço), mas fornecedor bem mais diversificado -- entre 2,5% e 22,3% China." },
+      ], detailBullets: [
+        { label: "🔴 Aços Elétricos (GO/GNO)", text: "60,1% das importações concentradas na China -- déficit de US$92,6 mi. É o item de maior concentração de fornecedor único desta etapa, usado em transformadores e motores elétricos." },
+        { label: "🔴 Estruturas de Aço", text: "57,5% das importações concentradas na China -- déficit de US$69,2 mi." },
+        { label: "Tubos de Aço", text: "Maior déficit absoluto da etapa (US$293,2 mi importados contra US$41,3 mi exportados), mas apenas 2,5% da amostra vem da China -- déficit de volume, não de concentração geográfica." },
+        { label: "Laminados Planos a Quente", text: "Déficit de US$74,9 mi, 22,3% das importações da China -- exposição moderada, sem monopólio configurado." },
+        { label: "Laminados Planos a Frio", text: "Déficit de US$24,2 mi, 15,2% das importações da China -- menor exposição de concentração entre os produtos desta etapa." },
+      ], relatedInputs: ["Laminados planos a quente", "Laminados planos a frio", "Tubos de aço", "Estruturas de aço", "Aços elétricos (grão orientado/não orientado)"], isCritical: true, isVulnerable: false, alertMessage: "Diferente das etapas anteriores (exportadoras líquidas), esta etapa importa mais do que exporta em todos os 5 itens -- a concentração de fornecedor real está em aços elétricos (60,1% China) e estruturas de aço (57,5%); os demais têm fornecedor diversificado ou déficit por volume, não por dependência de um único país.", icon: Zap },
     ],
   },
 ];

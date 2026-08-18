@@ -2039,7 +2039,14 @@ function buildImportsTopology(
   // terminal node as the finished system, implying domestic integration
   // ("Brasil refina e aplica em módulos") that isn't real.
   const isGenericChain = !isFertilizerChain && !isTransitionFuelChain;
-  const BASE_MATERIAL_LABEL = "Insumos de Base (uso industrial doméstico)";
+  // Renamed from "Insumos de Base" -- for aço, this sink is populated
+  // exclusively by aciaria-stage alloys/components (ferro-nióbio, eletrodos
+  // de grafite, refratários, ferroligas remanescentes), not raw base
+  // materials -- those already have their own real "Base mineral" stage
+  // node. Calling both "base" sets them side by side in the diagram, implying
+  // the same category, when this one's only defining trait is the absence
+  // of a confirmed >=90% concentration signal, not being a raw commodity.
+  const BASE_MATERIAL_LABEL = "Insumos de Processo (sem concentração crítica confirmada)";
   const CRITICAL_IMPORT_LABEL = "Insumos Críticos Importados (sem produção nacional)";
   const maxStageOrder = Math.max(0, ...solarInputs.map((input) => stagePhysicalOrder(`stage:${input.stage}`)));
   const importRoutingTier = (input: SolarInputMetric): "base" | "critical" | "final" => {
