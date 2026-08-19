@@ -11,8 +11,11 @@ import {
   Building2,
   CheckCircle2,
   Database,
+  Flag,
+  Gauge,
   Layers3,
   Info,
+  Scale,
   ShieldAlert,
   Sparkles,
 } from 'lucide-react';
@@ -334,7 +337,8 @@ export const ExecutiveMainHero = ({
 
             <div className="grid grid-cols-3 gap-2 rounded-xl border border-red-500/20 bg-zinc-950/70 p-3 text-center">
               <div>
-                <span className="block text-[10px] font-semibold uppercase text-zinc-400">
+                <span className="flex items-center justify-center gap-1 text-[10px] font-semibold uppercase text-zinc-400">
+                  <Scale className="h-3 w-3 text-zinc-500" strokeWidth={1.8} />
                   Dependência externa
                 </span>
                 <span className="block font-mono text-base font-extrabold text-red-400">
@@ -345,7 +349,8 @@ export const ExecutiveMainHero = ({
                 </span>
               </div>
               <div className="border-x border-white/10 px-1">
-                <span className="block text-[10px] font-semibold uppercase text-zinc-400">
+                <span className="flex items-center justify-center gap-1 text-[10px] font-semibold uppercase text-zinc-400">
+                  <Gauge className="h-3 w-3 text-zinc-500" strokeWidth={1.8} />
                   Índice HHI
                 </span>
                 <span className="block font-mono text-base font-extrabold text-red-400">
@@ -356,7 +361,8 @@ export const ExecutiveMainHero = ({
                 </span>
               </div>
               <div>
-                <span className="block text-[10px] font-semibold uppercase text-zinc-400">
+                <span className="flex items-center justify-center gap-1 text-[10px] font-semibold uppercase text-zinc-400">
+                  <Flag className="h-3 w-3 text-zinc-500" strokeWidth={1.8} />
                   Principal País Origem
                 </span>
                 <span className="mt-1 block truncate text-xs font-bold text-amber-200">
