@@ -232,10 +232,23 @@ def write_sql(
         "  massa_salarial_rais numeric NOT NULL DEFAULT 0",
         ");",
         "BEGIN;",
-        # Reload semantics: this file owns exactly this chain's conceptual
-        # product ids, so a full delete+insert of just those ids is safe to
-        # rerun without touching any other chain's rows.
-        f"DELETE FROM analytical_comex_staging WHERE conceptual_product_id IN ({product_ids_sql});",
+        # Reload semantics: analytical_comex_staging carries cadeia_prioritaria,
+        # so deleting by chain (not by the current run's id list) is what
+        # actually achieves "this file owns exactly this chain's rows" --
+        # deleting by id list only would leave orphaned rows behind any time
+        # an input_id is renamed or split (e.g. "superfosfatos" ->
+        # "superfosfato_triplo"/"superfosfato_simples"), since the old id
+        # never appears in a future run's IN-list and so is never targeted.
+        # mv_published_indicators is driven by a LEFT JOIN FROM
+        # analytical_comex_staging, so this alone is enough to make orphans
+        # disappear from the published API even without touching the second
+        # table below.
+        f"DELETE FROM analytical_comex_staging WHERE cadeia_prioritaria = '{sql_text(chain_name)}';",
+        # analytical_industry_and_employment has no chain column to scope a
+        # full delete by, so this still only clears the current run's ids --
+        # a renamed/removed id can leave a harmless orphan row here (unused,
+        # since nothing joins to it once its analytical_comex_staging row is
+        # gone above).
         f"DELETE FROM analytical_industry_and_employment WHERE conceptual_product_id IN ({product_ids_sql});",
     ]
 
