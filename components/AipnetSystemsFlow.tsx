@@ -463,7 +463,7 @@ const valueChains: ValueChain[] = [
         { label: "Fundentes (Calcário/Dolomita)", text: "Compõem o processo, mas têm comércio exterior marginal nesta pauta." },
       ], relatedInputs: ["Ferro-gusa", "Carvão vegetal (biorredução)", "Ferro-esponja e redução direta"], isCritical: false, isVulnerable: false, icon: Layers },
       { id: "steel_alloys_global", name: "Ligas e Tecnologia de Processo", country: "Múltiplas origens", flag: "🌐", stage: "Transformação", description: "Ferroligas, refratários e equipamentos condicionam qualidade e descarbonização.", cardBullets: [
-        { label: "🟢 Ferro-Nióbio e Ferro-Níquel", text: "Ativos de soberania, não gargalo -- juntos, US$2,3 bi de saldo comercial positivo (CBMM domina a oferta mundial de nióbio; Brasil processa níquel doméstico para ligas de inoxidável). Estavam escondidos dentro da cesta agregada \"Ferroligas\" até esta apuração." },
+        { label: "🟢 Ferro-Nióbio e Ferro-Níquel", text: "Ativos de soberania, não gargalo -- juntos, US$2,3 bi de saldo comercial positivo (CBMM domina a oferta mundial de nióbio; Brasil processa níquel doméstico para ligas de inoxidável). Estavam consolidados dentro da cesta agregada \"Ferroligas\" nas versões internas anteriores da modelagem, antes desta apuração desmembrar cada sub-código." },
         { label: "🔴 Eletrodos de Grafite", text: "87,2% das importações vêm da China -- maior exposição desta etapa." },
         { label: "🔴 Refratários e demais ferroligas", text: "Materiais refratários com 48,8% de importação chinesa (déficit de US$33 mi); as ferroligas remanescentes (sem nióbio/níquel) ainda escondem sub-códigos importadores líquidos sob um saldo agregado positivo." },
       ], detailBullets: [

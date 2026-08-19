@@ -73,8 +73,9 @@ CHAIN_META = {
         ],
         "notes": [
             "Ferro-nióbio, ferro-níquel, eletrodos de grafite, materiais refratários e ferroligas remanescentes "
-            "eram publicados como uma única cesta agregada (\"Ferroligas\") que escondia saldos e riscos opostos "
-            "sob um número só. Foram desmembrados nesta versão para expor cada sub-código.",
+            "estavam consolidados numa única cesta agregada (\"Ferroligas\") nas versões internas anteriores da "
+            "modelagem, o que escondia saldos e riscos opostos sob um número só. Foram desmembrados nesta versão "
+            "para expor cada sub-código.",
             "Carvão vegetal não tem código NCM próprio -- não cruza fronteira em volume comparável, então os "
             "campos de comércio exterior ficam zerados por desenho, não por ausência de dado real. A métrica vem "
             "do BEN/EPE e do IBGE PEVS, não do Comex Stat.",
