@@ -8,10 +8,12 @@ import { describeCode } from "./CodeTooltip";
 import {
   CHAIN_META,
   QUADRANT_META,
+  actionLabelFor,
   classifyQuadrant,
   isExtremeBottleneck,
   riskExposure,
   uniqueProductKey,
+  type DedupedProduct,
   type MonitoredChain,
   type QuadrantId,
 } from "../lib/transversalMatrix";
@@ -19,7 +21,7 @@ import {
 export type QuadrantFilter = QuadrantId | "todos";
 
 type TransversalActionListProps = {
-  data: ProdutoConceitual[];
+  data: DedupedProduct[];
   activeQuadrant: QuadrantFilter;
   onQuadrantChange: (quadrant: QuadrantFilter) => void;
   selectedProductId: string | null;
@@ -54,12 +56,13 @@ export function TransversalActionList({
   const [codesProductId, setCodesProductId] = useState<string | null>(null);
 
   const visibleItems = useMemo(() => {
-    const withQuadrant = data.map((product) => ({ product, quadrant: classifyQuadrant(product) }));
+    const withQuadrant = data.map((entry) => ({ entry, quadrant: classifyQuadrant(entry.product) }));
     const filtered = activeQuadrant === "todos" ? withQuadrant : withQuadrant.filter((item) => item.quadrant === activeQuadrant);
-    return filtered.sort((left, right) => riskExposure(right.product) - riskExposure(left.product));
+    return filtered.sort((left, right) => riskExposure(right.entry.product) - riskExposure(left.entry.product));
   }, [data, activeQuadrant]);
 
-  const codesProduct = codesProductId ? data.find((product) => uniqueProductKey(product) === codesProductId) : undefined;
+  const codesEntry = codesProductId ? data.find((entry) => uniqueProductKey(entry.product) === codesProductId) : undefined;
+  const codesProduct = codesEntry?.product;
 
   return (
     <section className={`${glass} flex flex-col overflow-hidden rounded-lg text-zinc-100 ${className}`}>
@@ -104,12 +107,13 @@ export function TransversalActionList({
         ) : (
           <AnimatePresence mode="popLayout" initial={false}>
             <motion.div className="space-y-2.5" layout>
-              {visibleItems.map(({ product, quadrant }) => {
-                const key = uniqueProductKey(product);
+              {visibleItems.map(({ entry, quadrant }) => {
+                const key = uniqueProductKey(entry.product);
                 return (
                   <ActionListItem
                     key={key}
-                    product={product}
+                    product={entry.product}
+                    chains={entry.chains}
                     quadrant={quadrant}
                     isSelected={selectedProductId === key}
                     onSelect={() => onSelectProduct(selectedProductId === key ? null : key)}
@@ -131,20 +135,21 @@ export function TransversalActionList({
 
 function ActionListItem({
   product,
+  chains,
   quadrant,
   isSelected,
   onSelect,
   onOpenCodes,
 }: {
   product: ProdutoConceitual;
+  chains: MonitoredChain[];
   quadrant: QuadrantId;
   isSelected: boolean;
   onSelect: () => void;
   onOpenCodes: () => void;
 }) {
-  const chain = product.cadeia_prioritaria as MonitoredChain;
-  const chainMeta = CHAIN_META[chain];
   const extreme = isExtremeBottleneck(product);
+  const action = actionLabelFor(product, quadrant);
 
   return (
     <motion.div
@@ -161,13 +166,24 @@ function ActionListItem({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: chainMeta.color }}>
-            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: chainMeta.color }} />
-            {chainMeta.shortLabel}
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            {chains.map((chain) => (
+              <span
+                key={chain}
+                className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                style={{ color: CHAIN_META[chain].color }}
+              >
+                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: CHAIN_META[chain].color }} />
+                {CHAIN_META[chain].shortLabel}
+              </span>
+            ))}
           </div>
           <p className="mt-1 break-words text-sm font-semibold leading-5 text-zinc-100">{product.produto_nome}</p>
-          <span className={`mt-1.5 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${QUADRANT_META[quadrant].tone}`}>
-            {QUADRANT_META[quadrant].label}
+          {chains.length > 1 ? (
+            <p className="mt-0.5 text-[10px] leading-4 text-zinc-500">Mesma cesta NCM contada nas {chains.length} cadeias acima -- 1 fluxo, não {chains.length}.</p>
+          ) : null}
+          <span className={`mt-1.5 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${action.tone}`} title={action.description}>
+            {action.label}
           </span>
         </div>
         <button

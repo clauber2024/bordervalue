@@ -18,10 +18,12 @@ import {
   MONITORED_CHAINS,
   QUADRANT_META,
   RISK_THRESHOLD_USD,
+  actionLabelFor,
   classifyQuadrant,
   isExtremeBottleneck,
   riskExposure,
   uniqueProductKey,
+  type DedupedProduct,
   type MonitoredChain,
   type QuadrantId,
 } from "../lib/transversalMatrix";
@@ -31,12 +33,12 @@ type MatrixDatum = {
   x: number;
   y: number;
   quadrant: QuadrantId;
-  chain: MonitoredChain;
+  chains: MonitoredChain[];
   ordinal: number;
 };
 
 type TransversalMatrixChartProps = {
-  data: ProdutoConceitual[];
+  data: DedupedProduct[];
   activeQuadrant: QuadrantId | "todos";
   selectedProductId: string | null;
   onSelectProduct: (id: string | null) => void;
@@ -76,12 +78,12 @@ export function TransversalMatrixChart({
     );
   }
 
-  const matrixData: MatrixDatum[] = data.map((product, index) => ({
-    product,
-    x: Math.max(product.industria.valor_producao_pia, 1),
-    y: Math.max(riskExposure(product), 1),
-    quadrant: classifyQuadrant(product),
-    chain: product.cadeia_prioritaria as MonitoredChain,
+  const matrixData: MatrixDatum[] = data.map((entry, index) => ({
+    product: entry.product,
+    x: Math.max(entry.product.industria.valor_producao_pia, 1),
+    y: Math.max(riskExposure(entry.product), 1),
+    quadrant: classifyQuadrant(entry.product),
+    chains: entry.chains,
     ordinal: index + 1,
   }));
 
@@ -205,7 +207,9 @@ function MatrixPoint({
 }) {
   if (!payload) return null;
 
-  const color = CHAIN_META[payload.chain].color;
+  // Dot shows the primary chain's color -- MatrixTooltip lists every chain
+  // that shares this NCM basket when there's more than one.
+  const color = CHAIN_META[payload.chains[0]].color;
   const key = uniqueProductKey(payload.product);
   const isSelected = selectedProductId === key;
   const isDimmed = activeQuadrant !== "todos" && payload.quadrant !== activeQuadrant;
@@ -230,16 +234,28 @@ function MatrixPoint({
 function MatrixTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: MatrixDatum }> }) {
   if (!active || !payload?.length) return null;
 
-  const { product, quadrant, chain } = payload[0].payload;
+  const { product, quadrant, chains } = payload[0].payload;
+  const action = actionLabelFor(product, quadrant);
 
   return (
     <div className="min-w-72 rounded-lg border border-zinc-800/70 bg-zinc-950/95 p-4 text-xs text-zinc-100 shadow-2xl backdrop-blur-xl">
-      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: CHAIN_META[chain].color }}>
-        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: CHAIN_META[chain].color }} />
-        {CHAIN_META[chain].label}
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+        {chains.map((chain) => (
+          <div
+            key={chain}
+            className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em]"
+            style={{ color: CHAIN_META[chain].color }}
+          >
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: CHAIN_META[chain].color }} />
+            {CHAIN_META[chain].label}
+          </div>
+        ))}
       </div>
       <p className="mt-1 text-sm font-bold tracking-tight text-white">{product.produto_nome}</p>
-      <p className="mt-1 text-[11px] font-medium text-cyan-300">{QUADRANT_META[quadrant].label}</p>
+      {chains.length > 1 ? (
+        <p className="mt-0.5 text-[10px] leading-4 text-zinc-500">Mesma cesta NCM em {chains.length} cadeias -- 1 fluxo, não {chains.length}.</p>
+      ) : null}
+      <p className="mt-1 text-[11px] font-medium text-cyan-300">{action.label}</p>
 
       <div className="mt-3 space-y-2">
         <TooltipRow label="Capacidade doméstica (PIA)" value={brlCompact.format(product.industria.valor_producao_pia)} />

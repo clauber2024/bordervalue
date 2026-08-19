@@ -1,4 +1,5 @@
 import type { ProdutoConceitual } from "../types/border-value";
+import { isFossilLinkedName } from "./fossilDetection";
 
 export type MonitoredChain = "silicio" | "fertilizantes" | "combustiveis_transicao" | "aco";
 
@@ -60,6 +61,68 @@ export function classifyQuadrant(item: ProdutoConceitual): QuadrantId {
 
 export function isExtremeBottleneck(item: ProdutoConceitual): boolean {
   return item.comercio.hhi_global > HHI_EXTREME_THRESHOLD;
+}
+
+// The "atrair" quadrant is purely geometric (high risk, low capacity) and stays
+// that way -- classifyQuadrant() must not change, since it also drives the
+// chart's axes/regions and the filter tabs. But recommending "Atrair
+// Investimento" for a fossil insumo (gas natural, petroleo, carvao mineral...)
+// would mean recommending investment to expand fossil supply, which this
+// platform must never say. This overrides only the *label/tone shown*, for
+// that one case, without moving the item out of its real geometric bucket.
+export type ActionLabel = { label: string; description: string; tone: string };
+
+export function actionLabelFor(item: ProdutoConceitual, quadrant: QuadrantId): ActionLabel {
+  if (quadrant === "atrair" && isFossilLinkedName(item.produto_nome)) {
+    return {
+      label: "Descarbonizar",
+      description:
+        "Alta dependência externa de insumo fóssil -- a resposta é substituir a rota ou descarbonizar, nunca atrair investimento para expandir produção ou importação fóssil.",
+      tone: "border-orange-400/25 bg-orange-400/10 text-orange-200",
+    };
+  }
+  return QUADRANT_META[quadrant];
+}
+
+// conceptual_product_id + cadeia_prioritaria only disambiguates *within* one
+// product; it says nothing about whether two different chains are, underneath,
+// literally the same commercial flow. gas_natural (fertilizantes) and
+// gas_natural_biometano (combustiveis_transicao) share the identical NCM
+// basket (27111100, 27112100) -- same Comex rows counted under two different
+// conceptual_product_ids. Left un-deduplicated, the transversal view shows the
+// same import flow as two cards and double-counts it into every KPI total.
+export type DedupedProduct = {
+  product: ProdutoConceitual;
+  chains: MonitoredChain[];
+};
+
+function ncmBasketKey(item: ProdutoConceitual): string {
+  const codes = (item.ncm_codigos?.length ? item.ncm_codigos : [item.ncm_codigo]).slice().sort();
+  return codes.join("|");
+}
+
+export function dedupeCrossChainProducts(data: ProdutoConceitual[]): DedupedProduct[] {
+  const groups = new Map<string, ProdutoConceitual[]>();
+  for (const item of data) {
+    const key = ncmBasketKey(item);
+    const bucket = groups.get(key);
+    if (bucket) bucket.push(item);
+    else groups.set(key, [item]);
+  }
+
+  return Array.from(groups.values()).map((items) => {
+    // Deterministic pick so re-renders don't flicker between chains: whichever
+    // chain sorts first in MONITORED_CHAINS order becomes the card shown.
+    const primary = items
+      .slice()
+      .sort(
+        (a, b) =>
+          MONITORED_CHAINS.indexOf(a.cadeia_prioritaria as MonitoredChain) -
+          MONITORED_CHAINS.indexOf(b.cadeia_prioritaria as MonitoredChain),
+      )[0];
+    const chains = Array.from(new Set(items.map((item) => item.cadeia_prioritaria as MonitoredChain)));
+    return { product: primary, chains };
+  });
 }
 
 // conceptual_product_id so garante unicidade dentro de uma unica cadeia -- ao consolidar

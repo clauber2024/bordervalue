@@ -6,8 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { useBorderValue } from "../hooks/useBorderValue";
 import { TransversalMatrixChart } from "./TransversalMatrixChart";
 import { TransversalActionList, type QuadrantFilter } from "./TransversalActionList";
-import { MONITORED_CHAINS, CHAIN_META, isExtremeBottleneck } from "../lib/transversalMatrix";
-import type { ProdutoConceitual } from "../types/border-value";
+import { MONITORED_CHAINS, CHAIN_META, isExtremeBottleneck, dedupeCrossChainProducts, type DedupedProduct } from "../lib/transversalMatrix";
 
 const usdCompact = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -31,11 +30,16 @@ export function TransversalDashboard() {
     { chain: MONITORED_CHAINS[3], ...aco },
   ];
 
-  const data = useMemo(
+  const rawData = useMemo(
     () => chainResults.flatMap((result) => result.data ?? []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [silicio.data, fertilizantes.data, combustiveis.data, aco.data],
   );
+  // Same NCM basket claimed by more than one chain (e.g. gas natural in
+  // fertilizantes and combustiveis_transicao) collapses into a single card
+  // here -- both the list/chart and the KPI totals below read this
+  // deduplicated set, so nothing double-counts the same trade flow twice.
+  const data = useMemo(() => dedupeCrossChainProducts(rawData), [rawData]);
 
   const isInitialLoading = chainResults.every((result) => result.isLoading && !result.data);
   const loadedChainsCount = chainResults.filter((result) => result.data?.length).length;
@@ -123,11 +127,11 @@ export function TransversalDashboard() {
   );
 }
 
-function computeKpis(data: ProdutoConceitual[]) {
+function computeKpis(data: DedupedProduct[]) {
   return {
-    totalFob: data.reduce((sum, item) => sum + item.comercio.importacao_valor_fob, 0),
-    extremeBottlenecks: data.filter(isExtremeBottleneck).length,
-    totalJobs: data.reduce((sum, item) => sum + item.industria.qtde_vinculos_rais, 0),
+    totalFob: data.reduce((sum, item) => sum + item.product.comercio.importacao_valor_fob, 0),
+    extremeBottlenecks: data.filter((item) => isExtremeBottleneck(item.product)).length,
+    totalJobs: data.reduce((sum, item) => sum + item.product.industria.qtde_vinculos_rais, 0),
   };
 }
 
