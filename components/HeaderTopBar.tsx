@@ -6,6 +6,7 @@ import {
   ArrowRight,
   Compass,
   Download,
+  Grid3x3,
   Network,
   Search,
   ShieldAlert,
@@ -133,6 +134,15 @@ export function HeaderTopBar({
             >
               <Compass className="h-3.5 w-3.5 text-emerald-300" />
               <span className="hidden sm:inline">Sobre</span>
+            </Link>
+
+            <Link
+              href="/analise-transversal"
+              title="Painel Consolidado de Gargalos e Oportunidades de Adensamento"
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-cyan-300/20 bg-cyan-400/[0.06] px-3 text-xs font-semibold text-cyan-200 transition hover:border-cyan-300/40 hover:bg-cyan-400/[0.12] hover:text-white"
+            >
+              <Grid3x3 className="h-3.5 w-3.5 text-cyan-300" />
+              <span className="hidden sm:inline">Matriz Transversal</span>
             </Link>
 
             <div className="hidden items-center gap-2 rounded-xl border border-red-900/50 bg-red-950/30 px-2.5 py-1 font-mono text-xs lg:flex">
