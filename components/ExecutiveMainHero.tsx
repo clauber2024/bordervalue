@@ -33,12 +33,19 @@ export type ExecutiveTopAlert = {
   recommendedPolicy: string;
 };
 
+export type GaugeBand = { upTo: number; color: string };
+
 export type ExecutiveMainKpi = {
   label: string;
   value: string;
   note: string;
   tone?: 'neutral' | 'success' | 'warning' | 'danger';
   icon?: React.ReactNode;
+  /** Optional radial gauge (manômetro) for KPIs on a fixed, bounded scale
+   * (e.g. HHI 0-10.000) -- bands must be sorted ascending by `upTo`, and the
+   * last band's `upTo` should equal `max`. Purely additive: KPIs without a
+   * `gauge` keep rendering as a plain number, same as before. */
+  gauge?: { value: number; max: number; bands: GaugeBand[] };
 };
 
 type ExecutiveMainHeroProps = {
@@ -126,6 +133,66 @@ const formatPercentage = (value: number) =>
   });
 
 const formatHhi = (value: number) => value.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+
+const colorForGaugeValue = (value: number, bands: GaugeBand[]) =>
+  (bands.find((band) => value <= band.upTo) ?? bands[bands.length - 1]).color;
+
+// Semi-circle gauge geometry: angle 180deg = left (min) sweeping clockwise
+// over the top to angle 0deg = right (max), needle pivot at bottom-center.
+// Standard math convention (0deg = right, 90deg = up) with the y-flip SVG
+// needs, so this traces left -> top -> right as the value climbs.
+const polarPoint = (cx: number, cy: number, r: number, angleDeg: number) => {
+  const angleRad = (angleDeg * Math.PI) / 180;
+  return { x: cx + r * Math.cos(angleRad), y: cy - r * Math.sin(angleRad) };
+};
+
+const valueToAngle = (value: number, max: number) => 180 - (Math.min(Math.max(value, 0), max) / max) * 180;
+
+function RadialGauge({ value, max, bands, size = 104 }: { value: number; max: number; bands: GaugeBand[]; size?: number }) {
+  const cx = size / 2;
+  const cy = size / 2 + 4;
+  const r = size / 2 - 12;
+  const strokeWidth = 9;
+
+  const segments = bands.map((band, index) => {
+    const prevUpTo = index === 0 ? 0 : bands[index - 1].upTo;
+    const startAngle = valueToAngle(prevUpTo, max);
+    const endAngle = valueToAngle(band.upTo, max);
+    const start = polarPoint(cx, cy, r, startAngle);
+    const end = polarPoint(cx, cy, r, endAngle);
+    return { key: band.upTo, color: band.color, d: `M ${start.x} ${start.y} A ${r} ${r} 0 0 1 ${end.x} ${end.y}` };
+  });
+
+  // Tapered needle (triangle from a narrow base at the pivot to a point at
+  // the tip) instead of a plain line, closer to a real speedometer pointer.
+  const needleAngle = valueToAngle(value, max);
+  const needleLength = r - strokeWidth / 2 - 2;
+  const needleTip = polarPoint(cx, cy, needleLength, needleAngle);
+  const needleBaseHalfWidth = 3.2;
+  const needleBase1 = polarPoint(cx, cy, needleBaseHalfWidth, needleAngle + 90);
+  const needleBase2 = polarPoint(cx, cy, needleBaseHalfWidth, needleAngle - 90);
+
+  return (
+    <svg viewBox={`0 0 ${size} ${size / 2 + 16}`} width={size} height={size / 2 + 16} aria-hidden="true">
+      {segments.map((segment) => (
+        <path
+          key={segment.key}
+          d={segment.d}
+          fill="none"
+          stroke={segment.color}
+          strokeWidth={strokeWidth}
+          strokeLinecap="butt"
+          opacity={0.85}
+        />
+      ))}
+      <polygon
+        points={`${needleBase1.x},${needleBase1.y} ${needleTip.x},${needleTip.y} ${needleBase2.x},${needleBase2.y}`}
+        fill="#e4e4e7"
+      />
+      <circle cx={cx} cy={cy} r={4.5} fill="#e4e4e7" />
+    </svg>
+  );
+}
 
 export const ExecutiveMainHero = ({
   alert = defaultAlert,
@@ -337,13 +404,26 @@ export const ExecutiveMainHero = ({
                   <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                 )}
               </div>
-              <div
-                className={`mt-2 font-mono text-2xl font-extrabold xl:text-3xl ${toneClasses[tone].value}`}
-              >
-                {kpi.value}
-              </div>
+              {kpi.gauge ? (
+                <div className="mt-1 flex flex-col items-center">
+                  <RadialGauge value={kpi.gauge.value} max={kpi.gauge.max} bands={kpi.gauge.bands} />
+                  <div
+                    className="mt-1 font-mono text-xl font-extrabold"
+                    style={{ color: colorForGaugeValue(kpi.gauge.value, kpi.gauge.bands) }}
+                  >
+                    {kpi.value}
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className={`mt-2 font-mono text-2xl font-extrabold xl:text-3xl ${toneClasses[tone].value}`}
+                >
+                  {kpi.value}
+                </div>
+              )}
               <span
-                className={`mt-1 block text-[11px] font-medium ${toneClasses[tone].note}`}
+                className={`mt-1 block text-[11px] font-medium ${kpi.gauge ? "text-center" : ""} ${kpi.gauge ? "" : toneClasses[tone].note}`}
+                style={kpi.gauge ? { color: colorForGaugeValue(kpi.gauge.value, kpi.gauge.bands) } : undefined}
               >
                 {kpi.note}
               </span>

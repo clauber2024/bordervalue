@@ -1370,6 +1370,18 @@ function buildExecutiveHeroKpis(metrics: {
         : hhiRiskLabel(metrics.maxHhi),
       tone: "danger",
       icon: <ShieldAlert className="h-4 w-4 text-red-400" />,
+      // Same bands as hhiRiskLabel above, so the gauge's color zones never
+      // contradict the note text sitting right under it.
+      gauge: {
+        value: metrics.maxHhi,
+        max: 10000,
+        bands: [
+          { upTo: 1800, color: "#34d399" },
+          { upTo: 2500, color: "#a3e635" },
+          { upTo: 9000, color: "#fb923c" },
+          { upTo: 10000, color: "#f87171" },
+        ],
+      },
     },
   ];
 }
