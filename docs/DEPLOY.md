@@ -76,6 +76,9 @@ do zero, é um desses dois.
 
 ## 3. Vercel — frontend Next.js
 
+> Branch de produção é `main` — é o único branch de longa duração do repo. Ver
+> [`GIT_WORKFLOW.md`](GIT_WORKFLOW.md) antes de criar outro branch permanente.
+
 1. "Add New" → "Project" → mesmo repositório.
 2. **Vercel Team**: escolher o escopo pessoal existente (`Polis`, plano **Hobby**,
    gratuito) — **não** clicar em "Create a Team", que força plano Pro pago.
