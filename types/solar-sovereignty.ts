@@ -30,6 +30,61 @@ export type SubNcmBreakdownItem = {
   direction: "exportador" | "importador";
 };
 
+// Mirrors the "status" convention used in Python's complementary_sources
+// (build_sector_sovereignty_metrics.py): "published" once real data is
+// ingested, "required" when the source is indispensable but not yet wired,
+// "complementary" when it enriches the reading without blocking it.
+export type TerritorialSourceStatus = "published" | "required" | "complementary";
+
+// No TerritorialIndicator may exist without this filled in -- the same
+// citation discipline as global_source/complementary_sources in the
+// sovereignty pipelines: no number ships without an identified institution.
+export type TerritorialSource = {
+  institution: string;
+  dataset: string;
+  url?: string;
+  reference_period?: string;
+  status: TerritorialSourceStatus;
+};
+
+// value is explicitly nullable: the shape can be declared and cited before
+// real data ingestion exists, without forcing an unverified number into
+// production (see this project's rule: never write a number without
+// checking the primary source first).
+export type TerritorialIndicator = {
+  value: number | null;
+  unit: string;
+  source: TerritorialSource;
+  note?: string;
+};
+
+// Chain-agnostic territorial/powershoring layer, keyed by region (UF or
+// industrial hub) rather than by chain -- silicio, aco, fertilizantes and
+// combustiveis_transicao are meant to share the same TerritorialContext for
+// a given region instead of each chain holding its own copy of the same
+// regional data. Inspired by the TYPE of indicator regional dashboards like
+// SustenData surface (industrial capacity, renewable potential,
+// infrastructure, licensing bottlenecks) -- never by SustenData itself,
+// which is a format reference only, not a real data integration.
+export type TerritorialContext = {
+  region_code: string;
+  region_name: string;
+  region_level: "uf" | "polo" | "municipio";
+  industrial_capacity?: TerritorialIndicator;
+  solar_potential?: TerritorialIndicator;
+  wind_potential?: TerritorialIndicator;
+  port_infrastructure?: TerritorialIndicator;
+  rail_infrastructure?: TerritorialIndicator;
+  industrial_electricity_consumption?: TerritorialIndicator;
+  water_availability?: TerritorialIndicator;
+  // No single federal source: environmental licensing is run by state
+  // agencies (e.g. SEMACE in Ceará, IDEMA in Rio Grande do Norte). Each
+  // record's source must name the specific state agency -- never a
+  // generic national average.
+  environmental_licensing_lead_time_months?: TerritorialIndicator;
+  updated_at: string;
+};
+
 // Forward-looking strategic narrative, decoupled from the trade-risk engine
 // on purpose: NIBMatrixChart's quadrant reads only deficit/capacity/volume
 // and must stay auditable against those numbers alone. Never let this field
@@ -40,6 +95,11 @@ export type StrategicProfile = {
   label: string;
   thesis: string;
   value_chain_links: string[];
+  // Populated only when is_powershoring_vector is true and a real
+  // TerritorialContext has been ingested for the relevant region --
+  // StrategicVectorBadge renders it as supporting evidence for the thesis,
+  // never as a replacement for it.
+  territorial_context?: TerritorialContext | null;
 };
 
 export type SolarInputMetric = {
