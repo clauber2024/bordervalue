@@ -919,6 +919,13 @@ def write_sql(payload: dict[str, object], output_dir: Path = OUTPUT_DIR) -> None
         "  reference_period text NOT NULL, metrics jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now(),",
         "  PRIMARY KEY (chain_name, input_id)",
         ");",
+        # ON CONFLICT DO UPDATE alone never removes a row -- an input_id that's
+        # renamed or split (e.g. fertilizantes' superfosfatos ->
+        # superfosfato_triplo/superfosfato_simples) leaves the old id's row
+        # behind forever, since nothing ever targets it again. Delete this
+        # chain's rows up front so every run reflects exactly its current
+        # Definition() set (same fix as analytical_comex_staging's DELETE).
+        f"DELETE FROM aipnet_input_metrics WHERE chain_name = '{sql_text(payload['chain_name'])}';",
     ]
     for item in payload["inputs"]:
         serialized = json.dumps(item, ensure_ascii=False).replace("'", "''")
