@@ -55,6 +55,57 @@ PRODLIST_COMPARABLE_INPUTS = {
 
 
 @dataclass(frozen=True)
+class TerritorialSource:
+    """No TerritorialIndicator may exist without this filled in -- the same
+    citation discipline as global_source/complementary_sources elsewhere in
+    this pipeline: no number ships without an identified institution."""
+
+    institution: str
+    dataset: str
+    status: str  # "published" | "required" | "complementary"
+    url: str | None = None
+    reference_period: str | None = None
+
+
+@dataclass(frozen=True)
+class TerritorialIndicator:
+    """value is explicitly nullable: the shape can be declared and cited
+    before real data ingestion exists, without forcing an unverified number
+    into production (never write a number without checking the primary
+    source first)."""
+
+    value: float | None
+    unit: str
+    source: TerritorialSource
+    note: str | None = None
+
+
+@dataclass(frozen=True)
+class TerritorialContext:
+    """Chain-agnostic territorial/powershoring layer, keyed by region (UF or
+    industrial hub) rather than by chain -- silicio, aco, fertilizantes and
+    combustiveis_transicao are meant to share the same TerritorialContext for
+    a given region instead of each chain holding its own copy of the same
+    regional data. Inspired by the TYPE of indicator regional dashboards like
+    SustenData surface (industrial capacity, renewable potential,
+    infrastructure, licensing bottlenecks) -- never by SustenData itself,
+    which is a format reference only, not a real data integration."""
+
+    region_code: str
+    region_name: str
+    region_level: str  # "uf" | "polo" | "municipio"
+    updated_at: str
+    industrial_capacity: TerritorialIndicator | None = None
+    solar_potential: TerritorialIndicator | None = None
+    wind_potential: TerritorialIndicator | None = None
+    port_infrastructure: TerritorialIndicator | None = None
+    rail_infrastructure: TerritorialIndicator | None = None
+    industrial_electricity_consumption: TerritorialIndicator | None = None
+    water_availability: TerritorialIndicator | None = None
+    environmental_licensing_lead_time_months: TerritorialIndicator | None = None
+
+
+@dataclass(frozen=True)
 class StrategicProfile:
     """Forward-looking strategic narrative, decoupled from the trade-risk
     engine on purpose: NIBMatrixChart's quadrant (matrixState) reads only
@@ -72,6 +123,10 @@ class StrategicProfile:
     label: str
     thesis: str
     value_chain_links: tuple[str, ...] = ()
+    # Populated only when a real TerritorialContext has been ingested for the
+    # region the thesis references -- StrategicVectorBadge renders it as
+    # supporting evidence, never as a replacement for the thesis itself.
+    territorial_context: TerritorialContext | None = None
 
 
 @dataclass(frozen=True)
@@ -559,6 +614,44 @@ def load_green_jobs() -> dict[str, object]:
     }
 
 
+def _serialize_territorial_indicator(indicator: TerritorialIndicator | None) -> dict[str, object] | None:
+    if indicator is None:
+        return None
+    return {
+        "value": indicator.value,
+        "unit": indicator.unit,
+        "source": {
+            "institution": indicator.source.institution,
+            "dataset": indicator.source.dataset,
+            "url": indicator.source.url,
+            "reference_period": indicator.source.reference_period,
+            "status": indicator.source.status,
+        },
+        "note": indicator.note,
+    }
+
+
+def _serialize_territorial_context(context: TerritorialContext | None) -> dict[str, object] | None:
+    if context is None:
+        return None
+    return {
+        "region_code": context.region_code,
+        "region_name": context.region_name,
+        "region_level": context.region_level,
+        "industrial_capacity": _serialize_territorial_indicator(context.industrial_capacity),
+        "solar_potential": _serialize_territorial_indicator(context.solar_potential),
+        "wind_potential": _serialize_territorial_indicator(context.wind_potential),
+        "port_infrastructure": _serialize_territorial_indicator(context.port_infrastructure),
+        "rail_infrastructure": _serialize_territorial_indicator(context.rail_infrastructure),
+        "industrial_electricity_consumption": _serialize_territorial_indicator(context.industrial_electricity_consumption),
+        "water_availability": _serialize_territorial_indicator(context.water_availability),
+        "environmental_licensing_lead_time_months": _serialize_territorial_indicator(
+            context.environmental_licensing_lead_time_months
+        ),
+        "updated_at": context.updated_at,
+    }
+
+
 def build_payload(
     trade_rows: dict[tuple[str, int, int, str, str], dict[str, float]],
     production: dict[str, dict[str, object]],
@@ -667,6 +760,9 @@ def build_payload(
                         "label": definition.strategic_profile.label,
                         "thesis": definition.strategic_profile.thesis,
                         "value_chain_links": list(definition.strategic_profile.value_chain_links),
+                        "territorial_context": _serialize_territorial_context(
+                            definition.strategic_profile.territorial_context
+                        ),
                     }
                     if definition.strategic_profile is not None
                     else None
