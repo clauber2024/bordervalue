@@ -16,6 +16,96 @@ import build_solar_sovereignty_metrics as core
 ROOT = Path(__file__).resolve().parent
 Definition = core.SolarInputDefinition
 StrategicProfile = core.StrategicProfile
+TerritorialContext = core.TerritorialContext
+TerritorialIndicator = core.TerritorialIndicator
+TerritorialSource = core.TerritorialSource
+
+
+# Populated only where a source was actually checked (see research trail in
+# this session) -- fields left as None below have no verified current value
+# and must not be guessed. Attached to ferro_esponja's strategic_profile
+# because the DRI/green-hydrogen route it describes is concretely anchored
+# in the Porto do Pecém green-hydrogen/green-steel hub, not a generic
+# national claim.
+TERRITORIAL_CONTEXT_CE = TerritorialContext(
+    region_code="CE",
+    region_name="Ceará",
+    region_level="uf",
+    updated_at="2026-08-18",
+    industrial_capacity=None,
+    solar_potential=TerritorialIndicator(
+        value=5.7,
+        unit="kWh/m²/dia (irradiação global horizontal, média estadual)",
+        source=TerritorialSource(
+            institution="INPE/LABREN",
+            dataset="Atlas Brasileiro de Energia Solar, 2ª edição",
+            url="https://labren.ccst.inpe.br/atlas_2017_CE.html",
+            reference_period="2017",
+            status="published",
+        ),
+    ),
+    wind_potential=TerritorialIndicator(
+        value=10.0,
+        unit="m/s (faixa litorânea, ex. Acaraú/Barroquinha; não é média estadual)",
+        source=TerritorialSource(
+            institution="UFC (Repositório Institucional)",
+            dataset="Análise estatística da velocidade de vento do Estado do Ceará",
+            url="https://repositorio.ufc.br/bitstream/riufc/56544/1/2008_art_hncamelo.pdf",
+            reference_period="2008 (estudo com base em séries INMET)",
+            status="published",
+        ),
+        note="Pontos litorâneos chegam a >10 m/s; áreas serranas (ex. Ubajara) e offshore ficam acima de 8 m/s. Não existe uma média estadual única publicada -- reportar um só número mascararia essa variação.",
+    ),
+    port_infrastructure=TerritorialIndicator(
+        value=20_961_514,
+        unit="toneladas movimentadas em 2025 (Porto do Pecém)",
+        source=TerritorialSource(
+            institution="ANTAQ",
+            dataset="Estatístico Aquaviário (divulgado via Governo do Ceará/SDE)",
+            url="https://www.ceara.gov.br/2026/02/24/porto-do-pecem-bate-recorde-na-movimentacao-de-conteineres-alcanca-209-milhoes-de-toneladas-e-cresce-7-em-2025/",
+            reference_period="2025",
+            status="published",
+        ),
+        note="+7% em relação a 2024; inclui recorde de 706.509 TEUs em contêineres (+27%).",
+    ),
+    rail_infrastructure=TerritorialIndicator(
+        value=609,
+        unit="km de malha concessionada (Transnordestina) no Ceará",
+        source=TerritorialSource(
+            institution="ANTT",
+            dataset="Concessão Transnordestina Logística",
+            url="https://www.gov.br/antt/pt-br/assuntos/ultimas-noticias/transnordestina-avanca-no-ceara-e-vai-ampliar-mais-101-km-de-sua-rede-em-direcao-ao-porto-do-pecem",
+            reference_period="2026",
+            status="published",
+        ),
+        note="Trecho cearense da concessão; expansão de mais 101 km em direção ao Porto do Pecém anunciada, ainda não concluída.",
+    ),
+    industrial_electricity_consumption=None,
+    water_availability=TerritorialIndicator(
+        value=40.64,
+        unit="% da capacidade acumulada nos reservatórios monitorados (fim de 2025)",
+        source=TerritorialSource(
+            institution="Cogerh (Companhia de Gestão dos Recursos Hídricos do Ceará)",
+            dataset="Boletim de acompanhamento de reservatórios",
+            url="https://gcmais.com.br/noticias/2025/12/23/ceara-encerra-o-ano-com-406-da-capacidade-hidrica-acumulada-nos-reservatorios-diz-cogerh/",
+            reference_period="dezembro/2025",
+            status="published",
+        ),
+        note="~18,4 bilhões de m³; distribuição desigual -- 37 açudes abaixo de 30% da capacidade enquanto o Cinturão das Águas (91% executado) integra o PISF aos reservatórios estratégicos.",
+    ),
+    environmental_licensing_lead_time_months=TerritorialIndicator(
+        value=6,
+        unit="meses (teto regulamentar máximo)",
+        source=TerritorialSource(
+            institution="SEMACE/COEMA-CE",
+            dataset="Resolução COEMA -- prazos de análise por modalidade de licença",
+            url="https://www.semace.ce.gov.br/",
+            reference_period="vigente em 2026",
+            status="published",
+        ),
+        note="É o teto regulamentar (prazo máximo até deferimento/indeferimento), ressalvados casos com EIA/RIMA ou audiência pública -- não é o prazo médio efetivamente observado, que não foi localizado nesta pesquisa.",
+    ),
+)
 
 
 CHAINS: dict[str, dict[str, object]] = {
@@ -198,6 +288,7 @@ CHAINS: dict[str, dict[str, object]] = {
                                "atração de capital produtivo."
                            ),
                            value_chain_links=("minerio_ferro", "carvao_mineral_coque"),
+                           territorial_context=TERRITORIAL_CONTEXT_CE,
                        )),
             Definition("carvao_mineral_coque", "Carvão mineral e coque siderúrgico", "reducao", ("27011100", "27011200", "27011900", "27040011", "27040012", "27040090"), "estimated", "media", "NCM 2701 (hulha) também cobre carvão mineral usado fora da siderurgia (termelétricas, cimento); a cesta não isola o carvão metalúrgico/coque específico do alto-forno.", None,
                        production_route_class="fossil_dominant",
