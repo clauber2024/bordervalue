@@ -12,13 +12,12 @@ import {
   CheckCircle2,
   Database,
   Flag,
-  Gauge,
   Layers3,
   Info,
-  Scale,
   ShieldAlert,
   Sparkles,
 } from 'lucide-react';
+import { countryFlagPalette } from './SovereigntySankeyChart';
 
 export type ExecutiveTopAlert = {
   productName: string;
@@ -197,6 +196,67 @@ function RadialGauge({ value, max, bands, size = 104 }: { value: number; max: nu
   );
 }
 
+// Mirrors the HHI severity bands in buildExecutiveHeroKpis
+// (components/MainAnalyticalDashboard.tsx) -- keep both in sync so the same
+// HHI value never renders a different color zone in the two places it's
+// gauged.
+const HHI_GAUGE_BANDS: GaugeBand[] = [
+  { upTo: 1800, color: '#34d399' },
+  { upTo: 2500, color: '#a3e635' },
+  { upTo: 9000, color: '#fb923c' },
+  { upTo: 10000, color: '#f87171' },
+];
+
+// Real flag colors (reused from SovereigntySankeyChart's country palette)
+// instead of a generic pin/globe icon -- lets the reader recognize the
+// origin country at a glance instead of reading the label text first.
+function CountryFlagSwatch({ countryName, size = 22 }: { countryName: string; size?: number }) {
+  const [c1, c2, c3] = countryFlagPalette(countryName);
+  const height = Math.round(size * 0.68);
+  const stripe = size / 3;
+
+  return (
+    <span className="inline-block overflow-hidden rounded-[2px] ring-1 ring-white/25" style={{ width: size, height }}>
+      <svg viewBox={`0 0 ${size} ${height}`} width={size} height={height} aria-hidden="true">
+        <rect x={0} y={0} width={stripe} height={height} fill={c1} />
+        <rect x={stripe} y={0} width={stripe} height={height} fill={c2} />
+        <rect x={stripe * 2} y={0} width={size - stripe * 2} height={height} fill={c3} />
+      </svg>
+    </span>
+  );
+}
+
+// Balance beam that physically tips toward whichever side is heavier --
+// domestic production (left, emerald) vs. imports (right, red) -- instead of
+// a static scale icon that says nothing about the actual dependency number.
+// 50% dependency = level beam; the tilt (and which pan visually outweighs
+// the other) scales linearly from there toward either extreme.
+function DependencyScale({ percentage, size = 40 }: { percentage: number; size?: number }) {
+  const clamped = Math.min(Math.max(percentage, 0), 100);
+  const tilt = ((clamped - 50) / 50) * 20;
+  const height = Math.round(size * 0.62);
+  const cx = size / 2;
+  const cy = height * 0.32;
+  const armX = size * 0.13;
+  const panR = size * 0.09;
+
+  return (
+    <svg viewBox={`0 0 ${size} ${height}`} width={size} height={height} aria-hidden="true">
+      <polygon
+        points={`${cx},${cy - 1} ${cx - size * 0.08},${cy + size * 0.14} ${cx + size * 0.08},${cy + size * 0.14}`}
+        fill="#52525b"
+      />
+      <g transform={`rotate(${tilt} ${cx} ${cy})`}>
+        <line x1={armX} y1={cy} x2={size - armX} y2={cy} stroke="#a1a1aa" strokeWidth={1.4} />
+        <line x1={armX} y1={cy} x2={armX} y2={cy + size * 0.22} stroke="#71717a" strokeWidth={1} />
+        <circle cx={armX} cy={cy + size * 0.22 + panR * 0.4} r={panR} fill="#34d399" fillOpacity={0.9} />
+        <line x1={size - armX} y1={cy} x2={size - armX} y2={cy + size * 0.22} stroke="#71717a" strokeWidth={1} />
+        <circle cx={size - armX} cy={cy + size * 0.22 + panR * 0.4} r={panR} fill="#f87171" fillOpacity={0.9} />
+      </g>
+    </svg>
+  );
+}
+
 export const ExecutiveMainHero = ({
   alert = defaultAlert,
   kpis = defaultKpis,
@@ -337,10 +397,12 @@ export const ExecutiveMainHero = ({
 
             <div className="grid grid-cols-3 gap-2 rounded-xl border border-red-500/20 bg-zinc-950/70 p-3 text-center">
               <div>
-                <span className="flex items-center justify-center gap-1 text-[10px] font-semibold uppercase text-zinc-400">
-                  <Scale className="h-3 w-3 text-zinc-500" strokeWidth={1.8} />
+                <span className="block text-[10px] font-semibold uppercase text-zinc-400">
                   Dependência externa
                 </span>
+                <div className="mt-1 flex items-center justify-center">
+                  <DependencyScale percentage={alert.dependencyRate} />
+                </div>
                 <span className="block font-mono text-base font-extrabold text-red-400">
                   {formatPercentage(alert.dependencyRate)}%
                 </span>
@@ -349,10 +411,12 @@ export const ExecutiveMainHero = ({
                 </span>
               </div>
               <div className="border-x border-white/10 px-1">
-                <span className="flex items-center justify-center gap-1 text-[10px] font-semibold uppercase text-zinc-400">
-                  <Gauge className="h-3 w-3 text-zinc-500" strokeWidth={1.8} />
+                <span className="block text-[10px] font-semibold uppercase text-zinc-400">
                   Índice HHI
                 </span>
+                <div className="mt-1 flex items-center justify-center">
+                  <RadialGauge value={alert.hhi} max={10000} bands={HHI_GAUGE_BANDS} size={56} />
+                </div>
                 <span className="block font-mono text-base font-extrabold text-red-400">
                   {formatHhi(alert.hhi)}
                 </span>
@@ -361,10 +425,16 @@ export const ExecutiveMainHero = ({
                 </span>
               </div>
               <div>
-                <span className="flex items-center justify-center gap-1 text-[10px] font-semibold uppercase text-zinc-400">
-                  <Flag className="h-3 w-3 text-zinc-500" strokeWidth={1.8} />
+                <span className="block text-[10px] font-semibold uppercase text-zinc-400">
                   Principal País Origem
                 </span>
+                <div className="mt-1.5 flex items-center justify-center">
+                  {hasAuditedSupplier ? (
+                    <CountryFlagSwatch countryName={alert.topSupplier} />
+                  ) : (
+                    <Flag className="h-4 w-4 text-zinc-500" strokeWidth={1.8} />
+                  )}
+                </div>
                 <span className="mt-1 block truncate text-xs font-bold text-amber-200">
                   {supplierTitle}
                 </span>

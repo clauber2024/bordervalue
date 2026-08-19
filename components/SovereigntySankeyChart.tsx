@@ -1207,7 +1207,7 @@ function safeSvgId(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_-]/g, "-");
 }
 
-function countryFlagPalette(countryName: string): [string, string, string] {
+export function countryFlagPalette(countryName: string): [string, string, string] {
   const country = countryName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
   if (country.includes("china")) return ["#de2910", "#ffde00", "#de2910"];
   if (country.includes("estados unidos") || country.includes("united states")) return ["#3c3b6e", "#ffffff", "#b22234"];
