@@ -146,7 +146,7 @@ export function HeaderTopBar({
             </Link>
 
             <Link
-              href="/?chain=silicio#tour-powershoring"
+              href="/powershoring"
               title="Tese de Powershoring: energia renovável barata como vantagem de exportação"
               className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-emerald-300/20 bg-emerald-400/[0.06] px-3 text-xs font-semibold text-emerald-200 transition hover:border-emerald-300/40 hover:bg-emerald-400/[0.12] hover:text-white"
             >

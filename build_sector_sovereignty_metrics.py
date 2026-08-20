@@ -108,19 +108,81 @@ TERRITORIAL_CONTEXT_CE = TerritorialContext(
 )
 
 
+# Trilha de pesquisa para os strategic_profile abaixo que citam pipeline de investimento
+# ou perfil industrial externo -- não são bases estatísticas oficiais como Comex/PIA/RAIS,
+# então a fonte fica documentada aqui, no mesmo espírito do bloco de TERRITORIAL_CONTEXT_CE
+# acima, para auditoria e para a próxima cadeia analisada não ter que redescobrir de onde
+# veio cada número:
+#  - CNI, Perfil da Indústria nos Estados (perfildaindustria.portaldaindustria.com.br) --
+#    fonte padrão definida para popular TerritorialIndicator.industrial_capacity (hoje
+#    ainda None em TERRITORIAL_CONTEXT_CE) e qualquer TerritorialContext futuro por estado.
+#  - Eixos (eixos.com.br), cobertura de mercado de hidrogênio verde -- pipeline de projetos
+#    e valores de investimento anunciados no Brasil, levantamento de 2026.
+#  - Hydro / Albras-Alunorte, matéria institucional (2025) -- consumo elétrico e transição
+#    para PPAs renováveis em Barcarena/PA.
+# Tratar como evidência jornalística/institucional citada na tese, não como número validado
+# do mesmo tipo que os campos "validated" do restante do dataset -- se algum desses números
+# vier a ganhar peso quantitativo num TerritorialIndicator (não só na prosa da thesis), ele
+# precisa antes ser reverificado na fonte primária, seguindo a mesma regra já aplicada ao
+# resto do dataset.
 CHAINS: dict[str, dict[str, object]] = {
     "combustiveis_transicao": {
         "version": "1.0.0-aipnet-transition-fuels",
         "definitions": (
             Definition("hidrogenio", "Hidrogênio", "molecula_principal", ("28041000",), "estimated", "media", "A NCM não distingue hidrogênio renovável, azul ou cinza.", None,
                        production_route_class="fossil_dominant",
-                       production_route_rationale="Mesma base do hidrogênio de alta pureza: rota cinza (reforma a vapor de gás natural) domina globalmente."),
+                       production_route_rationale="Mesma base do hidrogênio de alta pureza: rota cinza (reforma a vapor de gás natural) domina globalmente.",
+                       strategic_profile=StrategicProfile(
+                           is_powershoring_vector=True,
+                           label="Vetor de Powershoring -- Hidrogênio Verde",
+                           thesis=(
+                               "Mais de 95% da produção mundial de hidrogênio ainda é hidrogênio cinza, via "
+                               "reforma a vapor de gás natural -- mas a rota verde (eletrólise com energia "
+                               "renovável) já tem pipeline de investimento nomeado no Brasil, concentrado no "
+                               "Complexo do Porto do Pecém (CE): projeto da Fortescue (R$ 18 bi, ~500 t/dia via "
+                               "eletrólise, 1,2 GW de energia renovável), além de Casa dos Ventos (R$ 12 bi) e "
+                               "FRV (R$ 6 bi) (Eixos, 2026). Ao todo, 7 projetos somando R$ 63 bilhões miram "
+                               "decisão final de investimento em 2026 no Brasil -- não é uma tese especulativa, "
+                               "é capital já anunciado buscando a mesma vantagem que sustenta a tese do "
+                               "ferro-esponja: matriz elétrica majoritariamente renovável como insumo de "
+                               "produção, não só como discurso ambiental."
+                           ),
+                           value_chain_links=("amonia", "metanol"),
+                       )),
             Definition("amonia", "Amônia", "derivados", ("28141000", "28142000"), "estimated", "media", "A rota e a intensidade de emissões não são identificadas pela NCM.", None,
                        production_route_class="fossil_dominant",
-                       production_route_rationale="Haber-Bosch via gás natural é a rota de cerca de 98% da amônia mundial (IEA Ammonia Technology Roadmap)."),
+                       production_route_rationale="Haber-Bosch via gás natural é a rota de cerca de 98% da amônia mundial (IEA Ammonia Technology Roadmap).",
+                       strategic_profile=StrategicProfile(
+                           is_powershoring_vector=True,
+                           label="Vetor de Powershoring -- Amônia Verde",
+                           thesis=(
+                               "Amônia é hoje produzida quase totalmente via Haber-Bosch a gás natural, mas a "
+                               "versão verde (hidrogênio de eletrólise renovável + síntese Haber-Bosch) já atrai "
+                               "capital real no Brasil: o projeto da Qair no Complexo do Porto do Pecém (CE), "
+                               "avaliado em R$ 17,7 bi, é dedicado à produção de amônia verde, com Casa dos "
+                               "Ventos e Comerc Eficiência já com pré-contrato assinado para primeira fase "
+                               "operacional em 2026 (Eixos, 2026). É a mesma molécula-base do vetor de "
+                               "hidrogênio verde desta cadeia, com uma rota de síntese adicional."
+                           ),
+                           value_chain_links=("hidrogenio",),
+                       )),
             Definition("metanol", "Metanol", "derivados", ("29051100",), "estimated", "media", "A NCM não separa metanol fóssil, biometanol e e-metanol.", None,
                        production_route_class="untapped_potential",
-                       production_route_rationale="Rota fóssil (gás natural/carvão) domina hoje; bio-metanol e e-metanol existem tecnicamente mas são marginais no comércio."),
+                       production_route_rationale="Rota fóssil (gás natural/carvão) domina hoje; bio-metanol e e-metanol existem tecnicamente mas são marginais no comércio.",
+                       strategic_profile=StrategicProfile(
+                           is_powershoring_vector=True,
+                           label="Vetor de Powershoring -- Metanol Verde",
+                           thesis=(
+                               "Metanol fóssil (gás natural/carvão) domina o comércio mundial; a variante verde "
+                               "(e-metanol, sintetizado a partir de hidrogênio renovável e CO2 capturado) é "
+                               "tecnicamente madura mas ainda marginal em volume -- no Brasil, já há capital "
+                               "anunciado: a European Energy investe R$ 2 bi no Porto de Suape (PE) para "
+                               "produção de metanol verde, com início de operação previsto para 2028 (Eixos, "
+                               "2026). É o insumo mais nascente da família hidrogênio verde nesta cadeia, mas já "
+                               "com projeto nomeado e localizado."
+                           ),
+                           value_chain_links=("hidrogenio",),
+                       )),
             Definition("etanol", "Etanol", "molecula_principal", ("22071010", "22071090", "22072011", "22072019"), "validated", "alta",
                        production_route_class="low_carbon_dominant",
                        production_route_rationale="Fermentação de cana no Brasil, com cogeração a bagaço -- rota já renovável e consolidada."),
@@ -132,7 +194,25 @@ CHAINS: dict[str, dict[str, object]] = {
                        production_route_rationale="Querosene de aviação fóssil domina o comércio; SAF é tecnicamente maduro mas é menos de 1% do volume global e a NCM não certifica a diferença."),
             Definition("gas_natural_biometano", "Gás natural / proxy biometano", "insumos", ("27111100", "27112100"), "estimated", "baixa", "A NCM não separa gás natural fóssil de biometano.", None,
                        production_route_class="fossil_dominant",
-                       production_route_rationale="Gás natural fóssil domina o volume comercializado; biometano é fração marginal e a NCM não separa."),
+                       production_route_rationale="Gás natural fóssil domina o volume comercializado; biometano é fração marginal e a NCM não separa.",
+                       strategic_profile=StrategicProfile(
+                           is_powershoring_vector=True,
+                           label="Vetor de Powershoring -- Biometano Substituindo Gás Natural",
+                           thesis=(
+                               "A NCM não separa gás natural fóssil de biometano no comércio exterior, mas o "
+                               "biometano -- substituto direto (drop-in) do gás natural em qualquer uso "
+                               "térmico, sem troca de equipamento -- já tem mandato federal de mistura "
+                               "crescente (Decreto nº 12.614/2025: 1% em 2026, escalando a 10% em 2034) e "
+                               "potencial produtivo nacional de 120 milhões de m³/dia, sobretudo dos setores "
+                               "sucroenergético (56%) e pecuário (38%) (BNDES/FIESP, 2025-2026). São Paulo é "
+                               "o polo líder, com potencial de substituir 32% do consumo de gás natural do "
+                               "estado (estudo FIESP). É o vetor-base por trás das teses de vidro solar e "
+                               "cadinhos de quartzo na cadeia de silício desta plataforma -- qualquer "
+                               "processo hoje fóssil por usar gás natural como calor de processo tem, em "
+                               "princípio, essa mesma rota de substituição disponível."
+                           ),
+                           value_chain_links=(),
+                       )),
             Definition("enzimas", "Enzimas e biocatalisadores", "insumos_tecnologicos", ("35079011", "35079019", "35079021", "35079029", "35079039", "35079049"), "estimated", "baixa", "Cesta multipropósito; exige fator de uso em biocombustíveis.", None,
                        production_route_class="low_carbon_dominant",
                        production_route_rationale="Produção via fermentação microbiana com feedstocks biológicos (açúcares) -- processo biotecnológico, não fóssil."),
@@ -171,7 +251,22 @@ CHAINS: dict[str, dict[str, object]] = {
                        production_route_rationale="A maior parte do enxofre elementar comercializado é subproduto da dessulfurização de petróleo e gás natural (processo Claus)."),
             Definition("amonia", "Amônia", "intermediarios", ("28141000", "28142000"), "validated", "alta", None, 0.30,
                        production_route_class="fossil_dominant",
-                       production_route_rationale="Haber-Bosch via gás natural é a rota dominante mundialmente."),
+                       production_route_rationale="Haber-Bosch via gás natural é a rota dominante mundialmente.",
+                       strategic_profile=StrategicProfile(
+                           is_powershoring_vector=True,
+                           label="Vetor de Powershoring -- Amônia Verde para Fertilizantes",
+                           thesis=(
+                               "A amônia usada em fertilizantes nitrogenados é produzida quase toda via "
+                               "Haber-Bosch a gás natural -- mas a versão verde já tem planta anunciada "
+                               "especificamente para este uso: a Atlas Agro investe R$ 6 bi em Uberaba (MG), "
+                               "com 300 MW de capacidade de eletrólise dedicados à produção de amônia verde "
+                               "para fertilizante nitrogenado (Eixos, 2026). É a mesma molécula-base do vetor "
+                               "de hidrogênio/amônia verde da cadeia de combustíveis de transição, mas com uma "
+                               "planta já localizada fora do eixo Ceará -- essa tese não depende de um único "
+                               "estado."
+                           ),
+                           value_chain_links=("ureia", "fertilizantes_npk"),
+                       )),
             Definition("acido_fosforico", "Ácido fosfórico", "intermediarios", ("28092011", "28092019"), "estimated", "media", "Uso como insumo de fertilizantes não é isolado -- a NCM também cobre ácido fosfórico grau alimentício/industrial (bebidas, detergentes, tratamento de água).", None,
                        production_route_class="transition_underway",
                        production_route_rationale="Rocha fosfática (mineral) + ácido sulfúrico (rota úmida); o enxofre do ácido sulfúrico é frequentemente subproduto fóssil, mas o processo em si não depende de combustão direta."),
@@ -240,7 +335,23 @@ CHAINS: dict[str, dict[str, object]] = {
                        production_route_rationale="A extração em si (mineração, beneficiamento físico) não depende de feedstock fóssil, mas a NCM não distingue minério destinado a redução direta/EAF (rota de baixo carbono) do minério granulado/sinter feed genérico que abastece majoritariamente altos-fornos a coque no exterior -- 68% das exportações vão para a China, onde a rota dominante é BF-BOF fóssil. Sem essa distinção por produto, rotular o fluxo de exportação como baixo carbono superestimaria a vantagem ambiental do minério bruto."),
             Definition("sucata_ferrosa", "Sucata ferrosa", "base_mineral", ("72041000", "72042100", "72042900", "72043000", "72044100", "72044900"), "validated", "alta",
                        production_route_class="low_carbon_dominant",
-                       production_route_rationale="Reciclagem via forno elétrico a arco (EAF) -- ao contrário de commodities fungíveis globalmente (ex.: silício grau metalúrgico), este é consumo doméstico de eletricidade: a rota roda na matriz elétrica nacional, >84% renovável (BEN/EPE), e usa cerca de 1/8 da energia da rota integrada a coque (IEA Iron and Steel Technology Roadmap 2020 / World Steel Association 2020). Principal alavanca de descarbonização do aço brasileiro."),
+                       production_route_rationale="Reciclagem via forno elétrico a arco (EAF) -- ao contrário de commodities fungíveis globalmente (ex.: silício grau metalúrgico), este é consumo doméstico de eletricidade: a rota roda na matriz elétrica nacional, >84% renovável (BEN/EPE), e usa cerca de 1/8 da energia da rota integrada a coque (IEA Iron and Steel Technology Roadmap 2020 / World Steel Association 2020). Principal alavanca de descarbonização do aço brasileiro.",
+                       strategic_profile=StrategicProfile(
+                           is_powershoring_vector=True,
+                           label="Rota Elétrica Já Consolidada",
+                           thesis=(
+                               "É a rota de aço mais limpa do Brasil hoje, não uma aposta futura: o forno "
+                               "elétrico a arco (EAF) usa cerca de 1/8 da energia da rota integrada a coque "
+                               "(IEA Iron and Steel Technology Roadmap 2020 / World Steel Association 2020) e "
+                               "roda inteiramente na matriz elétrica nacional, >84% renovável (BEN/EPE) -- ao "
+                               "contrário de commodities fungíveis globalmente como o silício grau metalúrgico, "
+                               "é consumo de eletricidade 100% doméstico. O Brasil hoje exporta cerca de 32x "
+                               "mais sucata do que importa, o que não é vantagem consolidada: é potencial de "
+                               "reciclagem doméstica ainda por otimizar antes de tratar a exportação da "
+                               "matéria-prima como rota preferencial."
+                           ),
+                           value_chain_links=("ferro_gusa", "carvao_mineral_coque"),
+                       )),
             Definition("ferro_gusa", "Ferro-gusa", "reducao", ("72011000", "72012000", "72015000"), "validated", "alta",
                        "O IABr registra, entre usinas associadas, consumo de redutores em 2024 de ~84% coque fóssil (6,7 Mt) e ~16% carvão vegetal (1,3 Mt), com fatores de emissão de 2,2 tCO2e/t e 0,7 tCO2e/t respectivamente -- mas cobre só usinas associadas ao IABr, não os guseiros independentes (polos de MG, PA e MA) que operam majoritariamente a carvão vegetal e respondem por parte relevante da produção nacional. O BEN/EPE (2024) dá uma leitura de escopo nacional mais completa -- inclui esses guseiros independentes -- mas mede outra coisa: energia consumida por todo o setor Ferro-Gusa e Aço (não isolada à etapa de redução), onde carvão vegetal já é 16,5% e coque de carvão mineral 42,7%. Nenhuma das duas fontes isola precisamente o mix de redutor do ferro-gusa especificamente exportado, e a NCM (72011000/72012000/72015000) também não distingue as duas rotas, então o valor exportado permanece agregado, sem separação por rota.",
                        None,

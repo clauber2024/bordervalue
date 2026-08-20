@@ -196,6 +196,29 @@ SOLAR_INPUTS = (
         "A NCM não separa o uso fotovoltaico dos demais usos do silício.",
         production_route_class="fossil_dominant",
         production_route_rationale="Redução carbotérmica em forno a arco; produção mundial concentrada na China, com matriz elétrica majoritariamente a carvão.",
+        strategic_profile=StrategicProfile(
+            is_powershoring_vector=True,
+            label="Vetor de Powershoring -- Silício Metálico Já Exportado com Energia e Redutor Limpos",
+            thesis=(
+                "A produção mundial de silício grau metalúrgico é dominada pela China, majoritariamente "
+                "numa matriz elétrica a carvão e com coque como agente redutor -- o Brasil já roda a rota "
+                "oposta nas duas pontas do processo, não só na eletricidade: 100% do silício metálico "
+                "brasileiro é produzido com carvão vegetal (biorredutor) no lugar de carvão mineral, mesma "
+                "lógica que já sustenta a tese do ferro-gusa/carvão vegetal na cadeia de aço desta plataforma "
+                "(Ibá -- Indústria Brasileira de Árvores). Na eletricidade, o Grupo RIMA -- maior produtor "
+                "brasileiro de silício metálico e 4º maior do mundo -- opera com 100% de energia renovável "
+                "(hidrelétrica, solar e eólica), com plantas em Várzea da Palma e Capitão Enéas (MG), "
+                "incluindo complexo solar próprio dedicado e um novo forno com investimento da ordem de "
+                "US$ 65 milhões (RIMA Industrial, 2026). Diferente da família hidrogênio/amônia/metanol verde "
+                "desta plataforma (pipeline anunciado, ainda não operando), este é exportação já em curso, "
+                "com dupla vantagem renovável -- energia e redutor -- mais próxima do padrão de sucata "
+                "ferrosa e carvão vegetal do que de um projeto em fase de decisão de investimento. A etapa "
+                "seguinte, polissilício de grau solar (processo Siemens), segue sem produção real no Brasil "
+                "-- é discutida como oportunidade em estudos técnicos (BNDES), não como caso operando, por "
+                "isso não está marcada aqui."
+            ),
+            value_chain_links=("polissilicio_solar", "carvao_vegetal"),
+        ),
     ),
     SolarInputDefinition(
         "polissilicio_solar",
@@ -259,6 +282,21 @@ SOLAR_INPUTS = (
         "estimated", "media", "A NCM de hidrogênio não diferencia pureza nem aplicação solar.",
         production_route_class="fossil_dominant",
         production_route_rationale=">95% da produção mundial via reforma a vapor de gás natural (H2 cinza).",
+        strategic_profile=StrategicProfile(
+            is_powershoring_vector=True,
+            label="Vetor de Powershoring -- Hidrogênio Verde para Refino Solar",
+            thesis=(
+                "Mais de 95% da produção mundial de hidrogênio de alta pureza ainda vem de reforma a vapor "
+                "de gás natural (H2 cinza) -- mesma rota fóssil que a família hidrogênio/amônia/metanol "
+                "verde desta plataforma já ataca na cadeia de combustíveis de transição, com pipeline real "
+                "de investimento no Complexo do Porto do Pecém (CE): Fortescue (R$ 18 bi), Casa dos Ventos "
+                "(R$ 12 bi), FRV (R$ 6 bi) (Eixos, 2026). Aqui o hidrogênio de alta pureza alimenta o refino "
+                "de polissilício de grau solar -- que ainda não tem produção real no Brasil (ver silício "
+                "grau metalúrgico) -- então o vetor é sobre o insumo em si, sem um caso doméstico de "
+                "consumo já estabelecido."
+            ),
+            value_chain_links=("hidrogenio",),
+        ),
     ),
     SolarInputDefinition(
         "acido_cloridrico", "Ácido clorídrico", "refinamento", ("28061010", "28061020"),
@@ -271,12 +309,44 @@ SOLAR_INPUTS = (
         "estimated", "baixa", "A classificação de cadinhos não identifica exclusivamente quartzo nem uso fotovoltaico.",
         production_route_class="transition_underway",
         production_route_rationale="Matéria-prima é mineral, mas a fusão em forno normalmente usa gás natural como energia térmica.",
+        strategic_profile=StrategicProfile(
+            is_powershoring_vector=True,
+            label="Vetor de Powershoring -- Cadinhos de Quartzo com Biometano",
+            thesis=(
+                "A fusão de cadinhos de quartzo em forno usa gás natural como energia térmica -- mesmo "
+                "mecanismo de substituição de combustível do vidro solar nesta cadeia: biometano é "
+                "substituto direto do gás natural em fornos industriais, já contratado por setores como "
+                "cerâmica e alimentos no Brasil, com mandato federal de mistura crescente (Decreto nº "
+                "12.614/2025, 1% em 2026 a 10% em 2034). Evidência mais fraca que a do vidro solar -- não há "
+                "contrato ou projeto nomeado especificamente para fusão de cadinhos de quartzo, só o mesmo "
+                "mecanismo genérico de fornos industriais a gás."
+            ),
+            value_chain_links=("vidro_solar", "gas_natural_biometano"),
+        ),
     ),
     SolarInputDefinition(
         "vidro_solar", "Vidro solar", "produto_final", ("70051000", "70071900"),
         "estimated", "baixa", "Proxy por vidro revestido e vidro temperado; não há identificação exclusiva para módulos solares.",
         production_route_class="fossil_dominant",
         production_route_rationale="Fornos de vidro operam predominantemente a gás natural globalmente.",
+        strategic_profile=StrategicProfile(
+            is_powershoring_vector=True,
+            label="Vetor de Powershoring -- Vidro Solar com Biometano",
+            thesis=(
+                "Fornos de vidro para módulos fotovoltaicos operam predominantemente a gás natural "
+                "globalmente -- mas biometano é substituto direto (drop-in) do gás natural em fornos e "
+                "caldeiras industriais, sem troca de equipamento, já contratado por indústrias cerâmicas "
+                "(fornos), de alimentos/bebidas e outras no Brasil. Um mandato federal (Decreto nº "
+                "12.614/2025) já obriga mistura crescente de biometano no gás natural distribuído -- 1% a "
+                "partir de 2026, escalando a 10% até 2034 -- e o potencial produtivo nacional é de 120 "
+                "milhões de m³/dia, sobretudo dos setores sucroenergético (56%) e pecuário (38%) "
+                "(BNDES/FIESP, 2025-2026). É um mecanismo diferente do vetor elétrico que domina as demais "
+                "teses desta plataforma -- aqui a vantagem é substituição de combustível, não eletrificação "
+                "-- mas segue a mesma lógica: capacidade doméstica renovável que rotas concorrentes no "
+                "exterior não têm."
+            ),
+            value_chain_links=("gas_natural_biometano",),
+        ),
     ),
     SolarInputDefinition(
         "encapsulantes_eva", "Encapsulantes EVA", "produto_final", ("39013010", "39013090"),
@@ -289,6 +359,21 @@ SOLAR_INPUTS = (
         "estimated", "baixa", "Proxy por chapas, folhas e tiras de cobre refinado em rolos e outras formas.",
         production_route_class="transition_underway",
         production_route_rationale="Refino de cobre é eletrointensivo; polos relevantes (Chile) já usam matriz solar/hídrica crescente, mas o volume mundial ainda inclui forte participação de matriz a carvão.",
+        strategic_profile=StrategicProfile(
+            is_powershoring_vector=True,
+            label="Vetor de Powershoring -- Cobre Refinado na Matriz Nacional",
+            thesis=(
+                "O refino eletrolítico de cobre é eletrointensivo, e o volume mundial ainda tem forte "
+                "participação de matriz a carvão -- mas o Brasil já refina cobre domesticamente na própria "
+                "matriz limpa: a Paranapanema opera, em Dias d'Ávila (Bahia, Polo Industrial de Camaçari), a "
+                "única planta do país com certificação LME para cátodos de cobre eletrolítico, com "
+                "capacidade da ordem de 230-277 mil toneladas/ano -- rodando na matriz elétrica nacional, "
+                ">84% renovável (BEN/EPE). Este insumo (fitas de cobre) rastreia laminados e tiras, uma etapa "
+                "de transformação além do cátodo -- a vantagem de carbono mora na etapa de refino eletrolítico "
+                "anterior, no mesmo padrão de ressalva já aplicado ao alumínio primário nesta plataforma."
+            ),
+            value_chain_links=(),
+        ),
     ),
     SolarInputDefinition(
         "molduras_aluminio", "Molduras de alumínio", "produto_final",
@@ -296,6 +381,23 @@ SOLAR_INPUTS = (
         "Proxy por perfis de alumínio; a destinação para módulos não é isolada.",
         production_route_class="transition_underway",
         production_route_rationale="Alumínio primário é extremamente eletrointensivo; a maior parte da produção mundial usa matriz a carvão, mas há polos hidrelétricos relevantes (Brasil, Noruega, Islândia, Canadá).",
+        strategic_profile=StrategicProfile(
+            is_powershoring_vector=True,
+            label="Vetor de Powershoring -- Alumínio Primário Hidrelétrico",
+            thesis=(
+                "O alumínio primário (eletrólise Hall-Héroult) é um dos processos mais eletrointensivos da "
+                "indústria -- e o Brasil tem, desde a década de 1980, o caso mais provado e mais antigo de "
+                "powershoring do país: a Albras, em Barcarena (PA), é a maior consumidora industrial livre "
+                "de energia do Brasil (~800 MW) e opera com eletricidade hidrelétrica desde a origem, hoje "
+                "migrando contratos antigos para PPAs renováveis adicionais -- solares em Mendubim (RN) e "
+                "Boa Sorte (MG), eólico na divisa Piauí/Pernambuco (Hydro/Albras-Alunorte, 2025). Este "
+                "insumo (molduras de alumínio) rastreia perfis extrudados para módulos fotovoltaicos, não o "
+                "lingote primário em si -- a vantagem de carbono mora na etapa de fundição upstream, não na "
+                "extrusão do perfil, então a tese aqui é sobre a origem do metal, não sobre esta etapa de "
+                "transformação específica."
+            ),
+            value_chain_links=(),
+        ),
     ),
 )
 

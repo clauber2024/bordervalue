@@ -12,6 +12,7 @@ export { default as MainAnalyticalDashboard } from "./MainAnalyticalDashboard";
 export { NIBMatrixChart } from "./NIBMatrixChart";
 export { ProportionalityToggle } from "./ProportionalityToggle";
 export { ProportionalityToggle as ProportionalityShowcase } from "./ProportionalityShowcase";
+export { PowershoringShowcase } from "./PowershoringShowcase";
 export { SiliconStrategicLevers } from "./SiliconStrategicLevers";
 export { SovereigntySankeyChart } from "./SovereigntySankeyChart";
 export { TechnicalDrawer } from "./TechnicalDrawer";
