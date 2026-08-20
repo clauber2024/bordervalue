@@ -7,7 +7,7 @@ import { ResponsiveContainer, Sankey, Tooltip } from "recharts";
 import type { ProdutoConceitual } from "../types/border-value";
 import type { ProductionRouteClass, SolarInputMetric } from "../types/solar-sovereignty";
 import { transitionFuelDestination } from "../lib/transitionFuelTopology";
-import { countryFlagEmoji } from "../lib/countryFlags";
+import { countryFlagAssetPath } from "../lib/countryFlags";
 
 type Perspective = "imports" | "exports";
 
@@ -866,11 +866,14 @@ function renderNode(
     payload.name !== "Outros Mercados" &&
     payload.name !== "Destino não informado";
   const flagPalette = payload.kind === "supplier" || isCountryDestination ? countryFlagPalette(payload.name) : null;
-  // Real flag emoji next to the name -- an accurate depiction of the actual
+  // Real flag SVG next to the name -- an accurate depiction of the actual
   // flag, unlike the gradient fill above (only 3 stripe colors, so it can't
   // faithfully represent most flags and falls back to a generic teal for any
-  // country outside its ~27-country list).
-  const countryFlag = flagPalette ? countryFlagEmoji(payload.name) : null;
+  // country outside its ~27-country list). Emoji flags would be simpler but
+  // most Windows browsers render the raw two-letter ISO code as text instead
+  // of the flag glyph, so this uses a real SVG asset (public/flags/).
+  const countryFlag = flagPalette ? countryFlagAssetPath(payload.name) : null;
+  const flagIndent = countryFlag ? 18 : 0;
   const gradientId = `country-${safeSvgId(payload.id)}`;
   const labelX = x + width + 10;
   const labelY = y + Math.max(height / 2, 8);
@@ -958,6 +961,15 @@ function renderNode(
               : undefined
         }
       />
+      {countryFlag ? (
+        <image
+          href={countryFlag}
+          x={labelX}
+          y={labelY - 10 - labelShift}
+          width={14}
+          height={10}
+        />
+      ) : null}
       <text x={labelX} fill="#fafafa" fontSize={12} fontWeight={700}>
         {/* Native title tooltip carries the untruncated name too, as a
             fallback -- wrapNodeLabel splits into up to two lines (see
@@ -966,8 +978,7 @@ function renderNode(
             full instead of getting cut off with an ellipsis. */}
         <title>{payload.name}</title>
         {labelLines.map((line, index) => (
-          <tspan key={index} x={labelX} y={labelY - 5 - labelShift + index * 13} dominantBaseline="middle">
-            {index === 0 && countryFlag ? `${countryFlag} ` : null}
+          <tspan key={index} x={labelX + (index === 0 ? flagIndent : 0)} y={labelY - 5 - labelShift + index * 13} dominantBaseline="middle">
             {line}
           </tspan>
         ))}

@@ -103,13 +103,17 @@ export function countryToIso2(countryName: string): string | null {
   return COUNTRY_ISO2.find(([pattern]) => pattern.test(normalized))?.[1] ?? null;
 }
 
-export function isoToFlagEmoji(iso2: string): string {
-  return iso2
-    .toUpperCase()
-    .replace(/./g, (char) => String.fromCodePoint(127397 + char.charCodeAt(0)));
+// Unicode flag emoji (regional indicator pairs) render as the actual flag
+// glyph on macOS/iOS, but most browsers on Windows fall back to showing the
+// raw two-letter ISO code as plain text instead -- so this app uses real SVG
+// assets (public/flags/, copied from the flag-icons npm package at
+// node_modules/flag-icons/flags/4x3/) instead of emoji, which render
+// identically everywhere regardless of the OS's emoji font support.
+export function flagAssetPath(iso2: string): string {
+  return `/flags/${iso2.toLowerCase()}.svg`;
 }
 
-export function countryFlagEmoji(countryName: string): string | null {
+export function countryFlagAssetPath(countryName: string): string | null {
   const iso2 = countryToIso2(countryName);
-  return iso2 ? isoToFlagEmoji(iso2) : null;
+  return iso2 ? flagAssetPath(iso2) : null;
 }

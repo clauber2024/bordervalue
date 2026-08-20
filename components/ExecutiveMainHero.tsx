@@ -17,7 +17,7 @@ import {
   ShieldAlert,
   Sparkles,
 } from 'lucide-react';
-import { countryToIso2, isoToFlagEmoji } from '../lib/countryFlags';
+import { countryToIso2, flagAssetPath } from '../lib/countryFlags';
 
 export type ExecutiveTopAlert = {
   productName: string;
@@ -412,9 +412,12 @@ export const ExecutiveMainHero = ({
                 </span>
                 <div className="mt-1.5 flex items-center justify-center">
                   {hasAuditedSupplier && supplierIso2 ? (
-                    <span className="text-2xl leading-none" role="img" aria-label={`Bandeira: ${alert.topSupplier}`}>
-                      {isoToFlagEmoji(supplierIso2)}
-                    </span>
+                    // eslint-disable-next-line @next/next/no-img-element -- small static SVG from public/flags/, not worth next/image's overhead
+                    <img
+                      src={flagAssetPath(supplierIso2)}
+                      alt={`Bandeira: ${alert.topSupplier}`}
+                      className="h-4 w-[22px] rounded-[2px] object-cover ring-1 ring-white/25"
+                    />
                   ) : (
                     <Flag className="h-4 w-4 text-zinc-500" strokeWidth={1.8} />
                   )}
