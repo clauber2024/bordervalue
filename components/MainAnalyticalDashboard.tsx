@@ -571,11 +571,13 @@ export default function MainAnalyticalDashboard() {
               strategicQuestion={chainStrategicQuestion(selectedChain)}
             />
             {solarSovereignty?.inputs.length ? (
-              <SiliconStrategicLevers
-                chainId={selectedChain}
-                valueAsymmetry={chainValueAsymmetry}
-                solarInputs={solarSovereignty.inputs}
-              />
+              <div id="tour-powershoring" className="scroll-mt-40 md:scroll-mt-32">
+                <SiliconStrategicLevers
+                  chainId={selectedChain}
+                  valueAsymmetry={chainValueAsymmetry}
+                  solarInputs={solarSovereignty.inputs}
+                />
+              </div>
             ) : null}
           </div>
 

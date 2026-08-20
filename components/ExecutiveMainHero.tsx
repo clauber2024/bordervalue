@@ -17,7 +17,7 @@ import {
   ShieldAlert,
   Sparkles,
 } from 'lucide-react';
-import { countryFlagPalette } from './SovereigntySankeyChart';
+import { countryToIso2, isoToFlagEmoji } from '../lib/countryFlags';
 
 export type ExecutiveTopAlert = {
   productName: string;
@@ -207,25 +207,6 @@ const HHI_GAUGE_BANDS: GaugeBand[] = [
   { upTo: 10000, color: '#f87171' },
 ];
 
-// Real flag colors (reused from SovereigntySankeyChart's country palette)
-// instead of a generic pin/globe icon -- lets the reader recognize the
-// origin country at a glance instead of reading the label text first.
-function CountryFlagSwatch({ countryName, size = 22 }: { countryName: string; size?: number }) {
-  const [c1, c2, c3] = countryFlagPalette(countryName);
-  const height = Math.round(size * 0.68);
-  const stripe = size / 3;
-
-  return (
-    <span className="inline-block overflow-hidden rounded-[2px] ring-1 ring-white/25" style={{ width: size, height }}>
-      <svg viewBox={`0 0 ${size} ${height}`} width={size} height={height} aria-hidden="true">
-        <rect x={0} y={0} width={stripe} height={height} fill={c1} />
-        <rect x={stripe} y={0} width={stripe} height={height} fill={c2} />
-        <rect x={stripe * 2} y={0} width={size - stripe * 2} height={height} fill={c3} />
-      </svg>
-    </span>
-  );
-}
-
 // Balance beam that physically tips toward whichever side is heavier --
 // domestic production (left, emerald) vs. imports (right, red) -- instead of
 // a static scale icon that says nothing about the actual dependency number.
@@ -264,6 +245,7 @@ export const ExecutiveMainHero = ({
 }: ExecutiveMainHeroProps) => {
   const hasAuditedSupplier =
     alert.topSupplier !== 'Em auditoria' && alert.supplierShare > 0;
+  const supplierIso2 = hasAuditedSupplier ? countryToIso2(alert.topSupplier) : null;
   const supplierTitle = hasAuditedSupplier ? alert.topSupplier : 'Em homologação';
   const supplierSubtitle = hasAuditedSupplier
     ? `${formatPercentage(alert.supplierShare)}% do total`
@@ -429,8 +411,10 @@ export const ExecutiveMainHero = ({
                   Principal País Origem
                 </span>
                 <div className="mt-1.5 flex items-center justify-center">
-                  {hasAuditedSupplier ? (
-                    <CountryFlagSwatch countryName={alert.topSupplier} />
+                  {hasAuditedSupplier && supplierIso2 ? (
+                    <span className="text-2xl leading-none" role="img" aria-label={`Bandeira: ${alert.topSupplier}`}>
+                      {isoToFlagEmoji(supplierIso2)}
+                    </span>
                   ) : (
                     <Flag className="h-4 w-4 text-zinc-500" strokeWidth={1.8} />
                   )}

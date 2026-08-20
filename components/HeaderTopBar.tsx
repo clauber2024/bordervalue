@@ -145,6 +145,15 @@ export function HeaderTopBar({
               <span className="hidden sm:inline">Matriz Transversal</span>
             </Link>
 
+            <Link
+              href="/?chain=silicio#tour-powershoring"
+              title="Tese de Powershoring: energia renovável barata como vantagem de exportação"
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-emerald-300/20 bg-emerald-400/[0.06] px-3 text-xs font-semibold text-emerald-200 transition hover:border-emerald-300/40 hover:bg-emerald-400/[0.12] hover:text-white"
+            >
+              <Zap className="h-3.5 w-3.5 text-emerald-300" />
+              <span className="hidden sm:inline">Powershoring</span>
+            </Link>
+
             <div className="hidden items-center gap-2 rounded-xl border border-red-900/50 bg-red-950/30 px-2.5 py-1 font-mono text-xs lg:flex">
               <span className={`h-2 w-2 rounded-full bg-red-500 ${alertCount ? "animate-pulse" : ""}`} />
               <span className="text-zinc-400">Alerta:</span>

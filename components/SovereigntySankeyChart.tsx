@@ -7,6 +7,7 @@ import { ResponsiveContainer, Sankey, Tooltip } from "recharts";
 import type { ProdutoConceitual } from "../types/border-value";
 import type { ProductionRouteClass, SolarInputMetric } from "../types/solar-sovereignty";
 import { transitionFuelDestination } from "../lib/transitionFuelTopology";
+import { countryFlagEmoji } from "../lib/countryFlags";
 
 type Perspective = "imports" | "exports";
 
@@ -865,6 +866,11 @@ function renderNode(
     payload.name !== "Outros Mercados" &&
     payload.name !== "Destino não informado";
   const flagPalette = payload.kind === "supplier" || isCountryDestination ? countryFlagPalette(payload.name) : null;
+  // Real flag emoji next to the name -- an accurate depiction of the actual
+  // flag, unlike the gradient fill above (only 3 stripe colors, so it can't
+  // faithfully represent most flags and falls back to a generic teal for any
+  // country outside its ~27-country list).
+  const countryFlag = flagPalette ? countryFlagEmoji(payload.name) : null;
   const gradientId = `country-${safeSvgId(payload.id)}`;
   const labelX = x + width + 10;
   const labelY = y + Math.max(height / 2, 8);
@@ -961,6 +967,7 @@ function renderNode(
         <title>{payload.name}</title>
         {labelLines.map((line, index) => (
           <tspan key={index} x={labelX} y={labelY - 5 - labelShift + index * 13} dominantBaseline="middle">
+            {index === 0 && countryFlag ? `${countryFlag} ` : null}
             {line}
           </tspan>
         ))}
@@ -1207,7 +1214,7 @@ function safeSvgId(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_-]/g, "-");
 }
 
-export function countryFlagPalette(countryName: string): [string, string, string] {
+function countryFlagPalette(countryName: string): [string, string, string] {
   const country = countryName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
   if (country.includes("china")) return ["#de2910", "#ffde00", "#de2910"];
   if (country.includes("estados unidos") || country.includes("united states")) return ["#3c3b6e", "#ffffff", "#b22234"];
