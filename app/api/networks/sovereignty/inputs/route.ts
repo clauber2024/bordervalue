@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const chain = request.nextUrl.searchParams.get("chain")?.trim().toLowerCase();
   if (!chain || !SUPPORTED_CHAINS.has(chain)) {
-    return NextResponse.json({ detail: `Cadeia AIPNET não suportada: ${chain ?? ""}` }, { status: 404 });
+    return NextResponse.json({ detail: `Cadeia não suportada: ${chain ?? ""}` }, { status: 404 });
   }
 
   try {

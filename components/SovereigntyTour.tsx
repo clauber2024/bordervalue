@@ -58,7 +58,7 @@ const steps: TourStep[] = [
   },
   {
     targetId: "tour-sankey",
-    title: "3. Fluxo AIPNET por produto conceitual",
+    title: "3. Fluxo da cadeia por produto conceitual",
     bullets: [
       { label: "Leitura", text: "distribui os US$ 3,1 bi importados pela cadeia entre os 16 insumos mapeados e seus fornecedores; a espessura das bandas é valor FOB, não sequência produtiva. Carvão vegetal (biorredução) é o único sem comércio exterior -- não aparece aqui, só nos painéis de produção doméstica." },
       { label: "Concentração de valor", text: "a pauta importada é dominada pelo Carvão Mineral/Coque -- US$ 2,1 bi, 66,8% de tudo o que a cadeia importa -- não porque seja o insumo mais dependente de um único fornecedor, mas porque é o de maior volume financeiro." },

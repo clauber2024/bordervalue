@@ -617,7 +617,7 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
         <div>
           <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-red-400">
             <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
-            AIPNET · Geopolítica de Estado
+            Espinha Dorsal · Geopolítica de Estado
           </p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-white">
             Plataforma analítica de soberania produtiva

@@ -158,7 +158,7 @@ export const AipnetFlowChart = ({
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-emerald-400">
               <Sparkles className="h-3 w-3" />
-              Diagrama de Fluxo AIPNET (Sankey de Estado)
+              Diagrama de Fluxo da Espinha Dorsal (Sankey de Estado)
             </span>
             <span
               className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${riskClasses[flow.riskLevel]}`}

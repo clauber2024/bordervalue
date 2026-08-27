@@ -6,6 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   ArrowDownRight,
+  Award,
+  CheckCircle2,
   ChevronDown,
   Compass,
   Factory,
@@ -13,12 +15,15 @@ import {
   LineChart,
   Network,
   RefreshCw,
+  Scale,
   ShieldAlert,
+  Users,
 } from "lucide-react";
 import { type AipnetFlow } from "./AipnetFlowChart";
 import { AipnetSystemsFlow } from "./AipnetSystemsFlow";
 import type { AipnetAnalysisFocus } from "./AipnetSystemsFlow";
 import { CarbonFootprintIndustrialBlock } from "./CarbonFootprintIndustrialBlock";
+import { ChainAnalysesMap, type ChainAnalysesMapItem } from "./ChainAnalysesMap";
 import { ChainSelectionLanding } from "./ChainSelectionLanding";
 import { ExecutiveMainHero, type ExecutiveMainKpi, type ExecutiveTopAlert } from "./ExecutiveMainHero";
 import { ExecutiveMetadataFooter, type ExecutiveMetadata } from "./ExecutiveMetadataFooter";
@@ -132,6 +137,16 @@ const money = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 1,
 });
 
+// Same format as SiliconStrategicLevers.tsx's usdPerKg -- not imported from
+// there since that module doesn't export it, and duplicating one Intl
+// formatter is cheaper than adding a new export just for this.
+const usdPerKg = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 // Intl.NumberFormat's compact notation formats exactly zero differently
 // across JS engines -- confirmed live: Node (the actual SSR runtime here)
 // renders money.format(0) as "US$ 0,0", Chrome/V8 (the client) renders it
@@ -152,12 +167,18 @@ export default function MainAnalyticalDashboard() {
   const searchParams = useSearchParams();
   const selectedChain = searchParams.get("chain")?.trim() || null;
   const selectedChainMetadata = chainCatalog.find((chain) => chain.id === selectedChain);
+  // IA-overload pilot (see components/MainAnalyticalDashboard.tsx history):
+  // validated on Aço, then Silício, now rolled out to all 4 published
+  // chains. Kept as an explicit, named flag (rather than inlining
+  // Boolean(selectedChain) at every call site) so every branch it gates
+  // stays easy to find and, if ever needed, partially roll back.
+  const isIaPilotChain = selectedChain === "aco" || selectedChain === "silicio" || selectedChain === "fertilizantes" || selectedChain === "combustiveis_transicao";
   const [data, setData] = useState<ApiResponse>(emptyResponse);
   const [status, setStatus] = useState<ViewState>("loading");
   const [error, setError] = useState("");
   const [chainAnalysisFocus, setChainAnalysisFocus] = useState<{ stage: string; input?: string } | null>(null);
   const [criticalOnly, setCriticalOnly] = useState(false);
-  const [readingMode, setReadingMode] = useState<ReadingMode>("analytical");
+  const [readingMode, setReadingMode] = useState<ReadingMode>(isIaPilotChain ? "guided" : "analytical");
   const [modeFeedback, setModeFeedback] = useState("Cadeia preservada, com painéis adicionais de aprofundamento.");
   const [chainMenuOpen, setChainMenuOpen] = useState(false);
   const chainMenuRef = useRef<HTMLDivElement>(null);
@@ -171,6 +192,20 @@ export default function MainAnalyticalDashboard() {
   const { data: energyContext } = useEnergyContext(selectedChain);
   const [chainSummaries, setChainSummaries] = useState<Record<string, ChainSummary>>({});
   const [chainSummariesLoading, setChainSummariesLoading] = useState(true);
+
+  // "Trocar cadeia" navigates client-side without remounting this component,
+  // so the readingMode useState default above only applies on first load --
+  // without this, switching chains carries whichever mode you were in on
+  // the *previous* chain (e.g. leaving Aço in "guided" would wrongly hide
+  // Silício's Macro-módulo 2, which still expects "analytical" by default).
+  // Only resets on an actual chain change, so it never fights a manual
+  // toggle click within the same chain.
+  const previousChainRef = useRef(selectedChain);
+  useEffect(() => {
+    if (previousChainRef.current === selectedChain) return;
+    previousChainRef.current = selectedChain;
+    setReadingMode(isIaPilotChain ? "guided" : "analytical");
+  }, [selectedChain, isIaPilotChain]);
 
   useEffect(() => {
     let isMounted = true;
@@ -289,6 +324,29 @@ export default function MainAnalyticalDashboard() {
     window.setTimeout(() => nibRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
   }, [handleReadingModeChange]);
 
+  // Powers the "Mapa de análises" nav (IA-overload pilot, Aço only): jumps to
+  // any section by id, force-opening its <details> the same way
+  // SovereigntyTour already does (components/SovereigntyTour.tsx) -- reusing
+  // that proven lookup instead of wiring a new ref per collapsible panel.
+  const handleJumpToSection = useCallback((sectionId: string, requiresAnalytical: boolean) => {
+    const jump = () => {
+      const target = document.getElementById(sectionId);
+      if (!target) return;
+      const detailsTarget = target.closest("details") ?? target.querySelector("details");
+      if (detailsTarget instanceof HTMLDetailsElement && !detailsTarget.open) {
+        detailsTarget.open = true;
+      }
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    if (requiresAnalytical && readingMode !== "analytical") {
+      setReadingMode("analytical");
+      setModeFeedback("Análises avançadas exibidas para abrir a seção selecionada.");
+      window.setTimeout(jump, 120);
+    } else {
+      jump();
+    }
+  }, [readingMode]);
+
   const metrics = useMemo(() => {
     const totalImports = data.kpis?.totalImports ?? data.products.reduce((acc, item) => acc + item.metrics.imports, 0);
     const totalExports = data.kpis?.totalExports ?? data.products.reduce((acc, item) => acc + item.metrics.exports, 0);
@@ -364,14 +422,54 @@ export default function MainAnalyticalDashboard() {
       : buildExecutiveHeroAlert(metrics.topRisk),
     [metrics.topRisk, selectedChainMetadata?.name, solarSovereignty],
   );
-  const executiveHeroKpis = useMemo(
-    () => buildExecutiveHeroKpis(metrics),
-    [metrics],
-  );
+  const executiveHeroKpis = useMemo(() => {
+    const allKpis = buildExecutiveHeroKpis(metrics);
+    // IA-overload pilot (Aço only): Dependência Média and Concentração
+    // Máxima move next to the Vulnerability chart below instead of
+    // competing for attention in the always-visible Hero -- see the stats
+    // row rendered above ExecutiveVulnerabilityChart.
+    return isIaPilotChain ? allKpis.slice(0, 2) : allKpis;
+  }, [isIaPilotChain, metrics]);
+  // IA-overload pilot (Aço only): powers the "Resumo executivo" key-message
+  // strip -- the input with the largest trade surplus, standing in for
+  // "onde o Brasil já lidera" (e.g. minério de ferro).
+  const sovereigntyLeaderInput = useMemo(() => {
+    if (!isIaPilotChain || !solarSovereignty?.inputs.length) return undefined;
+    return [...solarSovereignty.inputs].sort((left, right) => right.trade_balance_usd - left.trade_balance_usd)[0];
+  }, [isIaPilotChain, solarSovereignty]);
   const executiveVulnerabilityData = useMemo(
     () => buildExecutiveVulnerabilityData(data.products, selectedChain, solarSovereignty?.inputs),
     [data.products, selectedChain, solarSovereignty?.inputs],
   );
+  // IA-overload pilot: "Dependência média" and "Concentração máxima" need to
+  // agree with the bars right below them -- metrics.avgDependency/maxHhi are
+  // computed from data.products (the broader, uncurated conceptual-products
+  // catalog), a different universe than the 16 curated inputs the chart
+  // actually renders when solarSovereignty is available. Deriving both stats
+  // from executiveVulnerabilityData instead means they can never again cite
+  // an item (e.g. "Escadas de ferro e aço") that isn't even one of the bars.
+  const curatedVulnerabilityStats = useMemo(() => {
+    if (!isIaPilotChain || !executiveVulnerabilityData.length) return undefined;
+    const avgDependency = executiveVulnerabilityData.reduce((sum, item) => sum + item.dependency, 0) / executiveVulnerabilityData.length;
+    // Same materiality floor as the dependency fix above, applied to HHI:
+    // an import base under SAMPLE_SHIPMENT_THRESHOLD_USD can swing supplier
+    // concentration to a "perfect monopoly" 10.000 on one or two shipments
+    // (e.g. ferro-níquel: US$2.624 imported against a US$655mi export
+    // surplus) -- real for that tiny sliver, meaningless as "the chain's
+    // most concentrated input." Excluded from the contest, not zeroed, so a
+    // genuinely material item never loses to one that only looks extreme
+    // because almost nothing was imported.
+    const materialCandidates = executiveVulnerabilityData.filter(
+      (item) => (item.importsValueUsd ?? 0) >= SAMPLE_SHIPMENT_THRESHOLD_USD,
+    );
+    const maxHhiItem = (materialCandidates.length ? materialCandidates : executiveVulnerabilityData)
+      .reduce((best, item) => (item.hhi > best.hhi ? item : best));
+    return {
+      avgDependency,
+      maxHhi: maxHhiItem.hhi,
+      maxHhiProductName: maxHhiItem.executiveName ?? maxHhiItem.name,
+    };
+  }, [executiveVulnerabilityData, isIaPilotChain]);
   const chainValueAsymmetry = useMemo(
     () => selectedChain && solarSovereignty?.inputs.length
       ? buildValueAsymmetry(selectedChain, solarSovereignty.inputs)
@@ -446,6 +544,105 @@ export default function MainAnalyticalDashboard() {
   const headerDeficitIsSurplus = headerDeficitRaw !== undefined && headerDeficitRaw < 0;
   const headerDeficitLabel = headerDeficitRaw !== undefined ? formatMoneyCompact(Math.abs(headerDeficitRaw)) : undefined;
   const canExportChain = Boolean(selectedChain) && nibMatrixProducts.length > 0;
+
+  // Entries mirror exactly the sections SovereigntyTour already knows how to
+  // target (components/SovereigntyTour.tsx) and the same conditions that
+  // decide whether each section renders below -- so the map never links to
+  // something that doesn't actually exist for this chain/data state.
+  const analysesMapItems = useMemo<ChainAnalysesMapItem[]>(() => {
+    if (!isIaPilotChain) return [];
+    const items: ChainAnalysesMapItem[] = [
+      {
+        id: "tour-hero",
+        label: "Resumo executivo",
+        description: "A cadeia inteira em poucos números: maior gargalo, onde o Brasil lidera e o veredito geral de risco.",
+        kind: "essencial",
+        group: "modulo1",
+      },
+    ];
+    if (solarSovereignty?.inputs.length) {
+      items.push({
+        id: "tour-powershoring",
+        label: "Powershoring & regulação",
+        description: "Assimetria de valor entre o que a cadeia exporta e reimporta, regime regulatório e prêmio de descarbonização.",
+        kind: "aprofundamento",
+        group: "modulo1",
+      });
+    }
+    items.push(
+      {
+        id: "tour-aipnet-backbone",
+        label: "Espinha dorsal da cadeia",
+        description: "O fluxo completo, etapa a etapa -- da matéria-prima ao produto final -- com onde o Brasil já lidera e onde ainda depende de importação.",
+        kind: "aprofundamento",
+        group: "modulo1",
+      },
+      {
+        id: "tour-sankey",
+        label: "Fluxo de soberania (rede)",
+        description: "Rede de fornecedores por produto: para onde vai o valor importado e o quanto está concentrado geograficamente.",
+        kind: "aprofundamento",
+        group: "modulo1",
+      },
+      {
+        id: "tour-vulnerability",
+        label: "Diagnóstico de vulnerabilidade",
+        description: "Dependência externa de cada insumo mapeado, lado a lado, com o limiar de risco crítico (75%) marcado.",
+        kind: "essencial",
+        group: "modulo1",
+      },
+    );
+    if (nibMatrixProducts.length) {
+      items.push({
+        id: "tour-nib-matrix",
+        label: "Matriz de priorização NIB",
+        description: "Cruza dependência externa com capacidade doméstica para indicar se a política industrial deve monitorar, modernizar ou expandir cada insumo.",
+        kind: "aprofundamento",
+        requiresAnalytical: true,
+        group: "modulo2",
+      });
+    }
+    if (selectedChain && MASS_ENERGY_BALANCE_CHAINS.has(selectedChain)) {
+      items.push({
+        id: "tour-mass-energy",
+        label: "Balanço de massa e energia",
+        description: "Intensidade energética e concentração global de produção, etapa a etapa da rota produtiva.",
+        kind: "aprofundamento",
+        requiresAnalytical: true,
+        group: "modulo2",
+      });
+    }
+    if (solarSovereignty?.inputs.length) {
+      items.push({
+        id: "tour-carbon",
+        label: "Exposição de carbono",
+        description: "Quanto da pauta importada vem de rota fóssil, cruzado com o quão renovável já é a matriz elétrica nacional.",
+        kind: "aprofundamento",
+        requiresAnalytical: true,
+        group: "modulo2",
+      });
+    }
+    if (solarSovereignty?.green_jobs) {
+      items.push({
+        id: "tour-green-jobs",
+        label: "Empregos verdes",
+        description: "Vínculos formais (RAIS) em atividades da cadeia associadas à Taxonomia Sustentável Brasileira.",
+        kind: "aprofundamento",
+        requiresAnalytical: true,
+        group: "modulo2",
+      });
+    }
+    if (premiumProducts.length) {
+      items.push({
+        id: "tour-technical-drawer",
+        label: "Dados primários (NCM/CNAE)",
+        description: "Rastreabilidade completa: cruzamentos de NCM, CNAE e PRODLIST por produto, com ressalvas metodológicas.",
+        kind: "aprofundamento",
+        group: "modulo3",
+      });
+    }
+    return items;
+  }, [isIaPilotChain, nibMatrixProducts.length, premiumProducts.length, selectedChain, solarSovereignty?.green_jobs, solarSovereignty?.inputs.length]);
 
   const handleExportChain = useCallback(() => {
     if (!selectedChain || !nibMatrixProducts.length) return;
@@ -553,41 +750,203 @@ export default function MainAnalyticalDashboard() {
           </div>
         </div>
         </section>
-        <aside className="sticky top-[9.5rem] z-40 -my-4 flex flex-col gap-2 rounded-xl border border-cyan-300/20 bg-zinc-950/90 px-3 py-2.5 shadow-2xl backdrop-blur-xl md:top-[4.75rem] lg:flex-row lg:items-center lg:justify-between" aria-label="Profundidade da análise">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="mr-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Profundidade</span>
-            <button type="button" aria-pressed={readingMode === "guided"} title="Cadeia produtiva e diagnóstico essencial" onClick={() => handleReadingModeChange("guided")} className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${readingMode === "guided" ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-200" : "border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white"}`}>Visão executiva</button>
-            <button type="button" aria-pressed={readingMode === "analytical"} title="Mantém a cadeia e acrescenta fluxos, NIB e empregos verdes" onClick={() => handleReadingModeChange("analytical")} className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${readingMode === "analytical" ? "border-cyan-300/30 bg-cyan-400/10 text-cyan-100" : "border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white"}`}>Análises avançadas</button>
+        <aside className="sticky top-[9.5rem] z-40 -my-4 flex flex-col gap-2 rounded-xl border border-cyan-300/20 bg-zinc-950/90 px-3 py-2.5 shadow-2xl backdrop-blur-xl md:top-[4.75rem]" aria-label="Profundidade da análise">
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="mr-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Profundidade</span>
+              <button type="button" aria-pressed={readingMode === "guided"} title="Cadeia produtiva e diagnóstico essencial" onClick={() => handleReadingModeChange("guided")} className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${readingMode === "guided" ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-200" : "border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white"}`}>Visão executiva</button>
+              <button type="button" aria-pressed={readingMode === "analytical"} title="Mantém a cadeia e acrescenta fluxos, NIB e empregos verdes" onClick={() => handleReadingModeChange("analytical")} className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${readingMode === "analytical" ? "border-cyan-300/30 bg-cyan-400/10 text-cyan-100" : "border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white"}`}>Análises avançadas</button>
+            </div>
+            <p aria-live="polite" className="flex items-center gap-1.5 text-[10px] text-zinc-400">
+              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-cyan-300" /> {modeFeedback}
+            </p>
           </div>
-          <p aria-live="polite" className="flex items-center gap-1.5 text-[10px] text-zinc-400">
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-cyan-300" /> {modeFeedback}
-          </p>
+          {isIaPilotChain ? (
+            <ChainAnalysesMap
+              items={analysesMapItems}
+              onSelect={handleJumpToSection}
+            />
+          ) : null}
         </aside>
         <StateShell status={status} error={error} onRetry={loadData}>
           <div id="tour-hero" ref={overviewRef} className="scroll-mt-40 md:scroll-mt-32 space-y-4">
             <ExecutiveMainHero
               alert={executiveHeroAlert}
-              kpis={executiveHeroKpis}
+              kpis={isIaPilotChain ? [] : executiveHeroKpis}
               strategicQuestion={chainStrategicQuestion(selectedChain)}
+              beforeAlert={
+                isIaPilotChain && executiveHeroAlert && sovereigntyLeaderInput ? (
+                  <div className="rounded-2xl border border-white/15 bg-zinc-900/40 p-5 shadow-xl backdrop-blur-xl" aria-label="Resumo executivo">
+                    <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-300">
+                      <Compass className="h-3.5 w-3.5" />
+                      Resumo executivo
+                    </span>
+                    {chainScopeSummary(selectedChain) ? (
+                      <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                        {chainScopeSummary(selectedChain)}
+                      </p>
+                    ) : null}
+                    {/* "Maior gargalo" deliberately left out -- the alert card
+                        right below already tells that exact story (same
+                        product, same numbers) in full depth. Repeating it
+                        here as a one-line summary read as pure duplication
+                        rather than a preview. */}
+                    {/* One unified grid for all summary cards -- previously
+                        split into a 4-col row (stats) and a separate 2-col
+                        row (teasers) below a divider, which gave the two
+                        rows different individual card widths (321px vs
+                        654px) even though each row was internally symmetric.
+                        A single grid-cols-3 keeps every card, across both
+                        rows, exactly the same size. */}
+                    {/* Reading order follows column position, not just list
+                        order: with grid-cols-3 filling row-major, item N and
+                        N+3 land in the same column. Row 1 leads with the
+                        strategic verdicts (where Brazil leads, overall risk)
+                        before the raw financial totals; Importações/
+                        Exportações both land in column 3 (positions 3 and 6)
+                        so the two trade totals still stack in the same
+                        column even though they're no longer first. */}
+                    {/* Single visual language for all 6 cards -- previously
+                        emerald/cyan/amber/neutral mixed with no semantic
+                        meaning behind the color choice (e.g. "Veredito
+                        geral" reporting good news was cyan, not green; the
+                        neutral-vs-tinted split didn't track anything either).
+                        One neutral frame, one accent (cyan, matching the
+                        section's own eyebrow above) for every icon/label. */}
+                    <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      <div className="rounded-xl border border-white/10 bg-zinc-950/40 p-4">
+                        <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-cyan-300">
+                          <Award className="h-3.5 w-3.5" />
+                          {sovereigntyLeaderInput.trade_balance_usd > 0 ? "Onde o Brasil lidera" : "Menor exposição da cadeia"}
+                        </span>
+                        {/* Some chains (e.g. fertilizantes: all 17 mapped
+                            inputs run a deficit) have no genuine export
+                            leader -- claiming "soberania plena, superávit"
+                            for the least-bad item would just be wrong.
+                            Reframe as "smallest gap" instead of hiding the
+                            card (which would break the 6-card grid). */}
+                        <p className="mt-2 text-sm leading-snug text-zinc-200">
+                          {sovereigntyLeaderInput.trade_balance_usd > 0 ? (
+                            <>
+                              <strong className="font-semibold text-white">{sovereigntyLeaderInput.label}</strong> — soberania plena, superávit de {formatMoneyCompact(sovereigntyLeaderInput.trade_balance_usd)}.
+                            </>
+                          ) : (
+                            <>
+                              <strong className="font-semibold text-white">{sovereigntyLeaderInput.label}</strong> — menor déficit da cadeia ({formatMoneyCompact(Math.abs(sovereigntyLeaderInput.trade_balance_usd))}); nenhum insumo mapeado tem saldo positivo hoje.
+                            </>
+                          )}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-white/10 bg-zinc-950/40 p-4">
+                        <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-cyan-300">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Veredito geral
+                        </span>
+                        <p className="mt-2 text-sm leading-snug text-zinc-200">
+                          <strong className="font-semibold text-white">{headerAlertCount ?? 0} de {solarSovereignty?.inputs.length}</strong> insumos mapeados cruzam hoje o limiar real de dependência crítica (75%).
+                        </p>
+                      </div>
+                      {executiveHeroKpis[0] ? (
+                        <div className="rounded-xl border border-white/10 bg-zinc-950/40 p-4">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-cyan-300">{executiveHeroKpis[0].label}</span>
+                          <div className="mt-1 font-mono text-2xl font-extrabold text-zinc-100">{executiveHeroKpis[0].value}</div>
+                          <span className="mt-0.5 block text-[11px] text-zinc-400">{executiveHeroKpis[0].note}</span>
+                        </div>
+                      ) : null}
+                      {/* Teaser cards, same compact language as the stat cards
+                          above -- the full ValueAsymmetryCard (pills + NCM
+                          footnote + collapsible detail) stays in the
+                          Powershoring panel itself. */}
+                      {chainValueAsymmetry ? (
+                        <button
+                          type="button"
+                          onClick={() => handleJumpToSection("tour-powershoring", false)}
+                          className="rounded-xl border border-white/10 bg-zinc-950/40 p-4 text-left transition hover:border-cyan-300/30 hover:bg-cyan-400/10"
+                        >
+                          <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-cyan-300">
+                            <Scale className="h-3.5 w-3.5" /> Assimetria de valor por quilo
+                          </span>
+                          <p className="mt-2 text-2xl font-extrabold text-white">
+                            {chainValueAsymmetry.ratio.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}x
+                          </p>
+                          <p className="mt-1 text-[11px] leading-snug text-zinc-400">
+                            Exporta {chainValueAsymmetry.exportInputLabel} · {usdPerKg.format(chainValueAsymmetry.exportPricePerKg)}/kg — Reimporta {chainValueAsymmetry.importInputLabel} · {usdPerKg.format(chainValueAsymmetry.importPricePerKg)}/kg
+                          </p>
+                        </button>
+                      ) : null}
+                      {solarSovereignty.green_jobs ? (
+                        <button
+                          type="button"
+                          onClick={() => handleJumpToSection("tour-green-jobs", true)}
+                          className="rounded-xl border border-white/10 bg-zinc-950/40 p-4 text-left transition hover:border-cyan-300/30 hover:bg-cyan-400/10"
+                        >
+                          <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-cyan-300">
+                            <Users className="h-3.5 w-3.5" /> Empregos verdes
+                          </span>
+                          <p className="mt-2 text-2xl font-extrabold text-white">
+                            {number.format(solarSovereignty.green_jobs.formal_jobs_in_tsb_activities)}
+                          </p>
+                          <p className="mt-1 text-[11px] leading-snug text-zinc-400">vínculos formais RAIS na cadeia</p>
+                        </button>
+                      ) : null}
+                      {executiveHeroKpis[1] ? (
+                        <div className="rounded-xl border border-white/10 bg-zinc-950/40 p-4">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-cyan-300">{executiveHeroKpis[1].label}</span>
+                          <div className="mt-1 font-mono text-2xl font-extrabold text-zinc-100">{executiveHeroKpis[1].value}</div>
+                          <span className="mt-0.5 block text-[11px] text-zinc-400">{executiveHeroKpis[1].note}</span>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : undefined
+              }
             />
             {solarSovereignty?.inputs.length ? (
               <div id="tour-powershoring" className="scroll-mt-40 md:scroll-mt-32">
-                <SiliconStrategicLevers
-                  chainId={selectedChain}
-                  valueAsymmetry={chainValueAsymmetry}
-                  solarInputs={solarSovereignty.inputs}
-                />
+                {isIaPilotChain ? (
+                  <ExpandableAnalyticsPanel
+                    eyebrow="Powershoring & regulação"
+                    title="Alavancas estratégicas da cadeia"
+                    subtitle="Assimetria de valor exportado/reimportado, contexto regulatório e prêmio de descarbonização — aprofundamento opcional"
+                  >
+                    <SiliconStrategicLevers
+                      chainId={selectedChain}
+                      valueAsymmetry={chainValueAsymmetry}
+                      solarInputs={solarSovereignty.inputs}
+                    />
+                  </ExpandableAnalyticsPanel>
+                ) : (
+                  <SiliconStrategicLevers
+                    chainId={selectedChain}
+                    valueAsymmetry={chainValueAsymmetry}
+                    solarInputs={solarSovereignty.inputs}
+                  />
+                )}
               </div>
             ) : null}
           </div>
 
           <div id="tour-aipnet-backbone" className="scroll-mt-40 md:scroll-mt-32">
-            <AipnetSystemsFlow
-              chainId={selectedChain}
-              inputs={solarSovereignty?.inputs}
-              onAnalysisFocus={handleAipnetAnalysisFocus}
-              onViewFlowEvidence={handleViewFlowEvidence}
-            />
+            {isIaPilotChain ? (
+              <ExpandableAnalyticsPanel
+                eyebrow="Espinha Dorsal · Geopolítica de estado"
+                title="Espinha dorsal de transformação da cadeia"
+                subtitle="Etapas produtivas, gargalos e onde o Brasil já lidera — aprofundamento opcional"
+              >
+                <AipnetSystemsFlow
+                  chainId={selectedChain}
+                  inputs={solarSovereignty?.inputs}
+                  onAnalysisFocus={handleAipnetAnalysisFocus}
+                  onViewFlowEvidence={handleViewFlowEvidence}
+                />
+              </ExpandableAnalyticsPanel>
+            ) : (
+              <AipnetSystemsFlow
+                chainId={selectedChain}
+                inputs={solarSovereignty?.inputs}
+                onAnalysisFocus={handleAipnetAnalysisFocus}
+                onViewFlowEvidence={handleViewFlowEvidence}
+              />
+            )}
           </div>
 
           {/* Primary entry panel for the executive read -- was previously
@@ -603,13 +962,13 @@ export default function MainAnalyticalDashboard() {
             accent="cyan"
           />
           <div id="tour-sankey" ref={sankeyRef} className="scroll-mt-6">
-            <ExpandableAnalyticsPanel eyebrow="Soberania & rede" title="Fluxo de soberania por produto" subtitle="Rede de fornecedores, produto e capacidade nacional" defaultOpen>
+            <ExpandableAnalyticsPanel eyebrow="Soberania & rede" title="Fluxo de soberania por produto" subtitle="Rede de fornecedores, produto e capacidade nacional" defaultOpen={!isIaPilotChain}>
               <SovereigntySankeyChart
                 dado={radarProduct ?? premiumProducts[0]}
                 solarInputs={solarSovereignty?.inputs}
                 chainName={selectedChainMetadata?.name ?? solarSovereignty?.chain_name}
                 height={620}
-                title="Fluxo AIPNET por produto conceitual"
+                title="Fluxo da cadeia por produto conceitual"
                 onAnalysisFocus={handleAipnetAnalysisFocus}
               />
             </ExpandableAnalyticsPanel>
@@ -622,6 +981,20 @@ export default function MainAnalyticalDashboard() {
                 subtitle="Dependência externa crítica, balança comercial e cobertura estrutural da cadeia"
                 defaultOpen
               >
+                {isIaPilotChain && curatedVulnerabilityStats ? (
+                  <div className="mb-4 flex flex-wrap gap-3">
+                    <div className="flex-1 min-w-[160px] rounded-xl border border-white/10 bg-zinc-950/50 px-3 py-2.5">
+                      <span className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Dependência média</span>
+                      <span className="mt-1 block font-mono text-lg font-extrabold text-amber-300">{number.format(curatedVulnerabilityStats.avgDependency)}%</span>
+                      <span className="block text-[10px] text-zinc-500">Razão importação / consumo aparente, cadeia inteira</span>
+                    </div>
+                    <div className="flex-1 min-w-[160px] rounded-xl border border-white/10 bg-zinc-950/50 px-3 py-2.5">
+                      <span className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Concentração máxima (HHI)</span>
+                      <span className="mt-1 block font-mono text-lg font-extrabold text-red-400">{number.format(curatedVulnerabilityStats.maxHhi)}</span>
+                      <span className="block truncate text-[10px] text-zinc-500">{curatedVulnerabilityStats.maxHhiProductName}</span>
+                    </div>
+                  </div>
+                ) : null}
                 <ExecutiveVulnerabilityChart
                   data={executiveVulnerabilityData}
                   coverageGroups={sovereigntyCoverage}
@@ -1040,7 +1413,7 @@ function buildSolarNibProducts(
       fator_proporcionalidade: {
         aplicado: mappingStatus === "proxy",
         fator_alpha: 1,
-        fonte_proxy: mappingStatus === "proxy" ? "Cesta AIPNET de produto relacionado" : "Cesta NCM validada",
+        fonte_proxy: mappingStatus === "proxy" ? "Cesta da cadeia de produto relacionado" : "Cesta NCM validada",
       },
     };
   });
@@ -1296,6 +1669,27 @@ function chainStrategicQuestion(chainId: string | null) {
   }
 }
 
+// IA-overload pilot: what the chain covers and where its boundary sits --
+// stage names mirror exactly the espinha dorsal (AipnetSystemsFlow) and the
+// exclusion note names the one case each chain's own narrative already
+// flags as "produção/energia, não comércio exterior" (aço) or explicitly
+// out of scope (silício's parallel system components). Only written for
+// the two chains the pilot has reached so far.
+function chainScopeSummary(chainId: string | null): string | undefined {
+  switch (chainId) {
+    case "aco":
+      return "A cadeia de Aço e Materiais Estratégicos cobre da carga primária ao produto de transição: minério de ferro e carvão mineral/coque na base, sucata ferrosa como insumo reciclado, ferro-gusa e ferroligas na redução e aciaria, até laminados, tubos, estruturas e aços elétricos no uso final -- 16 insumos mapeados com dados de comércio exterior (Comex Stat), produção industrial (PIA) e emprego formal (RAIS). Fica de fora: produtos de consumo final feitos de aço (utensílios, ferragens) e etapas sem comércio exterior próprio, como o carvão vegetal da biorredução, que entra só como dado de produção/energia.";
+    case "silicio":
+      return "A cadeia de Silício e Solar Fotovoltaica cobre da extração ao produto final: quartzo e sílica na base mineral, silício grau metalúrgico e polissilício no processamento e refino, lingotes e wafers nos componentes avançados, até células e módulos fotovoltaicos -- 16 insumos mapeados com dados de comércio exterior (Comex Stat), produção industrial (PIA) e emprego formal (RAIS). Fica de fora: os demais componentes do sistema solar completo (inversores, vidros, cabos) e outras cadeias renováveis (eólica, baterias), tratadas à parte.";
+    case "fertilizantes":
+      return "A cadeia de Fertilizantes Estratégicos cobre da matéria-prima ao uso agropecuário: gás natural e rocha fosfática na base, amônia, ureia, sulfato de amônio, fosfatos (DAP/MAP) e cloreto de potássio nos intermediários químicos, até a formulação NPK -- 17 insumos mapeados com dados de comércio exterior (Comex Stat), produção industrial (PIA) e emprego formal (RAIS). Fica de fora: a aplicação em campo em si (fora do escopo de comércio exterior) e formulações de uso muito específico não cobertas pela cesta NCM mapeada.";
+    case "combustiveis_transicao":
+      return "A cadeia de Combustíveis de Transição cobre do insumo à aplicação final: gás natural, etanol e biodiesel na base doméstica, hidrogênio/amônia/metanol como moléculas importadas, eletrolisadores e catalisadores como tecnologia habilitadora, até combustíveis de aviação (SAF) no uso final -- 10 insumos mapeados com dados de comércio exterior (Comex Stat), produção industrial (PIA) e emprego formal (RAIS). Fica de fora: rotas ainda sem maturidade comercial (ex. e-combustíveis em escala) e o hidrogênio verde propriamente dito, cujo comércio exterior observado hoje é quase inexistente.";
+    default:
+      return undefined;
+  }
+}
+
 function csvEscape(value: string) {
   return /[";\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
@@ -1447,14 +1841,29 @@ function buildExecutiveVulnerabilityData(
         const confirmedZeroDomestic = CONFIRMED_ZERO_DOMESTIC_PRODUCTION.has(input.input_id);
         const usesStructuralRisk = !confirmedZeroDomestic && input.external_dependency === null && input.global_china_share !== null;
         const usesImportConcentration = !confirmedZeroDomestic && input.external_dependency === null && input.global_china_share === null;
+        // china_share_brazilian_imports is a share OF WHATEVER GOT IMPORTED --
+        // with no external_dependency/global_china_share to fall back to
+        // instead, a tiny import base (e.g. ferro-esponja: US$99.930, one
+        // cent under this same threshold used elsewhere for materiality --
+        // see SAMPLE_SHIPMENT_THRESHOLD_USD's other call sites) can swing
+        // that share to 75%+ on a handful of shipments, reading as a crossed
+        // "critical dependency" threshold in both the header alert count and
+        // this chart's own bars when it's actually statistical noise, not a
+        // real supply signal. Below the floor, there's no reliable
+        // dependency indicator at all -- report 0 rather than the noisy
+        // share, consistent with how immaterial samples are already
+        // excluded elsewhere (e.g. headerNcmShortcuts above).
+        const importConcentrationIsImmaterial = usesImportConcentration && input.imports_value_usd < SAMPLE_SHIPMENT_THRESHOLD_USD;
         return {
           name: input.label,
           category: confirmedZeroDomestic
             ? "Gargalo de soberania confirmado"
-            : usesStructuralRisk ? "Gargalo estrutural AIPNET" : sectorStageLabel(input.stage),
+            : usesStructuralRisk ? "Gargalo estrutural" : sectorStageLabel(input.stage),
           dependency: confirmedZeroDomestic
             ? 100
-            : Math.round(Math.min(1, input.external_dependency ?? input.global_china_share ?? input.china_share_brazilian_imports) * 1000) / 10,
+            : importConcentrationIsImmaterial
+              ? 0
+              : Math.round(Math.min(1, input.external_dependency ?? input.global_china_share ?? input.china_share_brazilian_imports) * 1000) / 10,
           hhi: Math.round(
             usesStructuralRisk
               ? input.global_hhi_floor ?? 0
@@ -1465,9 +1874,19 @@ function buildExecutiveVulnerabilityData(
           evidenceType: usesStructuralRisk ? "aipnet_structural" : "observed",
           evidenceNote: confirmedZeroDomestic
             ? "Sem fabricação nacional confirmada (conversão wafer → junção p-n); o indicador de dependência por origem de fornecedor subestima o risco real porque a pauta importada é diversificada entre países, não porque há produção doméstica."
-            : usesStructuralRisk
-              ? input.data_gap_reason ?? "Concentração global da etapa produtiva."
-              : input.data_gap_reason ?? `Fonte: Comex Stat ${input.reference_period}; indicador comercial observado.`,
+            : importConcentrationIsImmaterial
+              // The materiality caveat explains why the number reads 0%; it
+              // shouldn't crowd out whatever chain-specific analysis
+              // data_gap_reason already had for this input (e.g. ferro-
+              // esponja's NCM/PRODLIST bridge note) -- show both instead of
+              // replacing one with the other.
+              ? [
+                  `Amostra de importação irrisória (US$ ${Math.round(input.imports_value_usd).toLocaleString("pt-BR")} no período) para atribuir concentração de fornecedor com confiança -- sem indicador de dependência confiável.`,
+                  input.data_gap_reason,
+                ].filter(Boolean).join(" ")
+              : usesStructuralRisk
+                ? input.data_gap_reason ?? "Concentração global da etapa produtiva."
+                : input.data_gap_reason ?? `Fonte: Comex Stat ${input.reference_period}; indicador comercial observado.`,
           importsValueUsd: input.imports_value_usd,
           exportsValueUsd: input.exports_value_usd,
           importsWeightKg: input.imports_net_weight_kg,
@@ -1492,7 +1911,7 @@ function buildExecutiveVulnerabilityData(
     ? [
         {
           name: "Polissilício de grau solar",
-          category: "Gargalo estrutural AIPNET",
+          category: "Gargalo estrutural",
           dependency: 95,
           hhi: 9025,
           strategic: true,
@@ -1502,7 +1921,7 @@ function buildExecutiveVulnerabilityData(
         },
         {
           name: "Wafers fotovoltaicos",
-          category: "Gargalo estrutural AIPNET",
+          category: "Gargalo estrutural",
           dependency: 97,
           hhi: 9409,
           strategic: true,

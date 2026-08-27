@@ -55,7 +55,7 @@ export function TechnicalDrawer({ data, solarInputs, solarMethodologyVersion, cl
               <TraceabilitySummary label="Anos de referência" value={referenceYears.join(", ")} />
               <TraceabilitySummary
                 label="Metodologia ativa"
-                value={methodologies.join(", ") || "N/D"}
+                value={methodologies.map(formatMethodologyLabel).join(", ") || "N/D"}
                 hint="Versão do motor analítico aplicada ao recorte comercial e industrial"
               />
             </div>
@@ -113,7 +113,7 @@ export function TechnicalDrawer({ data, solarInputs, solarMethodologyVersion, cl
                 <div className="mt-3 flex flex-wrap gap-2 text-xs text-zinc-400">
                   {methodologies.map((methodology) => (
                     <span key={methodology} className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1">
-                      {methodology}
+                      {formatMethodologyLabel(methodology)}
                     </span>
                   ))}
                 </div>
@@ -127,7 +127,7 @@ export function TechnicalDrawer({ data, solarInputs, solarMethodologyVersion, cl
                       className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-cyan-300/20 bg-cyan-400/10 px-2.5 py-1.5 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/15"
                     >
                       <Download className="h-3.5 w-3.5" strokeWidth={1.7} />
-                      Baixar metodologia em PDF ({methodology})
+                      Baixar metodologia em PDF ({formatMethodologyLabel(methodology)})
                     </a>
                   ) : null;
                 })}
@@ -286,13 +286,13 @@ function SolarInputCrosswalk({
     <section className="overflow-hidden rounded-lg border border-cyan-300/15 bg-cyan-400/[0.025]">
       <div className="border-b border-white/[0.08] px-4 py-4">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-300">
-          Cesta AIPNET por insumo
+          Cesta da cadeia por insumo
         </p>
         <div className="mt-1 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <p className="text-sm text-zinc-300">
             {inputs.length} insumos com cesta comercial publicada, incluindo mapeamentos validados e proxies.
           </p>
-          {methodologyVersion ? <span className="text-[11px] text-zinc-500">Versão {methodologyVersion}</span> : null}
+          {methodologyVersion ? <span className="text-[11px] text-zinc-500">Versão {formatMethodologyLabel(methodologyVersion)}</span> : null}
         </div>
       </div>
 
@@ -623,6 +623,27 @@ const METHODOLOGY_PDF_BY_VERSION: Record<string, string> = {
   "1.0.0-aipnet-fertilizers": "/metodologia/fertilizantes.pdf",
   "1.0.0-aipnet-transition-fuels": "/metodologia/combustiveis_transicao.pdf",
 };
+
+// Display-only: the raw version string (e.g. "1.0.0-aipnet-steel") is a
+// backend-generated data value used as the lookup key above and stamped by
+// build_*.py -- renaming it would mean touching the Python pipeline and the
+// stored Postgres data. Reformatting it here for display only keeps that
+// pipeline untouched while dropping the "aipnet" jargon from what the user
+// actually reads.
+const METHODOLOGY_CHAIN_LABEL_BY_SUFFIX: Record<string, string> = {
+  steel: "Aço",
+  solar: "Silício",
+  fertilizers: "Fertilizantes",
+  "transition-fuels": "Combustíveis de Transição",
+};
+
+function formatMethodologyLabel(version: string): string {
+  const match = version.match(/^(\d+\.\d+\.\d+)-aipnet-(.+)$/);
+  if (!match) return version;
+  const [, versionNumber, suffix] = match;
+  const chainLabel = METHODOLOGY_CHAIN_LABEL_BY_SUFFIX[suffix];
+  return chainLabel ? `${chainLabel} · v${versionNumber}` : version;
+}
 
 function methodologyPdfHref(version: string): string | null {
   return METHODOLOGY_PDF_BY_VERSION[version] ?? null;

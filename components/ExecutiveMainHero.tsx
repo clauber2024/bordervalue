@@ -54,6 +54,11 @@ type ExecutiveMainHeroProps = {
   alert?: ExecutiveTopAlert;
   kpis?: ExecutiveMainKpi[];
   strategicQuestion?: string;
+  /** Optional content rendered between the title card and the alert card --
+   * e.g. an executive-summary strip that should read before the single-
+   * product deep dive, not after it. Undefined by default so every chain
+   * that doesn't pass it renders exactly as before. */
+  beforeAlert?: React.ReactNode;
 };
 
 const defaultAlert: ExecutiveTopAlert = {
@@ -242,6 +247,7 @@ export const ExecutiveMainHero = ({
   alert = defaultAlert,
   kpis = defaultKpis,
   strategicQuestion = 'Onde o Brasil lidera e onde estão os principais estrangulamentos tecnológicos desta cadeia?',
+  beforeAlert,
 }: ExecutiveMainHeroProps) => {
   const hasAuditedSupplier =
     alert.topSupplier !== 'Em auditoria' && alert.supplierShare > 0;
@@ -272,17 +278,17 @@ export const ExecutiveMainHero = ({
               </span>
             </div>
 
-            <h1 className="max-w-4xl text-3xl font-extrabold leading-tight tracking-normal text-zinc-100 lg:text-4xl">
+            <h1 className="text-3xl font-extrabold leading-tight tracking-normal text-zinc-100 lg:text-4xl">
               Soberania Produtiva e Exposição Comercial da Transição Verde
             </h1>
 
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400">
+            <p className="mt-3 text-sm leading-relaxed text-zinc-400">
               Diagnóstico estratégico de vulnerabilidade de suprimento,
               dependência externa e concentração geopolítica de insumos críticos
               para orientar a política industrial brasileira.
             </p>
 
-            <div className="mt-5 flex max-w-4xl items-start gap-3 rounded-xl border border-emerald-300/15 bg-zinc-950/50 px-4 py-3">
+            <div className="mt-5 flex items-start gap-3 rounded-xl border border-emerald-300/15 bg-zinc-950/50 px-4 py-3">
               <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-400" />
               <p className="text-sm font-semibold leading-6 text-zinc-200">
                 <span className="text-zinc-400">Pergunta de Estado:</span>{' '}
@@ -325,6 +331,8 @@ export const ExecutiveMainHero = ({
           </div>
 
         </div>
+
+        {beforeAlert}
 
         <motion.aside
           initial={{ opacity: 0, scale: 0.98 }}

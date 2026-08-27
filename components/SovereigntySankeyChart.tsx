@@ -382,7 +382,7 @@ export function SovereigntySankeyChart({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">
-              AIPNET / leitura executiva
+              Espinha Dorsal / leitura executiva
             </p>
             <h2 className="mt-2 text-xl font-bold tracking-tight text-white sm:text-2xl">
               {title}

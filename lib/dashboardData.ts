@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ConceptualProduct } from "../components/ConceptualProductCard";
+import { chainCatalog } from "./chainCatalog";
 import type { ProdutoConceitual } from "../types/border-value";
 
 type DashboardPayload = {
@@ -242,7 +243,7 @@ function toConceptualProduct(row: DashboardProdlistRow, params: URLSearchParams)
     id: productId(row),
     name: productName,
     shortDescription: `${stageForCnae(cnae)} com ${dependency}% de dependência externa no recorte oficial disponível.`,
-    chain: chainLabelForRow(row),
+    chain: chainLabelForRow(row, params.get("chain") ?? "all"),
     productionStage: stageForCnae(cnae),
       metrics: {
         imports,
@@ -334,7 +335,24 @@ function matchesChain(row: DashboardProdlistRow, chain: string) {
     );
   }
   if (chain === "aco") {
-    return /\bacos?\b|sider|ferro-gusa|ferroliga|ferroniquel|ferroniobio|ferrossilicio|bobina|chapa de aco|tubo.*(?:ferro|aco)|vergalh|arame.*aco|parafuso.*(?:ferro|aco)/.test(productName);
+    // The keyword regex below is intentionally broad -- it has to catch
+    // every phrasing of a steel/metallurgy product name -- which makes it a
+    // false-positive magnet for products that merely mention "aço"/"ferro"
+    // as an incidental material in something unrelated (a ventilator
+    // historically named "pulmão de aço", stents "de aço inoxidável",
+    // sewing needles "de ferro ou aço"), or hit the bare "bobina"/"tubo...
+    // aco" fragments against plastic film, paper cores or wire spools that
+    // have nothing to do with steel. Gating on CNAE division 24 (Metalurgia)
+    // or 25 (Fabricação de produtos de metal) -- the same codes this chain
+    // is already defined by elsewhere (components/SovereigntyTour.tsx cites
+    // 2411/2421/2422/2423/2424 and 2512/2599) -- keeps every one of the
+    // ~96 genuine matches in the current dataset while dropping every
+    // out-of-industry false positive found when auditing this filter
+    // (medical devices, plastic film, paper, wire coils, footwear parts,
+    // needles, generators, electrical insulator tubes -- CNAE 15/16/17/22/
+    // 27/28/29/32).
+    const isMetalIndustry = /^2[45]/.test(cnae);
+    return isMetalIndustry && /\bacos?\b|sider|ferro-gusa|ferroliga|ferroniquel|ferroniobio|ferrossilicio|bobina|chapa de aco|tubo.*(?:ferro|aco)|vergalh|arame.*aco|parafuso.*(?:ferro|aco)/.test(productName);
   }
   if (chain === "transition-fuels") {
     return /\betanol\b|\bmetanol\b|\bbiometano\b|\bbiogas\b|\bbiodiesel\b|combustivel sustentavel de aviacao|\bsaf\b|querosene.*aviacao|combustivel.*maritimo|amoniaco|amonia|hidrogenio/.test(productName);
@@ -425,7 +443,32 @@ function productId(row: DashboardProdlistRow) {
   return `prod_${normalizeCode(row.prodlist_code || row.cnae_class || "nao_mapeado").toLowerCase()}`;
 }
 
-function chainLabelForRow(row: DashboardProdlistRow) {
+// Query-param spellings that map 1:1 onto a single chainCatalog entry --
+// "all" and the "critical-minerals"/aggregate views span more than one
+// chain, so they're deliberately left out and fall through to the guess below.
+const REQUESTED_CHAIN_CATALOG_ID: Record<string, string> = {
+  aco: "aco",
+  silicio: "silicio",
+  fertilizantes: "fertilizantes",
+  fertilizers: "fertilizantes",
+  combustiveis_transicao: "combustiveis_transicao",
+  "transition-fuels": "combustiveis_transicao",
+};
+
+function chainLabelForRow(row: DashboardProdlistRow, requestedChain: string) {
+  // When the caller already asked for one specific chain (the normal case --
+  // every dashboard screen is "?chain=aco" etc.), that's ground truth: use
+  // it instead of re-guessing from the product name. The guess below is
+  // reused only for the "all chains" aggregate view, where no single
+  // correct answer exists -- and it's a genuinely rough guess: its
+  // "critical-minerals" branch matches on the bare word "aço" with no CNAE
+  // guard (unlike matchesChain's "aco" branch above), so it was mislabeling
+  // every steel product -- including correctly-matched ones -- as "Minerais
+  // críticos" even while being displayed on the Aço chain screen.
+  const catalogId = REQUESTED_CHAIN_CATALOG_ID[requestedChain];
+  const knownChain = catalogId ? chainCatalog.find((chain) => chain.id === catalogId) : undefined;
+  if (knownChain) return knownChain.name;
+
   if (matchesChain(row, "fertilizers")) return "Fertilizantes";
   if (matchesChain(row, "critical-minerals")) return "Minerais críticos";
   if (row.transition_relevance) return "Transição energética";

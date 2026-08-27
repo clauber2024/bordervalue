@@ -149,7 +149,7 @@ const GLOSSARY = [
   },
   {
     icon: Network,
-    term: "AIPNET (Jornada Molecular)",
+    term: "Espinha Dorsal (Jornada Molecular)",
     definition:
       "O \"Fluxo de Sistemas\". Rastreia o produto desde a extração (ex: quartzo), passando pelo processamento (Silício Metalúrgico), até o produto final (Módulos Fotovoltaicos), identificando exatamente em qual etapa a cadeia brasileira está \"quebrada\".",
   },

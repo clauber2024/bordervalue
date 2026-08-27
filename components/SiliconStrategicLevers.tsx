@@ -220,6 +220,70 @@ function RegulatoryLeverCard({ chainId }: { chainId?: string | null }) {
   );
 }
 
+// Extracted so the same card (same numbers, same formatting) can also render
+// standalone in the Resumo Executivo strip (MainAnalyticalDashboard.tsx),
+// instead of that strip re-deriving/re-formatting the ratio itself.
+export function ValueAsymmetryCard({
+  chainId,
+  valueAsymmetry,
+}: {
+  chainId?: string | null;
+  valueAsymmetry?: SiliconValueAsymmetry;
+}) {
+  return (
+    <article className="flex flex-col gap-2 rounded-2xl border border-amber-500/25 bg-zinc-900/55 p-6 shadow-xl backdrop-blur-xl">
+      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-300">
+        <Scale className="h-4 w-4" />
+        Assimetria de valor por quilo
+      </div>
+      {valueAsymmetry ? (
+        <>
+          <p className="text-2xl font-extrabold text-white">
+            {valueAsymmetry.ratio.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}x
+          </p>
+          <div className="flex flex-wrap gap-1.5 text-[11px] font-semibold">
+            <span
+              title={valueAsymmetry.exportNcm ? `NCM ${formatNcm(valueAsymmetry.exportNcm)}` : undefined}
+              className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-amber-200"
+            >
+              Exporta {valueAsymmetry.exportInputLabel} · {usdPerKg.format(valueAsymmetry.exportPricePerKg)}/kg
+            </span>
+            <span
+              title={valueAsymmetry.importNcm ? `NCM ${formatNcm(valueAsymmetry.importNcm)}` : undefined}
+              className="rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-red-200"
+            >
+              Reimporta {valueAsymmetry.importInputLabel} · {usdPerKg.format(valueAsymmetry.importPricePerKg)}/kg
+            </span>
+          </div>
+          {valueAsymmetry.categoryNote ? (
+            <p className="text-[11px] leading-relaxed text-zinc-400">{valueAsymmetry.categoryNote}</p>
+          ) : null}
+          <TechnicalDetail accent="text-amber-300/80">
+            <p>Fonte: Comex Stat, período selecionado.</p>
+            <p>
+              NCMs: {valueAsymmetry.exportInputLabel}
+              {valueAsymmetry.exportNcm ? ` ${formatNcm(valueAsymmetry.exportNcm)}` : " N/D"} ·{" "}
+              {valueAsymmetry.importInputLabel}
+              {valueAsymmetry.importNcm ? ` ${formatNcm(valueAsymmetry.importNcm)}` : " N/D"}
+            </p>
+            {chainId === "silicio" ? (
+              <p>
+                Referência de contexto (fora da base de comércio exterior): a redução carbotérmica de
+                silício grau metalúrgico consome tipicamente 10–15 MWh por tonelada, segundo a literatura
+                técnica do setor.
+              </p>
+            ) : null}
+          </TechnicalDetail>
+        </>
+      ) : (
+        <p className="text-xs leading-relaxed text-zinc-300">
+          Dados insuficientes de peso líquido no período para calcular o preço por quilo desta cadeia.
+        </p>
+      )}
+    </article>
+  );
+}
+
 export function SiliconStrategicLevers({ chainId, valueAsymmetry, solarInputs }: SiliconStrategicLeversProps) {
   const exposure = computeCarbonRouteExposure(solarInputs);
   // Share of imports NOT already on a low-carbon route -- the meaningful
@@ -237,56 +301,7 @@ export function SiliconStrategicLevers({ chainId, valueAsymmetry, solarInputs }:
       aria-label="Alavancas estratégicas da cadeia"
       className="grid grid-cols-1 gap-4 lg:grid-cols-3"
     >
-      <article className="flex flex-col gap-2 rounded-2xl border border-amber-500/25 bg-zinc-900/55 p-6 shadow-xl backdrop-blur-xl">
-        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-300">
-          <Scale className="h-4 w-4" />
-          Assimetria de valor por quilo
-        </div>
-        {valueAsymmetry ? (
-          <>
-            <p className="text-2xl font-extrabold text-white">
-              {valueAsymmetry.ratio.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}x
-            </p>
-            <div className="flex flex-wrap gap-1.5 text-[11px] font-semibold">
-              <span
-                title={valueAsymmetry.exportNcm ? `NCM ${formatNcm(valueAsymmetry.exportNcm)}` : undefined}
-                className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-amber-200"
-              >
-                Exporta {valueAsymmetry.exportInputLabel} · {usdPerKg.format(valueAsymmetry.exportPricePerKg)}/kg
-              </span>
-              <span
-                title={valueAsymmetry.importNcm ? `NCM ${formatNcm(valueAsymmetry.importNcm)}` : undefined}
-                className="rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-red-200"
-              >
-                Reimporta {valueAsymmetry.importInputLabel} · {usdPerKg.format(valueAsymmetry.importPricePerKg)}/kg
-              </span>
-            </div>
-            {valueAsymmetry.categoryNote ? (
-              <p className="text-[11px] leading-relaxed text-zinc-400">{valueAsymmetry.categoryNote}</p>
-            ) : null}
-            <TechnicalDetail accent="text-amber-300/80">
-              <p>Fonte: Comex Stat, período selecionado.</p>
-              <p>
-                NCMs: {valueAsymmetry.exportInputLabel}
-                {valueAsymmetry.exportNcm ? ` ${formatNcm(valueAsymmetry.exportNcm)}` : " N/D"} ·{" "}
-                {valueAsymmetry.importInputLabel}
-                {valueAsymmetry.importNcm ? ` ${formatNcm(valueAsymmetry.importNcm)}` : " N/D"}
-              </p>
-              {chainId === "silicio" ? (
-                <p>
-                  Referência de contexto (fora da base de comércio exterior): a redução carbotérmica de
-                  silício grau metalúrgico consome tipicamente 10–15 MWh por tonelada, segundo a literatura
-                  técnica do setor.
-                </p>
-              ) : null}
-            </TechnicalDetail>
-          </>
-        ) : (
-          <p className="text-xs leading-relaxed text-zinc-300">
-            Dados insuficientes de peso líquido no período para calcular o preço por quilo desta cadeia.
-          </p>
-        )}
-      </article>
+      <ValueAsymmetryCard chainId={chainId} valueAsymmetry={valueAsymmetry} />
 
       <RegulatoryLeverCard chainId={chainId} />
 
