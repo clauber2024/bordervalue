@@ -174,7 +174,7 @@ export function PowershoringShowcase() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8">
         <Link
           href="/"
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-400 transition hover:text-emerald-200"
@@ -193,11 +193,11 @@ export function PowershoringShowcase() {
               Tese Estratégica
             </span>
 
-            <h1 className="mt-3 max-w-3xl text-3xl font-bold tracking-tight text-white sm:text-5xl">
+            <h1 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-5xl">
               Powershoring: energia renovável barata como vantagem de exportação
             </h1>
 
-            <p className="mt-4 max-w-3xl text-sm leading-6 text-zinc-400 sm:text-base">
+            <p className="mt-4 text-sm leading-6 text-zinc-400 sm:text-base">
               A matriz elétrica brasileira é mais de 84% renovável (BEN/EPE) -- uma vantagem estrutural que rotas
               industriais eletrointensivas em outros países não têm. Esta página reúne, das 4 cadeias já publicadas
               na plataforma, todo insumo que a metodologia classificou como um vetor real dessa tese -- não uma
@@ -265,8 +265,8 @@ export function PowershoringShowcase() {
           </ol>
           <p className="mt-4 text-xs leading-relaxed text-zinc-500">
             Isso deixa de fora insumos "limpos por padrão" mas sem alavanca real -- mineração de rocha fosfática ou
-            cloreto de potássio, por exemplo, já são <code className="text-zinc-400">low_carbon_dominant</code> no
-            dado, mas não porque o Brasil tenha uma vantagem a explorar: é que a etapa em si mal consome energia.
+            cloreto de potássio, por exemplo, já são classificados como de baixo carbono predominante no dado, mas
+            não porque o Brasil tenha uma vantagem a explorar: é que a etapa em si mal consome energia.
           </p>
           <div className="mt-4 border-t border-dashed border-white/10 pt-4">
             <p className="text-xs leading-relaxed text-amber-200/90">
@@ -284,7 +284,7 @@ export function PowershoringShowcase() {
             <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-300">
               Como cada cadeia sustenta a tese, lado a lado
             </h2>
-            <p className="mt-2 max-w-3xl text-xs leading-relaxed text-zinc-500">
+            <p className="mt-2 text-xs leading-relaxed text-zinc-500">
               Mesmos números que já aparecem no painel "Powershoring & regulação" de cada cadeia -- reunidos aqui
               para comparação direta, antes do detalhe insumo a insumo abaixo.
             </p>
