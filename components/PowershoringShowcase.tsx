@@ -271,10 +271,10 @@ export function PowershoringShowcase() {
           <div className="mt-4 border-t border-dashed border-white/10 pt-4">
             <p className="text-xs leading-relaxed text-amber-200/90">
               <strong className="text-zinc-100">Vantagem é de carbono, não necessariamente de preço.</strong> A
-              tarifa industrial do Ceará está 2,0% acima da média nacional (R$ 779,4/MWh, CNI -- Perfil da Indústria
-              nos Estados, 2021) -- o argumento de powershoring não é "eletricidade brasileira é barata", é
-              "eletricidade brasileira é limpa", o que pesa em exposição ao CBAM europeu e em contratos de PPA
-              renovável dedicados, não no preço de tarifa genérica.
+              tarifa industrial em polos eletrointensivos pode estar acima da média nacional -- o argumento de
+              powershoring não é "eletricidade brasileira é barata", é "eletricidade brasileira é limpa", o que
+              pesa em exposição ao CBAM europeu e em contratos de PPA renovável dedicados, não no preço de tarifa
+              genérica.
             </p>
           </div>
         </section>
