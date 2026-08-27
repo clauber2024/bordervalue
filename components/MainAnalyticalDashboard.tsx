@@ -28,7 +28,7 @@ import { ChainSelectionLanding } from "./ChainSelectionLanding";
 import { ExecutiveMainHero, type ExecutiveMainKpi, type ExecutiveTopAlert } from "./ExecutiveMainHero";
 import { ExecutiveMetadataFooter, type ExecutiveMetadata } from "./ExecutiveMetadataFooter";
 import { HeaderTopBar } from "./HeaderTopBar";
-import { SiliconStrategicLevers, type SiliconValueAsymmetry } from "./SiliconStrategicLevers";
+import { SiliconStrategicLevers } from "./SiliconStrategicLevers";
 import { EnergyContextBenPanel } from "./EnergyContextBenPanel";
 import { SiliconMassEnergyBalancePanel, MASS_ENERGY_BALANCE_CHAINS } from "./SiliconMassEnergyBalancePanel";
 import { GreenJobsTSBPanel } from "./GreenJobsTSBPanel";
@@ -42,6 +42,7 @@ import { useEnergyContext } from "../hooks/useEnergyContext";
 import { useSolarSovereignty } from "../hooks/useSolarSovereignty";
 import { apiRoutes } from "../lib/apiRoutes";
 import { chainCatalog } from "../lib/chainCatalog";
+import { buildValueAsymmetry } from "../lib/valueAsymmetry";
 import type { ProdutoConceitual } from "../types/border-value";
 import type { SolarInputMetric, SolarSovereigntyResponse } from "../types/solar-sovereignty";
 import type { ConceptualProduct } from "./ConceptualProductCard";
@@ -643,6 +644,32 @@ export default function MainAnalyticalDashboard() {
     }
     return items;
   }, [isIaPilotChain, nibMatrixProducts.length, premiumProducts.length, selectedChain, solarSovereignty?.green_jobs, solarSovereignty?.inputs.length]);
+
+  // Lets an external link (e.g. PowershoringShowcase's "Ver cadeia completa")
+  // land directly on a section instead of the generic hero -- native browser
+  // hash-scroll can't work here since the target section only exists in the
+  // DOM once solarSovereignty finishes loading. Fires once per navigation.
+  const hashJumpDoneRef = useRef(false);
+  useEffect(() => {
+    if (hashJumpDoneRef.current || status !== "ready") return;
+    const hash = window.location.hash.replace("#", "");
+    if (!hash) return;
+    hashJumpDoneRef.current = true;
+    const item = analysesMapItems.find((entry) => entry.id === hash);
+    // Re-issued a few times over ~1.2s: switching reading mode and/or opening
+    // the target <details> can push layout further (charts and analytical
+    // panels still mounting), which a single scrollIntoView right after
+    // navigation can't account for since it fires before that settles.
+    [150, 400, 800, 1200].forEach((delay) => {
+      window.setTimeout(() => {
+        if (delay === 150) {
+          handleJumpToSection(hash, Boolean(item?.requiresAnalytical));
+        } else {
+          document.getElementById(hash)?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, delay);
+    });
+  }, [status, analysesMapItems, handleJumpToSection]);
 
   const handleExportChain = useCallback(() => {
     if (!selectedChain || !nibMatrixProducts.length) return;
@@ -1599,56 +1626,6 @@ function sectorRecommendedPolicy(chainName: string, inputLabel: string) {
     return "Missão 5 da NIB (Bioeconomia, descarbonização e transição e segurança energéticas): desenvolver fornecedores nacionais para combustíveis e tecnologias de baixo carbono, condicionando apoio à redução verificável de emissões.";
   }
   return "Direcionamento NIB a homologar: insumo ainda não mapeado explicitamente a uma das 6 missões da Nova Indústria Brasil (MDIC/BNDES).";
-}
-
-// Minimum traded weight before trusting a US$/kg figure -- thin flows
-// (e.g. polissilicio_solar's 142kg import in 2026-H1) produce noisy,
-// unrepresentative prices per kg.
-const MIN_WEIGHT_KG_FOR_PRICE = 1000;
-
-// Export/import input_id pair for the "Assimetria de valor por quilo" card,
-// picked per chain from the real price-per-kg ratio (verified against
-// Comex Stat, not guessed) -- see build_sector_sovereignty_metrics.py for
-// the underlying input_ids. Not every chain has a clean "raw material
-// Brazil exports vs. its own processed good Brazil reimports" pair the way
-// silicio and aco do; combustiveis_transicao's pair below is a different
-// kind of asymmetry (finished low-carbon fuel export vs. imported enabling
-// technology), flagged via categoryNote so the card doesn't imply the same
-// same-chain raw-to-processed story it isn't.
-const VALUE_ASYMMETRY_PAIRS: Record<string, { exportId: string; importId: string; categoryNote?: string }> = {
-  silicio: { exportId: "silicio_grau_metalurgico", importId: "celulas_fotovoltaicas" },
-  aco: { exportId: "minerio_ferro", importId: "tubos_aco" },
-  fertilizantes: { exportId: "rocha_fosfatica", importId: "fosfato_monoamonico" },
-  combustiveis_transicao: {
-    exportId: "etanol",
-    importId: "eletrolisadores",
-    categoryNote: "Aqui a assimetria é entre um combustível pronto que o Brasil já exporta em escala e a tecnologia habilitadora (eletrolisadores) que a rota de hidrogênio ainda importa -- não matéria-prima crua vs. produto processado da mesma cadeia, como em silício ou aço.",
-  },
-};
-
-function buildValueAsymmetry(chainId: string, inputs: SolarInputMetric[]): SiliconValueAsymmetry | undefined {
-  const pair = VALUE_ASYMMETRY_PAIRS[chainId];
-  if (!pair) return undefined;
-  const exportInput = inputs.find((input) => input.input_id === pair.exportId);
-  const importInput = inputs.find((input) => input.input_id === pair.importId);
-  if (!exportInput || !importInput) return undefined;
-  if (exportInput.exports_net_weight_kg < MIN_WEIGHT_KG_FOR_PRICE) return undefined;
-  if (importInput.imports_net_weight_kg < MIN_WEIGHT_KG_FOR_PRICE) return undefined;
-
-  const exportPricePerKg = exportInput.exports_value_usd / exportInput.exports_net_weight_kg;
-  const importPricePerKg = importInput.imports_value_usd / importInput.imports_net_weight_kg;
-  if (exportPricePerKg <= 0 || importPricePerKg <= 0) return undefined;
-
-  return {
-    exportInputLabel: exportInput.label,
-    exportPricePerKg,
-    exportNcm: exportInput.ncm_codes[0],
-    importInputLabel: importInput.label,
-    importPricePerKg,
-    importNcm: importInput.ncm_codes[0],
-    ratio: importPricePerKg / exportPricePerKg,
-    categoryNote: pair.categoryNote,
-  };
 }
 
 // Executive framing question per chain -- same "real citation over generic

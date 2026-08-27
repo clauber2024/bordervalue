@@ -58,6 +58,19 @@ function TechnicalDetail({ accent, children }: { accent: string; children: React
   );
 }
 
+export type RegulatoryLeverSummary = { regime: string; hasRegime: boolean };
+
+// Short-label mirror of the branching below, kept as its own tiny lookup
+// instead of refactoring RegulatoryLeverCard's citation-heavy JSX -- used by
+// the cross-chain Powershoring synthesis table, which only needs "which
+// regime, if any" per chain, not the full card.
+export function regulatoryLeverSummary(chainId?: string | null): RegulatoryLeverSummary {
+  if (chainId === "fertilizantes") return { regime: "REIQ", hasRegime: true };
+  if (chainId === "combustiveis_transicao") return { regime: "RenovaBio", hasRegime: true };
+  if (chainId === "aco") return { regime: "Sem regime federal específico", hasRegime: false };
+  return { regime: "PADIS", hasRegime: true };
+}
+
 // Regulatory-lever card content, branched per chain like
 // sectorRecommendedPolicy() in MainAnalyticalDashboard.tsx -- real, citable
 // federal mechanisms only. Aço has no equivalent specific fiscal regime
