@@ -29,6 +29,15 @@ export interface ConceptualProduct {
     hhi: number;
     mainSupplier: { country: string; share: number };
     confidenceLevel: "high" | "medium" | "low";
+    /** Only set when a real per-country match from sector_input_metrics.json was found for this row. */
+    dataQuality?: {
+      method: "validated" | "estimated" | "structural";
+      confidenceRaw: "alta" | "media" | "baixa";
+      gapReason?: string;
+      source: string;
+      /** Set when the match exists but the supplier side was suppressed (e.g. Brazil is a net exporter and the import flow is noise). */
+      supplierSuppressedReason?: string;
+    };
   };
   technicalCodes: {
     hs: string[];

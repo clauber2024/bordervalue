@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type { ConceptualProduct } from "../components/ConceptualProductCard";
 import { chainCatalog } from "./chainCatalog";
 import type { ProdutoConceitual } from "../types/border-value";
+import type { SolarInputMetric } from "../types/solar-sovereignty";
 
 type DashboardPayload = {
   summary?: {
@@ -75,10 +76,37 @@ export type DashboardCatalog = {
 const ROOT = process.cwd();
 const DATA_PATH = join(ROOT, "dashboard", "data.json");
 const MONTHLY_TRADE_PATH = join(ROOT, "outputs", "final_border_value_2026", "comercio_alocado_cnae_prodlist_fluxo_periodo.csv");
+const BRIDGE_NCM_PRODLIST_PATH = join(ROOT, "dados", "processados", "bridge_ncm_prodlist_cnae.csv");
 const PRODUCT_LIMIT = 80;
+
+// Chains with a real per-country sector_input_metrics.json (from
+// build_sector_sovereignty_metrics.py). Silicio is deliberately absent --
+// its equivalent per-country layer lives under outputs/solar_sovereignty_2026
+// with a different schema/naming convention and is out of scope here; that
+// chain keeps the "em homologação" placeholder until it's wired separately.
+const SECTOR_METRICS_DIRS: Partial<Record<string, string>> = {
+  fertilizantes: "sector_sovereignty_fertilizantes_2026",
+  aco: "sector_sovereignty_aco_2026",
+  combustiveis_transicao: "sector_sovereignty_combustiveis_transicao_2026",
+};
+
+// Below this fraction of the record's export flow, and below this absolute
+// floor, an import flow is transaction noise rather than a real supply
+// channel -- e.g. ferro_niquel's $2,624 import against $655.7M of exports,
+// or minerio_ferro's $7.4M against $15.8B. Computing supplier_hhi_brazil off
+// a flow that small produces a technically-real but meaningless "HHI 10000"
+// that would misrepresent a product Brazil dominantly *exports* as a
+// concentrated import risk. Both thresholds must fail before we suppress the
+// supplier side, so a real (if modest) import channel -- e.g. ferro_niobio's
+// $23.6M/1.4% of exports -- still gets to show its real HHI/supplier.
+const MIN_MEANINGFUL_IMPORT_USD = 1_000_000;
+const MAX_IMPORT_SHARE_OF_EXPORTS_FOR_NOISE = 0.01;
 
 let cachedPayload: DashboardPayload | null = null;
 let cachedMonthlyTrade: MonthlyTradeRow[] | null = null;
+let cachedProdlistToNcm: Map<string, Set<string>> | null = null;
+const cachedSectorInputs = new Map<string, SolarInputMetric[]>();
+const cachedNcmIndex = new Map<string, Map<string, SolarInputMetric>>();
 
 export function hasDashboardData() {
   return existsSync(DATA_PATH);
@@ -109,7 +137,7 @@ export function loadDashboardCatalog(params: URLSearchParams): DashboardCatalog 
   const kpis = buildKpis(filteredRows);
 
   const pilotFlags = [
-    "Fornecedor principal, mapa mundial e HHI de fornecedores continuam em homologação porque a base consolidada ainda não publica a granularidade por país.",
+    "Fornecedor principal e HHI de fornecedores já são dado real por país para fertilizantes, aço e combustíveis de transição (sector_input_metrics.json); silício segue em homologação por falta de camada equivalente publicada. Mapa mundial de fornecedores continua em homologação para todas as cadeias.",
   ];
   if (unsupportedFilters.length) {
     pilotFlags.push(`Filtros ${unsupportedFilters.join(", ")} exigem a API técnica/parquet para granularidade completa.`);
@@ -158,13 +186,16 @@ export function loadDashboardPublishedProducts(chainName: string, params: URLSea
     const cnae = product.technicalCodes.cnae[0] ?? "0000";
     const prodlist = normalizeCode(product.technicalCodes.prodlist?.[0] ?? "00000000").padEnd(8, "0").slice(0, 8);
     const hasPilotFields = product.metrics.mainSupplier.country.startsWith("Piloto");
+    const dataQuality = product.metrics.dataQuality;
+    const ncmCodes = product.technicalCodes.ncm;
 
     return {
       conceptual_product_id: product.id,
       produto_nome: product.name,
       cadeia_prioritaria: publishedChainForProduct(chainName),
       chain_stage: chainStageForProduct(product.productionStage),
-      ncm_codigo: "00000000",
+      ncm_codigo: ncmCodes[0] ?? "00000000",
+      ncm_codigos: ncmCodes.length ? ncmCodes : undefined,
       comercio: {
         importacao_valor_fob: importValue,
         importacao_peso_liquido: 0,
@@ -187,9 +218,12 @@ export function loadDashboardPublishedProducts(chainName: string, params: URLSea
       auditoria: {
         reference_year: 2026,
         confidence_level: confidencePt(product.metrics.confidenceLevel),
-        is_ncm_generica: true,
+        is_ncm_generica: dataQuality ? dataQuality.method !== "validated" : true,
         has_sigilo_pia: false,
         metodologia_versao: product.methodology ?? "Camada operacional publicada",
+        ncm_mapping_status: dataQuality ? (dataQuality.method === "validated" ? "validada" : "proxy") : undefined,
+        ncm_mapping_version: dataQuality ? `sector_sovereignty · ${dataQuality.method}` : undefined,
+        ncm_mapping_note: dataQuality?.gapReason ?? dataQuality?.supplierSuppressedReason,
       },
       fator_proporcionalidade: {
         aplicado: false,
@@ -239,36 +273,200 @@ function toConceptualProduct(row: DashboardProdlistRow, params: URLSearchParams)
   const prodlist = text(row.prodlist_code, "NCM_SEM_PONTE");
   const productName = executiveProductName(row, prodlist);
 
+  const chainKey = params.get("chain") ?? "all";
+  const sectorMatch = findSectorMatch(row, chainKey);
+  const supplierIsReal = sectorMatch ? isSupplierSideMeaningful(sectorMatch.input) : false;
+
+  const hhi = supplierIsReal ? Math.round(sectorMatch!.input.supplier_hhi_brazil) : proxyHhi(row);
+  const mainSupplier = supplierIsReal
+    ? {
+        country: sectorMatch!.input.top_supplier!.country_name,
+        share: Math.round(sectorMatch!.input.top_supplier!.share * 1000) / 10,
+      }
+    : {
+        country: "Piloto: país não publicado na base consolidada",
+        share: 0,
+      };
+
   return {
     id: productId(row),
     name: productName,
     shortDescription: `${stageForCnae(cnae)} com ${dependency}% de dependência externa no recorte oficial disponível.`,
-    chain: chainLabelForRow(row, params.get("chain") ?? "all"),
+    chain: chainLabelForRow(row, chainKey),
     productionStage: stageForCnae(cnae),
-      metrics: {
-        imports,
-        exports,
-        externalDependency: dependency,
-        hhi: proxyHhi(row),
-        mainSupplier: {
-        country: "Piloto: país não publicado na base consolidada",
-        share: 0,
-      },
-      confidenceLevel: confidenceForRow(row),
+    metrics: {
+      imports,
+      exports,
+      externalDependency: dependency,
+      hhi,
+      mainSupplier,
+      confidenceLevel: supplierIsReal ? sectorConfidence(sectorMatch!.input.confidence_level) : confidenceForRow(row),
+      dataQuality: sectorMatch
+        ? {
+            method: sectorMatch.input.measurement_method,
+            confidenceRaw: sectorMatch.input.confidence_level,
+            gapReason: sectorMatch.input.data_gap_reason ?? undefined,
+            source: `outputs/sector_sovereignty_${chainKey}_2026/sector_input_metrics.json`,
+            supplierSuppressedReason: supplierIsReal
+              ? undefined
+              : "Brasil é exportador líquido deste insumo; o fluxo de importação é pequeno demais para representar um risco real de concentração de fornecedor.",
+          }
+        : undefined,
     },
     technicalCodes: {
       hs: [],
-      ncm: [],
+      ncm: sectorMatch ? sectorMatch.input.ncm_codes : [],
       cnae: cnae === "NAO_MAPEADO" ? [] : [cnae],
       prodlist: prodlist === "NCM_SEM_PONTE" ? [] : [prodlist],
     },
-    sources: [
-      "Camada operacional publicada",
-      "outputs/final_border_value_2026",
-      "Comex Stat / PIA-Produto / RAIS",
-    ],
-    methodology: `Pipeline oficial ${text(readDashboardPayload().etl?.version, "sem versão informada")}. Campos territoriais finos permanecem em homologação nesta experiência executiva.`,
+    sources: sectorMatch
+      ? [
+          "Camada operacional publicada",
+          "outputs/final_border_value_2026",
+          "Comex Stat / PIA-Produto / RAIS",
+          `outputs/sector_sovereignty_${chainKey}_2026/sector_input_metrics.json`,
+        ]
+      : ["Camada operacional publicada", "outputs/final_border_value_2026", "Comex Stat / PIA-Produto / RAIS"],
+    methodology: buildMethodologyNote(sectorMatch, supplierIsReal),
   };
+}
+
+function buildMethodologyNote(sectorMatch: SectorMatch | null, supplierIsReal: boolean) {
+  const base = `Pipeline oficial ${text(readDashboardPayload().etl?.version, "sem versão informada")}.`;
+  if (!sectorMatch) {
+    return `${base} Campos territoriais finos permanecem em homologação nesta experiência executiva.`;
+  }
+
+  const { input, method } = sectorMatch;
+  const methodLabel =
+    input.measurement_method === "validated" ? "validado" : input.measurement_method === "estimated" ? "estimado" : "estrutural";
+  const matchLabel = method === "ncm" ? "cesta NCM" : "nome do produto (sem cesta NCM direta na ponte)";
+
+  const parts = [
+    base,
+    `Fornecedor principal e HHI de ${input.label} vêm de sector_input_metrics.json (dado real por país, casado por ${matchLabel}). Método: ${methodLabel}, confiança ${input.confidence_level}.`,
+  ];
+  if (input.data_gap_reason) {
+    parts.push(`Ressalva: ${input.data_gap_reason}`);
+  }
+  if (!supplierIsReal) {
+    const destination = input.top_destination;
+    parts.push(
+      destination
+        ? `Brasil é exportador líquido deste insumo; fornecedor principal segue em homologação (destino principal das exportações: ${destination.country_name}, ${(destination.share * 100).toFixed(1)}%).`
+        : "Brasil é exportador líquido deste insumo; fornecedor principal segue em homologação.",
+    );
+  }
+  return parts.join(" ");
+}
+
+type SectorMatch = {
+  input: SolarInputMetric;
+  method: "ncm" | "label";
+};
+
+function findSectorMatch(row: DashboardProdlistRow, chainKey: string): SectorMatch | null {
+  const inputs = readSectorInputs(chainKey);
+  if (!inputs.length) return null;
+
+  const bridge = readProdlistToNcmBridge();
+  const prodlistCode = text(row.prodlist_code);
+  const bridgedNcms = prodlistCode ? bridge.get(prodlistCode) : undefined;
+
+  if (bridgedNcms) {
+    const ncmIndex = ncmIndexForChain(chainKey);
+    for (const ncm of bridgedNcms) {
+      const input = ncmIndex.get(ncm);
+      if (input) return { input, method: "ncm" };
+    }
+  }
+
+  // Fallback only when the NCM bridge found nothing for this prodlist_code --
+  // an exact (accent/case-insensitive) label match, never a substring guess,
+  // to avoid inventing a correspondence for a generic/ambiguous product name.
+  const rowName = searchableText(row.prodlist_name);
+  if (rowName) {
+    const byLabel = inputs.find((input) => searchableText(input.label) === rowName);
+    if (byLabel) return { input: byLabel, method: "label" };
+  }
+
+  return null;
+}
+
+function isSupplierSideMeaningful(input: SolarInputMetric) {
+  if (!input.top_supplier || input.imports_value_usd <= 0) return false;
+  if (input.imports_value_usd < MIN_MEANINGFUL_IMPORT_USD) return false;
+  if (input.exports_value_usd > 0 && input.imports_value_usd / input.exports_value_usd < MAX_IMPORT_SHARE_OF_EXPORTS_FOR_NOISE) {
+    return false;
+  }
+  return true;
+}
+
+function sectorConfidence(level: SolarInputMetric["confidence_level"]): ConceptualProduct["metrics"]["confidenceLevel"] {
+  if (level === "alta") return "high";
+  if (level === "media") return "medium";
+  return "low";
+}
+
+function readSectorInputs(chainKey: string): SolarInputMetric[] {
+  if (cachedSectorInputs.has(chainKey)) return cachedSectorInputs.get(chainKey)!;
+
+  const dir = SECTOR_METRICS_DIRS[chainKey];
+  let inputs: SolarInputMetric[] = [];
+  if (dir) {
+    const path = join(ROOT, "outputs", dir, "sector_input_metrics.json");
+    if (existsSync(path)) {
+      try {
+        const payload = JSON.parse(readFileSync(path, "utf-8")) as { inputs?: SolarInputMetric[] };
+        inputs = payload.inputs ?? [];
+      } catch {
+        inputs = [];
+      }
+    }
+  }
+  cachedSectorInputs.set(chainKey, inputs);
+  return inputs;
+}
+
+function ncmIndexForChain(chainKey: string): Map<string, SolarInputMetric> {
+  const cached = cachedNcmIndex.get(chainKey);
+  if (cached) return cached;
+
+  const index = new Map<string, SolarInputMetric>();
+  readSectorInputs(chainKey).forEach((input) => {
+    input.ncm_codes.forEach((ncm) => {
+      if (!index.has(ncm)) index.set(ncm, input);
+    });
+  });
+  cachedNcmIndex.set(chainKey, index);
+  return index;
+}
+
+function readProdlistToNcmBridge(): Map<string, Set<string>> {
+  if (cachedProdlistToNcm) return cachedProdlistToNcm;
+
+  const map = new Map<string, Set<string>>();
+  if (existsSync(BRIDGE_NCM_PRODLIST_PATH)) {
+    const [headerLine, ...lines] = readFileSync(BRIDGE_NCM_PRODLIST_PATH, "utf-8").trim().split(/\r?\n/);
+    const headers = headerLine.split(";");
+    const ncmIndex = headers.indexOf("ncm");
+    const prodlistIndex = headers.indexOf("prodlist_code");
+
+    if (ncmIndex !== -1 && prodlistIndex !== -1) {
+      lines.forEach((line) => {
+        const cols = line.split(";");
+        const ncm = cols[ncmIndex];
+        const prodlistCode = cols[prodlistIndex];
+        if (!ncm || !prodlistCode) return;
+        const set = map.get(prodlistCode) ?? new Set<string>();
+        set.add(ncm);
+        map.set(prodlistCode, set);
+      });
+    }
+  }
+
+  cachedProdlistToNcm = map;
+  return cachedProdlistToNcm;
 }
 
 function buildKpis(rows: DashboardProdlistRow[]) {
@@ -358,7 +556,13 @@ function matchesChain(row: DashboardProdlistRow, chain: string) {
     return /\betanol\b|\bmetanol\b|\bbiometano\b|\bbiogas\b|\bbiodiesel\b|combustivel sustentavel de aviacao|\bsaf\b|querosene.*aviacao|combustivel.*maritimo|amoniaco|amonia|hidrogenio/.test(productName);
   }
   if (chain === "fertilizers") {
-    return /fertiliz|adubo|ureia|amonia|fosfat|potass|superfosfat|cloreto de potassio|sulfato de amonio/.test(productName);
+    // "acido sulfurico" is added narrowly (exact phrase, not the bare word
+    // "sulfurico") so it catches Ácido sulfúrico/Óleum -- both CNAE 2012
+    // "Fabricação de intermediários para fertilizantes", and both listed as
+    // acido_sulfurico in outputs/sector_sovereignty_fertilizantes_2026's
+    // green_jobs input_ids for that CNAE -- without also matching the
+    // unrelated Ácido clorossulfúrico (CNAE 2019, a different chemical).
+    return /fertiliz|adubo|ureia|amonia|fosfat|potass|superfosfat|cloreto de potassio|sulfato de amonio|acido sulfurico/.test(productName);
   }
   if (chain === "aco_legacy_unreachable") {
     return /a[cÃ§]o|aco|sider|ferro-gusa|ferroliga|ferron[iÃ­]quel|ferron[iÃ³]bio|ferrossil[iÃ­]cio|bobina|chapa de a[cÃ§]o|tubo.*(?:ferro|a[cÃ§]o)|vergalh|arame.*a[cÃ§]o/.test(haystack);

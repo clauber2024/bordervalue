@@ -269,10 +269,29 @@ function CodeAuditModal({ product, onClose }: { product: ProdutoConceitual; onCl
               {cnaeCode ? <CodeRow kind="cnae" code={cnaeCode} /> : <p className="text-zinc-500">Não publicado</p>}
             </div>
           </div>
+          {product.auditoria.ncm_mapping_status ? (
+            <div>
+              <p className="font-semibold uppercase tracking-[0.14em] text-zinc-500">Qualidade do dado</p>
+              <div className="mt-1.5 rounded-md border border-white/[0.08] bg-zinc-950/50 px-2.5 py-2">
+                <span className="font-semibold text-zinc-100">
+                  {confidenceLabel(product.auditoria.confidence_level)} · {product.auditoria.ncm_mapping_status === "validada" ? "cesta validada" : "cesta estimada"}
+                </span>
+                {product.auditoria.ncm_mapping_note ? (
+                  <p className="mt-0.5 leading-4 text-zinc-400">{product.auditoria.ncm_mapping_note}</p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
         </div>
       </motion.div>
     </motion.div>
   );
+}
+
+function confidenceLabel(level: ProdutoConceitual["auditoria"]["confidence_level"]) {
+  if (level === "alta") return "Alta confiança";
+  if (level === "media") return "Média confiança";
+  return "Baixa confiança";
 }
 
 function CodeRow({ kind, code }: { kind: "ncm" | "cnae"; code: string }) {
