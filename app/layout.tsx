@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
+import { InstituteShell } from "../components/InstituteShell";
 
 export const metadata: Metadata = {
   title: "Painel Analítico Border Value",
@@ -10,7 +11,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body>
+        <InstituteShell>{children}</InstituteShell>
+      </body>
     </html>
   );
 }
