@@ -79,7 +79,7 @@ export function HeaderTopBar({
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-zinc-950/88 px-4 py-2.5 backdrop-blur-xl sm:px-6 lg:px-8 shadow-2xl">
+      <header className="sticky top-[var(--eplus-shell-h)] z-50 w-full border-b border-white/10 bg-zinc-950/88 px-4 py-2.5 backdrop-blur-xl sm:px-6 lg:px-8 shadow-2xl">
         <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4">
           <div className="flex shrink-0 items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-emerald-500/40 bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 text-emerald-400">

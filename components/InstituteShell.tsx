@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Montserrat } from "next/font/google";
+import { EPLUS_SHELL_HEIGHT_PX } from "../lib/eplusShell";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -40,20 +41,20 @@ function GradientRule({ flip = false }: { flip?: boolean }) {
 function TopBand() {
   return (
     <div
-      className={`${montserrat.className} relative border-b bg-white`}
-      style={{ borderColor: EPLUS.border }}
+      className={`${montserrat.className} sticky top-0 z-[60] overflow-hidden border-b bg-white`}
+      style={{ borderColor: EPLUS.border, height: EPLUS_SHELL_HEIGHT_PX }}
     >
       <GradientRule />
-      <div className="mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-8">
+      <div className="mx-auto flex h-full max-w-[1240px] items-center justify-between gap-4 px-4 sm:px-8">
         <img
           src="/brand/eplus-logo-2025.svg"
           alt="Instituto E+"
           width={LOGO_WIDTH}
           height={LOGO_HEIGHT}
-          className="h-6 w-auto"
+          className="h-6 w-auto shrink-0"
         />
         <span
-          className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold"
+          className="hidden shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold sm:inline-flex"
           style={{ color: EPLUS.ink, borderColor: EPLUS.border, background: "rgba(3,37,77,0.05)" }}
         >
           Border Value · um produto do Instituto E+

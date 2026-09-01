@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Sparkles, X } from "lucide-react";
+import { EPLUS_SHELL_HEIGHT_PX } from "../lib/eplusShell";
 
 type TourStepBullet = {
   label: string;
@@ -128,14 +129,15 @@ const HIGHLIGHT_PADDING = 12;
 const CARD_WIDTH = 384;
 const CARD_MARGIN = 16;
 const CARD_ESTIMATED_HEIGHT = 320;
-// HeaderTopBar is sticky top-0 z-50 (px-4 py-2.5 + icon/text ~52px tall).
-// The tour card's own z-index was already above that (z-[52]), but its
-// root wrapper matched the header at z-50 -- same z-index means the later
-// DOM node wins regardless of children's z-index, and HeaderTopBar renders
-// after the tour in the page tree, so it painted over the card whenever the
-// card's computed top landed near the viewport's top edge. This floor keeps
-// the card clear of the header's band entirely, independent of that fix.
-const CARD_TOP_MIN = 72;
+// HeaderTopBar is sticky top-[var(--eplus-shell-h)] z-50 (px-4 py-2.5 + icon/text
+// ~52px tall), itself stacked below the sticky institutional E+ band
+// (EPLUS_SHELL_HEIGHT_PX). The tour card's own z-index was already above the
+// header (z-[52]), but its root wrapper matched the header at z-50 -- same
+// z-index means the later DOM node wins regardless of children's z-index, and
+// HeaderTopBar renders after the tour in the page tree, so it painted over the
+// card whenever the card's computed top landed near the viewport's top edge.
+// This floor keeps the card clear of both bands entirely, independent of that fix.
+const CARD_TOP_MIN = 72 + EPLUS_SHELL_HEIGHT_PX;
 
 export function SovereigntyTour({
   defaultOpen = false,
