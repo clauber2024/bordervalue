@@ -728,8 +728,12 @@ export default function MainAnalyticalDashboard() {
         </div>
       ) : (
       <div className="mx-auto max-w-[1600px] space-y-10 px-4 py-8 sm:px-6 lg:px-8">
-        {/* z-30 (not z-50): keeps this non-sticky section behind the sticky header/band while it scrolls past their region. */}
-        <section className="relative z-30 rounded-xl border border-cyan-300/25 bg-cyan-400/[0.08] px-4 py-3 shadow-xl backdrop-blur-xl">
+        {/* No explicit z-index (not z-50): as a plain positioned box it paints below any
+        sibling with a real z-index (header, sticky band) per CSS stacking order, regardless
+        of DOM order -- giving it its own explicit z here would cap the "Trocar cadeia"
+        dropdown nested inside it to that same level, hiding the dropdown behind the z-40
+        sticky aside instead. */}
+        <section className="relative rounded-xl border border-cyan-300/25 bg-cyan-400/[0.08] px-4 py-3 shadow-xl backdrop-blur-xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">
