@@ -51,7 +51,12 @@ export type ExecutiveMainKpi = {
 };
 
 type ExecutiveMainHeroProps = {
-  alert?: ExecutiveTopAlert;
+  /** `undefined` (prop omitted) keeps the built-in demo alert -- only real
+   * caller today never omits it. `null` is an explicit "no alert for this
+   * chain right now" signal (e.g. the curated insumo catalog didn't load)
+   * and renders the honest empty state instead of either the demo content
+   * or a caller-supplied placeholder. */
+  alert?: ExecutiveTopAlert | null;
   kpis?: ExecutiveMainKpi[];
   strategicQuestion?: string;
   /** Optional content rendered between the title card and the alert card --
@@ -217,6 +222,25 @@ const HHI_GAUGE_BANDS: GaugeBand[] = [
 // a static scale icon that says nothing about the actual dependency number.
 // 50% dependency = level beam; the tilt (and which pan visually outweighs
 // the other) scales linearly from there toward either extreme.
+// Honest counterpart to the red "Alerta Máximo" card for when there is no
+// curated insumo to name -- neutral tone on purpose (this is a data-gap
+// state, not a risk signal) instead of silently falling back to demo
+// content or a fabricated placeholder alert.
+function EmptyAlertCard() {
+  return (
+    <div className="relative flex flex-col justify-center overflow-hidden rounded-2xl border border-dashed border-white/15 bg-zinc-900/40 p-6 text-center shadow-xl backdrop-blur-xl md:p-8">
+      <Info className="mx-auto h-6 w-6 text-zinc-500" strokeWidth={1.5} />
+      <p className="mt-3 text-sm font-semibold text-zinc-300">
+        Nenhum insumo com indicador de risco disponível no momento
+      </p>
+      <p className="mx-auto mt-1.5 max-w-md text-xs leading-relaxed text-zinc-500">
+        O catálogo curado de insumos desta cadeia ainda não carregou. Assim que os dados publicados
+        estiverem disponíveis, o alerta de maior risco aparece aqui.
+      </p>
+    </div>
+  );
+}
+
 function DependencyScale({ percentage, size = 40 }: { percentage: number; size?: number }) {
   const clamped = Math.min(Math.max(percentage, 0), 100);
   const tilt = ((clamped - 50) / 50) * 20;
@@ -250,14 +274,14 @@ export const ExecutiveMainHero = ({
   beforeAlert,
 }: ExecutiveMainHeroProps) => {
   const hasAuditedSupplier =
-    alert.topSupplier !== 'Em auditoria' && alert.supplierShare > 0;
-  const supplierIso2 = hasAuditedSupplier ? countryToIso2(alert.topSupplier) : null;
-  const supplierTitle = hasAuditedSupplier ? alert.topSupplier : 'Em homologação';
+    alert !== null && alert.topSupplier !== 'Em auditoria' && alert.supplierShare > 0;
+  const supplierIso2 = hasAuditedSupplier ? countryToIso2(alert!.topSupplier) : null;
+  const supplierTitle = hasAuditedSupplier ? alert!.topSupplier : 'Em homologação';
   const supplierSubtitle = hasAuditedSupplier
-    ? `${formatPercentage(alert.supplierShare)}% do total`
+    ? `${formatPercentage(alert!.supplierShare)}% do total`
     : 'Validação Comex Stat';
   const whyThisIsHere =
-    alert.whyThisIsHere ??
+    alert?.whyThisIsHere ??
     'Triagem Automática de Emergência: item priorizado pela combinação mais crítica de dependência externa e concentração de origem.';
 
   return (
@@ -334,6 +358,9 @@ export const ExecutiveMainHero = ({
 
         {beforeAlert}
 
+        {alert === null ? (
+          <EmptyAlertCard />
+        ) : (
         <motion.aside
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -458,6 +485,7 @@ export const ExecutiveMainHero = ({
             </div>
           </div>
         </motion.aside>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:gap-6">

@@ -415,15 +415,22 @@ export default function MainAnalyticalDashboard() {
     [premiumProducts, selectedChain, solarSovereignty],
   );
   const radarProduct = useMemo(() => selectRadarProduct(premiumProducts), [premiumProducts]);
-  const executiveHeroAlert = useMemo(
-    () => solarSovereignty?.inputs.length
-      ? buildSectorExecutiveHeroAlert(
-          solarSovereignty.inputs,
-          selectedChainMetadata?.name ?? solarSovereignty.chain_name,
-        )
-      : buildExecutiveHeroAlert(metrics.topRisk),
-    [metrics.topRisk, selectedChainMetadata?.name, solarSovereignty],
-  );
+  const executiveHeroAlert = useMemo(() => {
+    if (solarSovereignty?.inputs.length) {
+      return buildSectorExecutiveHeroAlert(
+        solarSovereignty.inputs,
+        selectedChainMetadata?.name ?? solarSovereignty.chain_name,
+      );
+    }
+    // Same insumo-vs-artigo-final contamination as buildExecutiveVulnerabilityData
+    // above -- metrics.topRisk is picked from the raw PRODLIST-derived product
+    // list, which for a curated chain can surface a finished consumer article
+    // ("Escadas de ferro e aço") as the top-risk alert instead of a real
+    // production input. `null` renders ExecutiveMainHero's honest empty
+    // state; the raw fallback stays available for any non-monitored chain.
+    const isCuratedChain = MONITORED_CHAINS.includes(selectedChain as (typeof MONITORED_CHAINS)[number]);
+    return isCuratedChain ? null : buildExecutiveHeroAlert(metrics.topRisk);
+  }, [metrics.topRisk, selectedChain, selectedChainMetadata?.name, solarSovereignty]);
   const executiveHeroKpis = useMemo(() => {
     const allKpis = buildExecutiveHeroKpis(metrics);
     // IA-overload pilot (Aço only): Dependência Média and Concentração

@@ -96,7 +96,19 @@ export type DedupedProduct = {
   chains: MonitoredChain[];
 };
 
+// A generic/residual NCM -- auditoria.is_ncm_generica: true for the real
+// Published API means the code ends in 9/90/99 (catch-all classification);
+// for the dashboard_data adapter (lib/dashboardData.ts) it means no NCM was
+// tracked at all and every product got the literal placeholder "00000000".
+// Either way it is not a trustworthy cross-chain identity: grouping on it
+// merges unrelated products from every chain into one basket (confirmed live
+// -- every product in every chain currently shares "00000000", so this key
+// alone previously collapsed the whole transversal dataset into a single
+// "shared across all 4 chains" entry). Falling back to the item's own
+// unique key means these products simply don't get cross-chain-matched
+// instead of getting matched wrong.
 function ncmBasketKey(item: ProdutoConceitual): string {
+  if (item.auditoria.is_ncm_generica) return uniqueProductKey(item);
   const codes = (item.ncm_codigos?.length ? item.ncm_codigos : [item.ncm_codigo]).slice().sort();
   return codes.join("|");
 }
