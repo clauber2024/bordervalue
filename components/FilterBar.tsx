@@ -207,7 +207,7 @@ export function FilterBar({ filters, isLoading = false }: FilterBarProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-zinc-950/82 px-4 py-3 text-zinc-100 backdrop-blur-xl sm:px-6 lg:px-8">
+      <header className="sticky top-[var(--eplus-shell-h)] z-40 border-b border-white/[0.08] bg-zinc-950/82 px-4 py-3 text-zinc-100 backdrop-blur-xl sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">

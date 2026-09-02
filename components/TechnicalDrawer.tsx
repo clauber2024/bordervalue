@@ -31,7 +31,7 @@ export function TechnicalDrawer({ data, solarInputs, solarMethodologyVersion, cl
   ).length;
 
   return (
-    <section id="technical-traceability" className={`scroll-mt-8 pb-8 ${className}`}>
+    <section id="technical-traceability" className={`scroll-mt-[calc(2rem+var(--eplus-shell-h))] pb-8 ${className}`}>
       <details className={`group rounded-lg ${glass}`}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 marker:hidden sm:px-5">
           <div className="min-w-0">

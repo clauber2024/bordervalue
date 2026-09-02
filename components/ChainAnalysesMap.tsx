@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useRef, useState } from "react";
 import { ChevronRight, Compass } from "lucide-react";
+import { EPLUS_SHELL_HEIGHT_PX } from "../lib/eplusShell";
 
 export type ChainAnalysesMapItem = {
   id: string;
@@ -29,8 +30,9 @@ const GROUP_LABELS: Record<ChainAnalysesMapItem["group"], string> = {
 
 const GROUP_ORDER: ChainAnalysesMapItem["group"][] = ["modulo1", "modulo2", "modulo3"];
 
-/** Roughly matches the page's own scroll-mt-40 (160px) sticky-header offset, plus a small margin. */
-const SCROLLSPY_OFFSET_PX = 170;
+/** Roughly matches the page's own scroll-mt-40 (160px) sticky-header offset, plus a small
+ * margin, plus the sticky institutional band above the header (EPLUS_SHELL_HEIGHT_PX). */
+const SCROLLSPY_OFFSET_PX = 170 + EPLUS_SHELL_HEIGHT_PX;
 
 export function ChainAnalysesMap({ items, onSelect }: ChainAnalysesMapProps) {
   const [activeTooltipId, setActiveTooltipId] = useState<string | null>(null);

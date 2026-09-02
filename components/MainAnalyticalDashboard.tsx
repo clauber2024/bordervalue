@@ -42,6 +42,7 @@ import { useEnergyContext } from "../hooks/useEnergyContext";
 import { useSolarSovereignty } from "../hooks/useSolarSovereignty";
 import { apiRoutes } from "../lib/apiRoutes";
 import { chainCatalog } from "../lib/chainCatalog";
+import { MONITORED_CHAINS } from "../lib/transversalMatrix";
 import { buildValueAsymmetry } from "../lib/valueAsymmetry";
 import type { ProdutoConceitual } from "../types/border-value";
 import type { SolarInputMetric, SolarSovereigntyResponse } from "../types/solar-sovereignty";
@@ -414,15 +415,22 @@ export default function MainAnalyticalDashboard() {
     [premiumProducts, selectedChain, solarSovereignty],
   );
   const radarProduct = useMemo(() => selectRadarProduct(premiumProducts), [premiumProducts]);
-  const executiveHeroAlert = useMemo(
-    () => solarSovereignty?.inputs.length
-      ? buildSectorExecutiveHeroAlert(
-          solarSovereignty.inputs,
-          selectedChainMetadata?.name ?? solarSovereignty.chain_name,
-        )
-      : buildExecutiveHeroAlert(metrics.topRisk),
-    [metrics.topRisk, selectedChainMetadata?.name, solarSovereignty],
-  );
+  const executiveHeroAlert = useMemo(() => {
+    if (solarSovereignty?.inputs.length) {
+      return buildSectorExecutiveHeroAlert(
+        solarSovereignty.inputs,
+        selectedChainMetadata?.name ?? solarSovereignty.chain_name,
+      );
+    }
+    // Same insumo-vs-artigo-final contamination as buildExecutiveVulnerabilityData
+    // above -- metrics.topRisk is picked from the raw PRODLIST-derived product
+    // list, which for a curated chain can surface a finished consumer article
+    // ("Escadas de ferro e aço") as the top-risk alert instead of a real
+    // production input. `null` renders ExecutiveMainHero's honest empty
+    // state; the raw fallback stays available for any non-monitored chain.
+    const isCuratedChain = MONITORED_CHAINS.includes(selectedChain as (typeof MONITORED_CHAINS)[number]);
+    return isCuratedChain ? null : buildExecutiveHeroAlert(metrics.topRisk);
+  }, [metrics.topRisk, selectedChain, selectedChainMetadata?.name, solarSovereignty]);
   const executiveHeroKpis = useMemo(() => {
     const allKpis = buildExecutiveHeroKpis(metrics);
     // IA-overload pilot (Aço only): Dependência Média and Concentração
@@ -720,7 +728,13 @@ export default function MainAnalyticalDashboard() {
         </div>
       ) : (
       <div className="mx-auto max-w-[1600px] space-y-10 px-4 py-8 sm:px-6 lg:px-8">
-        <section className="relative z-50 rounded-xl border border-cyan-300/25 bg-cyan-400/[0.08] px-4 py-3 shadow-xl backdrop-blur-xl">
+        {/* z-[45]: its own backdrop-blur-xl already creates a stacking context (filter/
+        backdrop-filter does that regardless of z-index), which traps the "Trocar cadeia"
+        dropdown nested inside at this section's external stacking level no matter what
+        z-index the dropdown itself claims. Needs to sit strictly between the z-40
+        "Profundidade" sticky aside (so the dropdown shows above it) and the z-50 header /
+        z-[60] institutional band (so this section still passes behind them while scrolling). */}
+        <section className="relative z-[45] rounded-xl border border-cyan-300/25 bg-cyan-400/[0.08] px-4 py-3 shadow-xl backdrop-blur-xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">
@@ -777,7 +791,7 @@ export default function MainAnalyticalDashboard() {
           </div>
         </div>
         </section>
-        <aside className="sticky top-[9.5rem] z-40 -my-4 flex flex-col gap-2 rounded-xl border border-cyan-300/20 bg-zinc-950/90 px-3 py-2.5 shadow-2xl backdrop-blur-xl md:top-[4.75rem]" aria-label="Profundidade da análise">
+        <aside className="sticky top-[calc(9.5rem+var(--eplus-shell-h))] z-40 -my-4 flex flex-col gap-2 rounded-xl border border-cyan-300/20 bg-zinc-950/90 px-3 py-2.5 shadow-2xl backdrop-blur-xl md:top-[calc(4.75rem+var(--eplus-shell-h))]" aria-label="Profundidade da análise">
           <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap items-center gap-2">
               <span className="mr-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Profundidade</span>
@@ -796,7 +810,7 @@ export default function MainAnalyticalDashboard() {
           ) : null}
         </aside>
         <StateShell status={status} error={error} onRetry={loadData}>
-          <div id="tour-hero" ref={overviewRef} className="scroll-mt-40 md:scroll-mt-32 space-y-4">
+          <div id="tour-hero" ref={overviewRef} className="scroll-mt-[calc(10rem+var(--eplus-shell-h))] md:scroll-mt-[calc(8rem+var(--eplus-shell-h))] space-y-4">
             <ExecutiveMainHero
               alert={executiveHeroAlert}
               kpis={isIaPilotChain ? [] : executiveHeroKpis}
@@ -928,7 +942,7 @@ export default function MainAnalyticalDashboard() {
               }
             />
             {solarSovereignty?.inputs.length ? (
-              <div id="tour-powershoring" className="scroll-mt-40 md:scroll-mt-32">
+              <div id="tour-powershoring" className="scroll-mt-[calc(10rem+var(--eplus-shell-h))] md:scroll-mt-[calc(8rem+var(--eplus-shell-h))]">
                 {isIaPilotChain ? (
                   <ExpandableAnalyticsPanel
                     eyebrow="Powershoring & regulação"
@@ -952,7 +966,7 @@ export default function MainAnalyticalDashboard() {
             ) : null}
           </div>
 
-          <div id="tour-aipnet-backbone" className="scroll-mt-40 md:scroll-mt-32">
+          <div id="tour-aipnet-backbone" className="scroll-mt-[calc(10rem+var(--eplus-shell-h))] md:scroll-mt-[calc(8rem+var(--eplus-shell-h))]">
             {isIaPilotChain ? (
               <ExpandableAnalyticsPanel
                 eyebrow="Espinha Dorsal · Geopolítica de estado"
@@ -988,7 +1002,7 @@ export default function MainAnalyticalDashboard() {
             title="Diagnóstico de soberania e balança"
             accent="cyan"
           />
-          <div id="tour-sankey" ref={sankeyRef} className="scroll-mt-6">
+          <div id="tour-sankey" ref={sankeyRef} className="scroll-mt-[calc(1.5rem+var(--eplus-shell-h))]">
             <ExpandableAnalyticsPanel eyebrow="Soberania & rede" title="Fluxo de soberania por produto" subtitle="Rede de fornecedores, produto e capacidade nacional" defaultOpen={!isIaPilotChain}>
               <SovereigntySankeyChart
                 dado={radarProduct ?? premiumProducts[0]}
@@ -1001,7 +1015,7 @@ export default function MainAnalyticalDashboard() {
             </ExpandableAnalyticsPanel>
           </div>
 
-            <div id="tour-vulnerability" ref={diagnosticRef} className="scroll-mt-40 md:scroll-mt-32">
+            <div id="tour-vulnerability" ref={diagnosticRef} className="scroll-mt-[calc(10rem+var(--eplus-shell-h))] md:scroll-mt-[calc(8rem+var(--eplus-shell-h))]">
               <ExpandableAnalyticsPanel
                 eyebrow="Balança & dependência"
                 title="Diagnóstico de soberania industrial"
@@ -1041,7 +1055,7 @@ export default function MainAnalyticalDashboard() {
             </div>
 
           {readingMode === "analytical" && (premiumProducts.length || selectedChain === "silicio") ? (
-            <section ref={advancedRef} className="scroll-mt-40 space-y-5 md:scroll-mt-32">
+            <section ref={advancedRef} className="scroll-mt-[calc(10rem+var(--eplus-shell-h))] space-y-5 md:scroll-mt-[calc(8rem+var(--eplus-shell-h))]">
               <MacroModuleHeader
                 eyebrow="Macro-módulo 2 · NIB & TSB"
                 title="Sustentabilidade e política industrial"
@@ -1075,7 +1089,7 @@ export default function MainAnalyticalDashboard() {
               ) : null}
 
               {nibMatrixProducts.length ? (
-                <div ref={nibRef} className="scroll-mt-40 md:scroll-mt-32">
+                <div ref={nibRef} className="scroll-mt-[calc(10rem+var(--eplus-shell-h))] md:scroll-mt-[calc(8rem+var(--eplus-shell-h))]">
                   <ExpandableAnalyticsPanel eyebrow="Política industrial" title="Matriz de priorização NIB" subtitle="Posicionamento estratégico dos produtos da cadeia">
                     <NIBMatrixChart data={nibMatrixProducts} chartAnchorId="tour-nib-matrix" />
                   </ExpandableAnalyticsPanel>
@@ -1120,7 +1134,7 @@ export default function MainAnalyticalDashboard() {
           ) : null}
 
           {premiumProducts.length ? (
-            <div id="tour-technical-drawer" className="scroll-mt-40 space-y-5 pb-32 md:scroll-mt-32">
+            <div id="tour-technical-drawer" className="scroll-mt-[calc(10rem+var(--eplus-shell-h))] space-y-5 pb-32 md:scroll-mt-[calc(8rem+var(--eplus-shell-h))]">
               <MacroModuleHeader
                 eyebrow="Macro-módulo 3 · NCM & CNAE"
                 title="Dados primários e governança"
@@ -1158,7 +1172,7 @@ function ExpandableAnalyticsPanel({
   defaultOpen?: boolean;
 }) {
   return (
-    <details id={id} open={defaultOpen} className="group scroll-mt-40 rounded-2xl border border-white/[0.08] bg-zinc-900/30 shadow-xl backdrop-blur-xl md:scroll-mt-32">
+    <details id={id} open={defaultOpen} className="group scroll-mt-[calc(10rem+var(--eplus-shell-h))] rounded-2xl border border-white/[0.08] bg-zinc-900/30 shadow-xl backdrop-blur-xl md:scroll-mt-[calc(8rem+var(--eplus-shell-h))]">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-2xl px-5 py-4 transition hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 [&::-webkit-details-marker]:hidden">
         <span>
           <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">{eyebrow}</span>
@@ -1773,7 +1787,21 @@ function buildExecutiveVulnerabilityData(
   selectedChain: string | null,
   solarInputs?: SolarInputMetric[],
 ): ProductVulnerability[] {
-  const observedProducts: ProductVulnerability[] = [...products]
+  // The 4 monitored/curated chains (MONITORED_CHAINS) have a hand-vetted
+  // insumo catalog -- solarInputs, built from the same 15-16-item list the
+  // NIB matrix and Powershoring aggregator use. When that fails to load
+  // (e.g. the Published API is unreachable), falling back to this raw
+  // PRODLIST-derived `products` list is wrong for these chains specifically:
+  // PRODLIST/NCM chapter 73 ("obras de ferro fundido, ferro ou aço") covers
+  // finished consumer/industrial articles (panelas, pias, escadas, correntes,
+  // grampos) right alongside real production insumos, with no field to tell
+  // them apart -- every item here reports the same stage ("Transformação").
+  // Confirmed live: aço's raw fallback surfaced "Escadas de ferro e aço" and
+  // "Paletes... para movimentação de carga" as top-risk insumos. Showing the
+  // honest "dados indisponíveis" empty state (VulnerabilityChart's own
+  // fallback below) beats silently mixing insumos with kitchenware.
+  const isCuratedChain = MONITORED_CHAINS.includes(selectedChain as (typeof MONITORED_CHAINS)[number]);
+  const observedProducts: ProductVulnerability[] = isCuratedChain ? [] : [...products]
     .sort(
       (left, right) =>
         right.metrics.externalDependency * right.metrics.hhi -
