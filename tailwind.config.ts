@@ -4,8 +4,12 @@ import type { Config } from "tailwindcss";
 // alpha), no padrão que o próprio Tailwind recomenda para cores custom que
 // precisam funcionar com qualquer modificador de opacidade (bg-surface-0/95,
 // border-border/[0.08]...) -- sem isso, o modificador é silenciosamente
-// ignorado sobre uma cor vinda de var().
-function withOpacity(cssVar: string) {
+// ignorado sobre uma cor vinda de var(). O tipo `Config` oficial do Tailwind
+// não declara essa forma (função) como valor válido em `colors`, mesmo sendo
+// suportada em runtime -- só quebra o build de produção (`next build` roda
+// checagem de tipos; `next dev` não), então o retorno é tipado como `any` de
+// propósito para não brigar com esse gap na tipagem.
+function withOpacity(cssVar: string): any {
   return ({ opacityValue }: { opacityValue?: string }) =>
     opacityValue === undefined ? `rgb(var(${cssVar}))` : `rgb(var(${cssVar}) / ${opacityValue})`;
 }
