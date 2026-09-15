@@ -8,6 +8,105 @@
   --surface: rgba(24, 24, 27, 0.4);
   --accent: #22c55e;
   --neutral: #22d3ee;
+
+  /* Tokens semanticos do toggle claro/escuro (Fase A) -- canais RGB "nus"
+     (sem alpha), consumidos via a funcao opacityValue do Tailwind
+     (tailwind.config.ts) para que QUALQUER modificador de opacidade
+     (bg-surface-0/95, border-border/[0.08], divide-border/[0.06]...)
+     funcione automaticamente, sem precisar de um token novo por valor de
+     opacidade. Valores escuros abaixo reproduzem exatamente as cores cruas
+     que hoje ja existem (zinc-950, zinc-900, white, zinc-100/300/400/500)
+     -- ninguem que nao tocar no toggle deve notar qualquer diferenca. */
+  --surface-0-rgb: 9 9 11; /* era zinc-950 */
+  --surface-1-rgb: 24 24 27; /* era zinc-900 (usar com /40, /60 etc.) */
+  --border-rgb: 255 255 255; /* era white (border-white/10, /[0.08], divide-white/[0.06], bg-white/[0.03]...) */
+  --text-heading: #ffffff;
+  --text-body: #f4f4f5;
+  --text-muted: #a1a1aa;
+  --text-faint: #71717a;
+
+  /* Auditoria pos-Fase-A2: os tons pastel (100-400) de cyan/emerald/amber/
+     red/rose sao usados como TEXTO (eyebrows, badges, pills, veredito de
+     risco) ~400x em todo o app -- inclusive em componentes que a Fase A
+     ainda nao tocou. Foram desenhados para ler bem sobre fundo quase-preto;
+     sobre o fundo claro novo ficam quase ilegiveis (contraste ~1.2-1.8:1).
+     Em vez de migrar cada ocorrencia, sobrescrevemos os proprios tons do
+     Tailwind (theme.extend.colors em tailwind.config.ts) para reagirem ao
+     tema: no escuro, valor identico ao padrao do Tailwind (zero mudanca);
+     no claro, uma variante ~700 da mesma familia de cor, legivel sobre
+     branco. Isso conserta toda ocorrencia de text-cyan-300, text-emerald-400
+     etc. no app inteiro sem editar nenhum componente. Tons 500+ (ja escuros
+     o bastante para ler em qualquer fundo) ficam de fora, intocados. */
+  --cyan-50-rgb: 236 254 255;
+  --cyan-100-rgb: 207 250 254;
+  --cyan-200-rgb: 165 243 252;
+  --cyan-300-rgb: 103 232 249;
+  --emerald-50-rgb: 236 253 245;
+  --emerald-100-rgb: 209 250 229;
+  --emerald-200-rgb: 167 243 208;
+  --emerald-300-rgb: 110 231 183;
+  --emerald-400-rgb: 52 211 153;
+  --amber-50-rgb: 255 251 235;
+  --amber-100-rgb: 254 243 199;
+  --amber-200-rgb: 253 230 138;
+  --amber-300-rgb: 252 211 77;
+  --amber-400-rgb: 251 191 36;
+  --red-50-rgb: 254 242 242;
+  --red-100-rgb: 254 226 226;
+  --red-200-rgb: 254 202 202;
+  --red-300-rgb: 252 165 165;
+  --red-400-rgb: 248 113 113;
+  --rose-300-rgb: 253 164 175;
+
+  /* Tier 950 -- só quando usado como FUNDO de badge "invertido" (fundo bem
+     escuro + texto claro, ex. "Direcionamento NIB", cards de risco em
+     ChainSelectionLanding/sobre). No claro vira um fundo bem pálido (mesmo
+     valor do tier 50 de cada matiz) em vez de continuar escuro -- senão o
+     texto (agora escuro, ver acima) fica ilegível sobre um fundo que
+     continuaria escuro. */
+  --emerald-950-rgb: 2 44 34;
+  --red-950-rgb: 69 10 10;
+  --amber-950-rgb: 69 26 3;
+  --cyan-950-rgb: 8 51 68;
+}
+
+html.light {
+  --surface-0-rgb: 248 250 252;
+  --surface-1-rgb: 255 255 255;
+  --border-rgb: 15 23 42;
+  --text-heading: #0f172a;
+  --text-body: #1e293b;
+  --text-muted: #475569;
+  --text-faint: #64748b;
+
+  /* Uma variante ~700 legivel por familia de cor -- compartilhada por todos
+     os tons 100-400 daquela familia (a distincao de "quao claro" entre
+     eyebrow/badge/destaque deixa de fazer sentido sobre fundo branco). */
+  --cyan-50-rgb: 14 116 144;
+  --cyan-100-rgb: 14 116 144;
+  --cyan-200-rgb: 14 116 144;
+  --cyan-300-rgb: 14 116 144;
+  --emerald-50-rgb: 4 120 87;
+  --emerald-100-rgb: 4 120 87;
+  --emerald-200-rgb: 4 120 87;
+  --emerald-300-rgb: 4 120 87;
+  --emerald-400-rgb: 4 120 87;
+  --amber-50-rgb: 180 83 9;
+  --amber-100-rgb: 180 83 9;
+  --amber-200-rgb: 180 83 9;
+  --amber-300-rgb: 180 83 9;
+  --amber-400-rgb: 180 83 9;
+  --red-50-rgb: 185 28 28;
+  --red-100-rgb: 185 28 28;
+  --red-200-rgb: 185 28 28;
+  --red-300-rgb: 185 28 28;
+  --red-400-rgb: 185 28 28;
+  --rose-300-rgb: 190 18 60;
+
+  --emerald-950-rgb: 236 253 245;
+  --red-950-rgb: 254 242 242;
+  --amber-950-rgb: 255 251 235;
+  --cyan-950-rgb: 236 254 255;
 }
 
 * {

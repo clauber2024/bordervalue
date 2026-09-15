@@ -85,16 +85,16 @@ export function ChainAnalysesMap({ items, onSelect }: ChainAnalysesMapProps) {
   return (
     <nav
       aria-label="Mapa de análises da cadeia"
-      className="border-t border-white/[0.08] pt-2"
+      className="border-t border-border/[0.08] pt-2"
     >
-      <span className="mb-2 inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+      <span className="mb-2 inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-faint">
         <Compass className="h-3.5 w-3.5" />
         Mapa de análises
       </span>
       <div className="grid grid-cols-[minmax(140px,auto)_1fr] items-start gap-x-3 gap-y-2.5 sm:grid-cols-[180px_1fr]">
         {groups.map(({ group, items: groupItems }) => (
           <Fragment key={group}>
-            <span className="pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
+            <span className="pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
               {GROUP_LABELS[group]}
             </span>
             <div className="flex flex-wrap items-center gap-2">
@@ -114,11 +114,11 @@ export function ChainAnalysesMap({ items, onSelect }: ChainAnalysesMapProps) {
                       className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
                         isActive
                           ? "border-emerald-300/40 bg-emerald-400/10 text-emerald-100"
-                          : "border-white/10 bg-white/[0.03] text-zinc-300 hover:border-cyan-300/30 hover:bg-cyan-400/10 hover:text-cyan-100"
+                          : "border-border/10 bg-border/[0.03] text-ink-body hover:border-cyan-300/30 hover:bg-cyan-400/10 hover:text-cyan-100"
                       }`}
                     >
                       {item.kind === "aprofundamento" ? (
-                        <ChevronRight className="h-3 w-3 shrink-0 text-zinc-500" />
+                        <ChevronRight className="h-3 w-3 shrink-0 text-ink-faint" />
                       ) : null}
                       {item.label}
                     </button>
@@ -126,7 +126,7 @@ export function ChainAnalysesMap({ items, onSelect }: ChainAnalysesMapProps) {
                       id={`${item.id}-map-tooltip`}
                       role="tooltip"
                       data-open={activeTooltipId === item.id}
-                      className={`pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-60 -translate-x-1/2 rounded-lg border border-white/10 bg-zinc-950/95 p-2.5 text-left text-[11px] leading-snug text-zinc-300 shadow-2xl backdrop-blur-xl transition-opacity duration-150 ${
+                      className={`pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-60 -translate-x-1/2 rounded-lg border border-border/10 bg-surface-0/95 p-2.5 text-left text-[11px] leading-snug text-ink-body shadow-2xl backdrop-blur-xl transition-opacity duration-150 ${
                         activeTooltipId === item.id ? "opacity-100" : "opacity-0"
                       }`}
                     >

@@ -161,7 +161,7 @@ const usdPerKg = new Intl.NumberFormat("pt-BR", {
 const formatMoneyCompact = (value: number) => (value === 0 ? "US$ 0" : money.format(value));
 
 const number = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
-const glass = "border border-white/[0.08] bg-zinc-900/40 shadow-2xl backdrop-blur-xl";
+const glass = "border border-border/[0.08] bg-surface-1/40 shadow-2xl backdrop-blur-xl";
 
 export default function MainAnalyticalDashboard() {
   const router = useRouter();
@@ -701,7 +701,7 @@ export default function MainAnalyticalDashboard() {
   }, [nibMatrixProducts, selectedChain]);
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100">
+    <main className="min-h-screen bg-surface-0 text-ink-body">
       <HeaderTopBar
         activeChainName={selectedChainMetadata?.name}
         chains={headerChainOptions}
@@ -741,11 +741,11 @@ export default function MainAnalyticalDashboard() {
               Cadeia selecionada
             </p>
             <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <h1 className="truncate text-base font-bold text-white sm:text-lg">
+              <h1 className="truncate text-base font-bold text-ink-heading sm:text-lg">
                 {selectedChainMetadata?.name ?? selectedChain}
               </h1>
               {selectedChainMetadata?.group ? (
-                <span className="text-xs text-zinc-500">{selectedChainMetadata.group}</span>
+                <span className="text-xs text-ink-faint">{selectedChainMetadata.group}</span>
               ) : null}
             </div>
           </div>
@@ -755,7 +755,7 @@ export default function MainAnalyticalDashboard() {
               onClick={() => setChainMenuOpen((current) => !current)}
               aria-expanded={chainMenuOpen}
               aria-haspopup="listbox"
-              className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:bg-white/[0.09] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+              className="flex items-center gap-1.5 rounded-lg border border-border/10 bg-border/[0.05] px-3 py-2 text-xs font-semibold text-ink-body transition hover:bg-border/[0.09] hover:text-ink-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
             >
               Trocar cadeia
               <ChevronDown className={`h-3 w-3 transition-transform ${chainMenuOpen ? "rotate-180" : ""}`} />
@@ -763,12 +763,12 @@ export default function MainAnalyticalDashboard() {
             {chainMenuOpen ? (
               <div
                 role="listbox"
-                className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-xl border border-white/10 bg-zinc-950/95 shadow-2xl backdrop-blur-xl"
+                className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-xl border border-border/10 bg-surface-0/95 shadow-2xl backdrop-blur-xl"
               >
                 <button
                   type="button"
                   onClick={() => { setChainMenuOpen(false); handleClearChain(); }}
-                  className="block w-full border-b border-white/10 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-300"
+                  className="block w-full border-b border-border/10 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-ink-faint transition hover:bg-border/[0.06] hover:text-ink-body"
                 >
                   Ver todas as cadeias (painel inicial)
                 </button>
@@ -780,10 +780,10 @@ export default function MainAnalyticalDashboard() {
                     aria-selected={chain.id === selectedChain}
                     onClick={() => handleQuickChainSwitch(chain.id)}
                     disabled={chain.id === selectedChain}
-                    className={`flex w-full flex-col gap-0.5 px-3 py-2.5 text-left transition ${chain.id === selectedChain ? "cursor-default bg-cyan-400/10 text-cyan-100" : "text-zinc-300 hover:bg-white/[0.06] hover:text-white"}`}
+                    className={`flex w-full flex-col gap-0.5 px-3 py-2.5 text-left transition ${chain.id === selectedChain ? "cursor-default bg-cyan-400/10 text-cyan-100" : "text-ink-body hover:bg-border/[0.06] hover:text-ink-heading"}`}
                   >
                     <span className="text-xs font-semibold">{chain.name}</span>
-                    <span className="text-[10px] text-zinc-500">{chain.group}</span>
+                    <span className="text-[10px] text-ink-faint">{chain.group}</span>
                   </button>
                 ))}
               </div>
@@ -791,14 +791,14 @@ export default function MainAnalyticalDashboard() {
           </div>
         </div>
         </section>
-        <aside className="sticky top-[calc(9.5rem+var(--eplus-shell-h))] z-40 -my-4 flex flex-col gap-2 rounded-xl border border-cyan-300/20 bg-zinc-950/90 px-3 py-2.5 shadow-2xl backdrop-blur-xl md:top-[calc(4.75rem+var(--eplus-shell-h))]" aria-label="Profundidade da análise">
+        <aside className="sticky top-[calc(9.5rem+var(--eplus-shell-h))] z-40 -my-4 flex flex-col gap-2 rounded-xl border border-cyan-300/20 bg-surface-0/90 px-3 py-2.5 shadow-2xl backdrop-blur-xl md:top-[calc(4.75rem+var(--eplus-shell-h))]" aria-label="Profundidade da análise">
           <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="mr-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Profundidade</span>
-              <button type="button" aria-pressed={readingMode === "guided"} title="Cadeia produtiva e diagnóstico essencial" onClick={() => handleReadingModeChange("guided")} className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${readingMode === "guided" ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-200" : "border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white"}`}>Visão executiva</button>
-              <button type="button" aria-pressed={readingMode === "analytical"} title="Mantém a cadeia e acrescenta fluxos, NIB e empregos verdes" onClick={() => handleReadingModeChange("analytical")} className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${readingMode === "analytical" ? "border-cyan-300/30 bg-cyan-400/10 text-cyan-100" : "border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white"}`}>Análises avançadas</button>
+              <span className="mr-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-faint">Profundidade</span>
+              <button type="button" aria-pressed={readingMode === "guided"} title="Cadeia produtiva e diagnóstico essencial" onClick={() => handleReadingModeChange("guided")} className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${readingMode === "guided" ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-200" : "border-border/10 bg-border/[0.03] text-ink-muted hover:text-ink-heading"}`}>Visão executiva</button>
+              <button type="button" aria-pressed={readingMode === "analytical"} title="Mantém a cadeia e acrescenta fluxos, NIB e empregos verdes" onClick={() => handleReadingModeChange("analytical")} className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${readingMode === "analytical" ? "border-cyan-300/30 bg-cyan-400/10 text-cyan-100" : "border-border/10 bg-border/[0.03] text-ink-muted hover:text-ink-heading"}`}>Análises avançadas</button>
             </div>
-            <p aria-live="polite" className="flex items-center gap-1.5 text-[10px] text-zinc-400">
+            <p aria-live="polite" className="flex items-center gap-1.5 text-[10px] text-ink-muted">
               <ChevronDown className="h-3.5 w-3.5 shrink-0 text-cyan-300" /> {modeFeedback}
             </p>
           </div>
@@ -817,13 +817,13 @@ export default function MainAnalyticalDashboard() {
               strategicQuestion={chainStrategicQuestion(selectedChain)}
               beforeAlert={
                 isIaPilotChain && executiveHeroAlert && sovereigntyLeaderInput ? (
-                  <div className="rounded-2xl border border-white/15 bg-zinc-900/40 p-5 shadow-xl backdrop-blur-xl" aria-label="Resumo executivo">
+                  <div className="rounded-2xl border border-border/15 bg-surface-1/40 p-5 shadow-xl backdrop-blur-xl" aria-label="Resumo executivo">
                     <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-300">
                       <Compass className="h-3.5 w-3.5" />
                       Resumo executivo
                     </span>
                     {chainScopeSummary(selectedChain) ? (
-                      <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                      <p className="mt-2 text-sm leading-relaxed text-ink-muted">
                         {chainScopeSummary(selectedChain)}
                       </p>
                     ) : null}
@@ -855,7 +855,7 @@ export default function MainAnalyticalDashboard() {
                         One neutral frame, one accent (cyan, matching the
                         section's own eyebrow above) for every icon/label. */}
                     <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                      <div className="rounded-xl border border-white/10 bg-zinc-950/40 p-4">
+                      <div className="rounded-xl border border-border/10 bg-surface-0/40 p-4">
                         <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-cyan-300">
                           <Award className="h-3.5 w-3.5" />
                           {sovereigntyLeaderInput.trade_balance_usd > 0 ? "Onde o Brasil lidera" : "Menor exposição da cadeia"}
@@ -866,31 +866,31 @@ export default function MainAnalyticalDashboard() {
                             for the least-bad item would just be wrong.
                             Reframe as "smallest gap" instead of hiding the
                             card (which would break the 6-card grid). */}
-                        <p className="mt-2 text-sm leading-snug text-zinc-200">
+                        <p className="mt-2 text-sm leading-snug text-ink-body">
                           {sovereigntyLeaderInput.trade_balance_usd > 0 ? (
                             <>
-                              <strong className="font-semibold text-white">{sovereigntyLeaderInput.label}</strong> — soberania plena, superávit de {formatMoneyCompact(sovereigntyLeaderInput.trade_balance_usd)}.
+                              <strong className="font-semibold text-ink-heading">{sovereigntyLeaderInput.label}</strong> — soberania plena, superávit de {formatMoneyCompact(sovereigntyLeaderInput.trade_balance_usd)}.
                             </>
                           ) : (
                             <>
-                              <strong className="font-semibold text-white">{sovereigntyLeaderInput.label}</strong> — menor déficit da cadeia ({formatMoneyCompact(Math.abs(sovereigntyLeaderInput.trade_balance_usd))}); nenhum insumo mapeado tem saldo positivo hoje.
+                              <strong className="font-semibold text-ink-heading">{sovereigntyLeaderInput.label}</strong> — menor déficit da cadeia ({formatMoneyCompact(Math.abs(sovereigntyLeaderInput.trade_balance_usd))}); nenhum insumo mapeado tem saldo positivo hoje.
                             </>
                           )}
                         </p>
                       </div>
-                      <div className="rounded-xl border border-white/10 bg-zinc-950/40 p-4">
+                      <div className="rounded-xl border border-border/10 bg-surface-0/40 p-4">
                         <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-cyan-300">
                           <CheckCircle2 className="h-3.5 w-3.5" /> Veredito geral
                         </span>
-                        <p className="mt-2 text-sm leading-snug text-zinc-200">
-                          <strong className="font-semibold text-white">{headerAlertCount ?? 0} de {solarSovereignty?.inputs.length}</strong> insumos mapeados cruzam hoje o limiar real de dependência crítica (75%).
+                        <p className="mt-2 text-sm leading-snug text-ink-body">
+                          <strong className="font-semibold text-ink-heading">{headerAlertCount ?? 0} de {solarSovereignty?.inputs.length}</strong> insumos mapeados cruzam hoje o limiar real de dependência crítica (75%).
                         </p>
                       </div>
                       {executiveHeroKpis[0] ? (
-                        <div className="rounded-xl border border-white/10 bg-zinc-950/40 p-4">
+                        <div className="rounded-xl border border-border/10 bg-surface-0/40 p-4">
                           <span className="text-[10px] font-semibold uppercase tracking-wider text-cyan-300">{executiveHeroKpis[0].label}</span>
-                          <div className="mt-1 font-mono text-2xl font-extrabold text-zinc-100">{executiveHeroKpis[0].value}</div>
-                          <span className="mt-0.5 block text-[11px] text-zinc-400">{executiveHeroKpis[0].note}</span>
+                          <div className="mt-1 font-mono text-2xl font-extrabold text-ink-body">{executiveHeroKpis[0].value}</div>
+                          <span className="mt-0.5 block text-[11px] text-ink-muted">{executiveHeroKpis[0].note}</span>
                         </div>
                       ) : null}
                       {/* Teaser cards, same compact language as the stat cards
@@ -901,15 +901,15 @@ export default function MainAnalyticalDashboard() {
                         <button
                           type="button"
                           onClick={() => handleJumpToSection("tour-powershoring", false)}
-                          className="rounded-xl border border-white/10 bg-zinc-950/40 p-4 text-left transition hover:border-cyan-300/30 hover:bg-cyan-400/10"
+                          className="rounded-xl border border-border/10 bg-surface-0/40 p-4 text-left transition hover:border-cyan-300/30 hover:bg-cyan-400/10"
                         >
                           <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-cyan-300">
                             <Scale className="h-3.5 w-3.5" /> Assimetria de valor por quilo
                           </span>
-                          <p className="mt-2 text-2xl font-extrabold text-white">
+                          <p className="mt-2 text-2xl font-extrabold text-ink-heading">
                             {chainValueAsymmetry.ratio.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}x
                           </p>
-                          <p className="mt-1 text-[11px] leading-snug text-zinc-400">
+                          <p className="mt-1 text-[11px] leading-snug text-ink-muted">
                             Exporta {chainValueAsymmetry.exportInputLabel} · {usdPerKg.format(chainValueAsymmetry.exportPricePerKg)}/kg — Reimporta {chainValueAsymmetry.importInputLabel} · {usdPerKg.format(chainValueAsymmetry.importPricePerKg)}/kg
                           </p>
                         </button>
@@ -918,22 +918,22 @@ export default function MainAnalyticalDashboard() {
                         <button
                           type="button"
                           onClick={() => handleJumpToSection("tour-green-jobs", true)}
-                          className="rounded-xl border border-white/10 bg-zinc-950/40 p-4 text-left transition hover:border-cyan-300/30 hover:bg-cyan-400/10"
+                          className="rounded-xl border border-border/10 bg-surface-0/40 p-4 text-left transition hover:border-cyan-300/30 hover:bg-cyan-400/10"
                         >
                           <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-cyan-300">
                             <Users className="h-3.5 w-3.5" /> Empregos verdes
                           </span>
-                          <p className="mt-2 text-2xl font-extrabold text-white">
+                          <p className="mt-2 text-2xl font-extrabold text-ink-heading">
                             {number.format(solarSovereignty.green_jobs.formal_jobs_in_tsb_activities)}
                           </p>
-                          <p className="mt-1 text-[11px] leading-snug text-zinc-400">vínculos formais RAIS na cadeia</p>
+                          <p className="mt-1 text-[11px] leading-snug text-ink-muted">vínculos formais RAIS na cadeia</p>
                         </button>
                       ) : null}
                       {executiveHeroKpis[1] ? (
-                        <div className="rounded-xl border border-white/10 bg-zinc-950/40 p-4">
+                        <div className="rounded-xl border border-border/10 bg-surface-0/40 p-4">
                           <span className="text-[10px] font-semibold uppercase tracking-wider text-cyan-300">{executiveHeroKpis[1].label}</span>
-                          <div className="mt-1 font-mono text-2xl font-extrabold text-zinc-100">{executiveHeroKpis[1].value}</div>
-                          <span className="mt-0.5 block text-[11px] text-zinc-400">{executiveHeroKpis[1].note}</span>
+                          <div className="mt-1 font-mono text-2xl font-extrabold text-ink-body">{executiveHeroKpis[1].value}</div>
+                          <span className="mt-0.5 block text-[11px] text-ink-muted">{executiveHeroKpis[1].note}</span>
                         </div>
                       ) : null}
                     </div>
@@ -1024,15 +1024,15 @@ export default function MainAnalyticalDashboard() {
               >
                 {isIaPilotChain && curatedVulnerabilityStats ? (
                   <div className="mb-4 flex flex-wrap gap-3">
-                    <div className="flex-1 min-w-[160px] rounded-xl border border-white/10 bg-zinc-950/50 px-3 py-2.5">
-                      <span className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Dependência média</span>
+                    <div className="flex-1 min-w-[160px] rounded-xl border border-border/10 bg-surface-0/50 px-3 py-2.5">
+                      <span className="block text-[10px] font-semibold uppercase tracking-wider text-ink-faint">Dependência média</span>
                       <span className="mt-1 block font-mono text-lg font-extrabold text-amber-300">{number.format(curatedVulnerabilityStats.avgDependency)}%</span>
-                      <span className="block text-[10px] text-zinc-500">Razão importação / consumo aparente, cadeia inteira</span>
+                      <span className="block text-[10px] text-ink-faint">Razão importação / consumo aparente, cadeia inteira</span>
                     </div>
-                    <div className="flex-1 min-w-[160px] rounded-xl border border-white/10 bg-zinc-950/50 px-3 py-2.5">
-                      <span className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Concentração máxima (HHI)</span>
+                    <div className="flex-1 min-w-[160px] rounded-xl border border-border/10 bg-surface-0/50 px-3 py-2.5">
+                      <span className="block text-[10px] font-semibold uppercase tracking-wider text-ink-faint">Concentração máxima (HHI)</span>
                       <span className="mt-1 block font-mono text-lg font-extrabold text-red-400">{number.format(curatedVulnerabilityStats.maxHhi)}</span>
-                      <span className="block truncate text-[10px] text-zinc-500">{curatedVulnerabilityStats.maxHhiProductName}</span>
+                      <span className="block truncate text-[10px] text-ink-faint">{curatedVulnerabilityStats.maxHhiProductName}</span>
                     </div>
                   </div>
                 ) : null}
@@ -1172,16 +1172,16 @@ function ExpandableAnalyticsPanel({
   defaultOpen?: boolean;
 }) {
   return (
-    <details id={id} open={defaultOpen} className="group scroll-mt-[calc(10rem+var(--eplus-shell-h))] rounded-2xl border border-white/[0.08] bg-zinc-900/30 shadow-xl backdrop-blur-xl md:scroll-mt-[calc(8rem+var(--eplus-shell-h))]">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-2xl px-5 py-4 transition hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 [&::-webkit-details-marker]:hidden">
+    <details id={id} open={defaultOpen} className="group scroll-mt-[calc(10rem+var(--eplus-shell-h))] rounded-2xl border border-border/[0.08] bg-surface-1/30 shadow-xl backdrop-blur-xl md:scroll-mt-[calc(8rem+var(--eplus-shell-h))]">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-2xl px-5 py-4 transition hover:bg-border/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 [&::-webkit-details-marker]:hidden">
         <span>
           <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">{eyebrow}</span>
-          <span className="mt-1 block text-base font-bold text-white">{title}</span>
-          <span className="mt-1 block text-xs font-normal text-zinc-400">{subtitle}</span>
+          <span className="mt-1 block text-base font-bold text-ink-heading">{title}</span>
+          <span className="mt-1 block text-xs font-normal text-ink-muted">{subtitle}</span>
         </span>
-        <ChevronDown className="h-5 w-5 shrink-0 text-zinc-400 transition-transform duration-200 group-open:rotate-180" />
+        <ChevronDown className="h-5 w-5 shrink-0 text-ink-muted transition-transform duration-200 group-open:rotate-180" />
       </summary>
-      <div className="border-t border-white/[0.07] p-4 sm:p-5">{children}</div>
+      <div className="border-t border-border/[0.07] p-4 sm:p-5">{children}</div>
     </details>
   );
 }
@@ -1205,7 +1205,7 @@ function MacroModuleHeader({
   return (
     <div className={`border-l-2 ${borderColor} pl-4`}>
       <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${textColor}`}>{eyebrow}</p>
-      <h2 className="mt-2 text-2xl font-bold tracking-tight text-white">{title}</h2>
+      <h2 className="mt-2 text-2xl font-bold tracking-tight text-ink-heading">{title}</h2>
     </div>
   );
 }
@@ -1240,7 +1240,7 @@ function RouteLink({ href, icon: Icon, label }: { href: string; icon: typeof Com
   return (
     <Link
       href={href}
-      className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/[0.1] bg-white/[0.05] px-3 text-zinc-100 transition hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+      className="inline-flex h-10 items-center gap-2 rounded-lg border border-border/[0.1] bg-border/[0.05] px-3 text-ink-body transition hover:bg-border/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
     >
       <Icon className="h-4 w-4" strokeWidth={1.6} />
       {label}
@@ -1262,12 +1262,12 @@ function RouteCard({
   return (
     <Link
       href={href}
-      className="block rounded-lg border border-white/[0.08] bg-white/[0.04] p-4 transition hover:border-emerald-500/30 hover:bg-emerald-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+      className="block rounded-lg border border-border/[0.08] bg-border/[0.04] p-4 transition hover:border-emerald-500/30 hover:bg-emerald-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-bold text-white">{title}</h3>
-          <p className="mt-1 text-sm leading-6 text-zinc-400">{body}</p>
+          <h3 className="text-sm font-bold text-ink-heading">{title}</h3>
+          <p className="mt-1 text-sm leading-6 text-ink-muted">{body}</p>
         </div>
         {current ? (
           <span className="rounded-md border border-emerald-300/20 bg-emerald-400/10 px-2 py-1 text-xs font-semibold text-emerald-200">
@@ -1304,12 +1304,12 @@ function StateShell({
     return (
       <div className={`${glass} rounded-lg p-8 text-center`}>
         <ShieldAlert className="mx-auto h-10 w-10 text-amber-300" strokeWidth={1.5} />
-        <h2 className="mt-4 text-xl font-bold tracking-tight text-white">Painel indisponível</h2>
-        <p className="mx-auto mt-2 max-w-xl text-sm text-zinc-400">{error}</p>
+        <h2 className="mt-4 text-xl font-bold tracking-tight text-ink-heading">Painel indisponível</h2>
+        <p className="mx-auto mt-2 max-w-xl text-sm text-ink-muted">{error}</p>
         <button
           type="button"
           onClick={onRetry}
-          className="mt-6 inline-flex items-center gap-2 rounded-lg border border-white/[0.12] bg-white/[0.06] px-4 py-2 text-sm font-medium text-white outline-none transition hover:bg-white/[0.1] focus-visible:ring-2 focus-visible:ring-cyan-300"
+          className="mt-6 inline-flex items-center gap-2 rounded-lg border border-border/[0.12] bg-border/[0.06] px-4 py-2 text-sm font-medium text-ink-heading outline-none transition hover:bg-border/[0.1] focus-visible:ring-2 focus-visible:ring-cyan-300"
         >
           <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
           Tentar novamente
@@ -1322,8 +1322,8 @@ function StateShell({
     return (
       <div className={`${glass} rounded-lg p-8 text-center`}>
         <Factory className="mx-auto h-10 w-10 text-cyan-300" strokeWidth={1.5} />
-        <h2 className="mt-4 text-xl font-bold tracking-tight text-white">Sem produtos publicados</h2>
-        <p className="mx-auto mt-2 max-w-xl text-sm text-zinc-400">
+        <h2 className="mt-4 text-xl font-bold tracking-tight text-ink-heading">Sem produtos publicados</h2>
+        <p className="mx-auto mt-2 max-w-xl text-sm text-ink-muted">
           A rota raiz está pronta, mas a API central ainda não retornou produtos para resumir.
         </p>
       </div>

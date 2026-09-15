@@ -610,38 +610,38 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
     : currentChain.hhiGlobal;
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-zinc-800/60 bg-zinc-900/40 p-6 text-zinc-100 shadow-2xl backdrop-blur-xl md:p-8">
+    <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-surface-1/40 p-6 text-ink-body shadow-2xl backdrop-blur-xl md:p-8">
       <div className="pointer-events-none absolute left-[65%] top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-red-600/5 blur-3xl" />
 
-      <header className="relative mb-8 flex flex-col justify-between gap-4 border-b border-zinc-800/80 pb-6 md:flex-row md:items-end">
+      <header className="relative mb-8 flex flex-col justify-between gap-4 border-b border-border/80 pb-6 md:flex-row md:items-end">
         <div>
           <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-red-400">
             <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
             Espinha Dorsal · Geopolítica de Estado
           </p>
-          <h2 className="mt-2 text-2xl font-bold tracking-tight text-white">
+          <h2 className="mt-2 text-2xl font-bold tracking-tight text-ink-heading">
             Plataforma analítica de soberania produtiva
           </h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-muted">
             {chainId ? "Conecte etapas produtivas e gargalos ao diagnóstico quantitativo desta cadeia." : "Compare border hops e gargalos estruturais nas cadeias da transição energética."}
           </p>
         </div>
         <div className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-right">
-          <span className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+          <span className="block text-[10px] font-semibold uppercase tracking-wider text-ink-muted">
             Concentração global
           </span>
           <strong className="font-mono text-sm text-red-300">HHI {dynamicHhiGlobal}</strong>
         </div>
       </header>
 
-      <div className="relative z-40 mb-8 flex flex-col gap-4 rounded-2xl border border-zinc-800/80 bg-zinc-950/45 p-4 md:flex-row md:items-center md:justify-between">
+      <div className="relative z-40 mb-8 flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface-0/45 p-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
           <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-2.5 text-cyan-300">
             <SlidersHorizontal className="h-5 w-5" />
           </div>
           <div>
-            <span className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Cadeia ativa</span>
-            <strong className="text-sm text-white">{currentChain.name}</strong>
+            <span className="block text-[10px] font-semibold uppercase tracking-wider text-ink-faint">Cadeia ativa</span>
+            <strong className="text-sm text-ink-heading">{currentChain.name}</strong>
           </div>
         </div>
         {!chainId ? <div className="relative md:w-96">
@@ -649,7 +649,7 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
             type="button"
             aria-expanded={isPickerOpen}
             onClick={() => setIsPickerOpen((isOpen) => !isOpen)}
-            className="flex w-full items-center justify-between rounded-xl border border-zinc-700/80 bg-zinc-950/80 px-4 py-2.5 text-left text-xs text-zinc-200 outline-none transition hover:border-zinc-500 focus-visible:ring-2 focus-visible:ring-cyan-300"
+            className="flex w-full items-center justify-between rounded-xl border border-border/80 bg-surface-0/80 px-4 py-2.5 text-left text-xs text-ink-body outline-none transition hover:border-border/40 focus-visible:ring-2 focus-visible:ring-cyan-300"
           >
             <span className="truncate">{currentChain.name}</span>
             <ChevronDown className={`h-4 w-4 transition ${isPickerOpen ? "rotate-180" : ""}`} />
@@ -660,16 +660,16 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
-                className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-full overflow-hidden rounded-2xl border border-zinc-700/80 bg-zinc-950/95 p-2 shadow-2xl backdrop-blur-2xl"
+                className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-full overflow-hidden rounded-2xl border border-border/80 bg-surface-0/95 p-2 shadow-2xl backdrop-blur-2xl"
               >
                 <label className="relative mb-2 block">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-ink-faint" />
                   <span className="sr-only">Buscar cadeia</span>
                   <input
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     placeholder="Buscar cadeia ou tecnologia..."
-                    className="w-full rounded-xl border border-zinc-800 bg-zinc-900 py-2 pl-9 pr-3 text-xs text-zinc-200 outline-none focus:border-cyan-500/50"
+                    className="w-full rounded-xl border border-border bg-surface-1 py-2 pl-9 pr-3 text-xs text-ink-body outline-none focus:border-cyan-500/50"
                   />
                 </label>
                 <div className="max-h-64 space-y-1 overflow-y-auto">
@@ -683,13 +683,13 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
                         setSearchQuery("");
                         setSelectedNodeId(null);
                       }}
-                      className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs transition ${chain.id === currentChain.id ? "border border-cyan-500/30 bg-cyan-500/10" : "hover:bg-zinc-900"}`}
+                      className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs transition ${chain.id === currentChain.id ? "border border-cyan-500/30 bg-cyan-500/10" : "hover:bg-surface-1"}`}
                     >
-                      <span><strong className="block text-zinc-100">{chain.name}</strong><span className="text-[10px] text-zinc-500">{chain.category}</span></span>
+                      <span><strong className="block text-ink-body">{chain.name}</strong><span className="text-[10px] text-ink-faint">{chain.category}</span></span>
                       {chain.id === currentChain.id ? <Check className="h-4 w-4 text-cyan-300" /> : null}
                     </button>
                   ))}
-                  {!filteredChains.length ? <p className="px-3 py-4 text-center text-xs text-zinc-500">Nenhuma cadeia encontrada.</p> : null}
+                  {!filteredChains.length ? <p className="px-3 py-4 text-center text-xs text-ink-faint">Nenhuma cadeia encontrada.</p> : null}
                 </div>
               </motion.div>
             ) : null}
@@ -699,7 +699,7 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
 
       <div className="relative mb-4 flex items-center gap-2">
         <Layers className="h-4 w-4 text-amber-400" />
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-300">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-ink-body">
           Espinha Dorsal de Transformação · {currentChain.name}
         </h3>
       </div>
@@ -713,7 +713,7 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
           return (
             <div key={node.id} className="group/node relative flex">
               {index < resolvedNodes.length - 1 ? (
-                <ArrowRight className="absolute -right-4 top-1/2 z-20 hidden h-5 w-5 -translate-y-1/2 text-zinc-600 md:block" />
+                <ArrowRight className="absolute -right-4 top-1/2 z-20 hidden h-5 w-5 -translate-y-1/2 text-ink-faint md:block" />
               ) : null}
 
               {/* Tooltip de Estado — risco geopolítico do elo, em glassmorphism.
@@ -724,7 +724,7 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
               {isChokepoint && node.alertMessage && selectedNodeId !== node.id ? (
                 <div
                   role="tooltip"
-                  className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-3 w-64 -translate-x-1/2 rounded-xl border border-red-500/30 bg-zinc-950/95 p-3.5 text-xs leading-relaxed text-zinc-200 opacity-0 shadow-2xl backdrop-blur-xl transition-opacity duration-200 group-hover/node:opacity-100 group-focus-within/node:opacity-100"
+                  className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-3 w-64 -translate-x-1/2 rounded-xl border border-red-500/30 bg-surface-0/95 p-3.5 text-xs leading-relaxed text-ink-body opacity-0 shadow-2xl backdrop-blur-xl transition-opacity duration-200 group-hover/node:opacity-100 group-focus-within/node:opacity-100"
                 >
                   <span className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-red-400">
                     <ShieldAlert className="h-3.5 w-3.5" />
@@ -764,37 +764,37 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
                 className={`relative flex min-h-64 w-full cursor-pointer flex-col rounded-2xl border p-5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-cyan-300 ${selectedNodeId === node.id ? "ring-2 ring-cyan-300/70" : ""} ${
                   isChokepoint
                     ? "bg-red-950/25"
-                    : "border-white/[0.08] bg-zinc-900/40 backdrop-blur-xl hover:border-zinc-700"
+                    : "border-border/[0.08] bg-surface-1/40 backdrop-blur-xl hover:border-border"
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="rounded-full border border-zinc-700/70 bg-zinc-900/80 px-2 py-0.5 text-[10px] font-medium text-zinc-400">
+                  <span className="rounded-full border border-border/70 bg-surface-1/80 px-2 py-0.5 text-[10px] font-medium text-ink-muted">
                     Etapa {index + 1}
                   </span>
-                  <span className="text-xs text-zinc-300">{node.flag} {node.country}</span>
+                  <span className="text-xs text-ink-body">{node.flag} {node.country}</span>
                 </div>
                 <div className="mt-5 flex items-start gap-3">
                   <div className={`rounded-xl border p-2.5 ${isChokepoint ? "border-red-500/40 bg-red-500/15 text-red-300" : "border-cyan-500/25 bg-cyan-500/10 text-cyan-300"}`}>
                     <Icon className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{node.stage}</p>
-                    <h3 className="mt-1 text-sm font-bold leading-snug text-white">{node.name}</h3>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{node.stage}</p>
+                    <h3 className="mt-1 text-sm font-bold leading-snug text-ink-heading">{node.name}</h3>
                   </div>
                 </div>
                 {node.cardBullets?.length ? (
                   <ul className="mt-4 flex-1 space-y-2">
                     {node.cardBullets.map((bullet) => (
-                      <li key={bullet.label} className="text-xs leading-5 text-zinc-400">
-                        <span className="font-semibold text-zinc-200">{bullet.label}: </span>
+                      <li key={bullet.label} className="text-xs leading-5 text-ink-muted">
+                        <span className="font-semibold text-ink-body">{bullet.label}: </span>
                         {bullet.text}
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="mt-4 flex-1 text-xs leading-5 text-zinc-400">{node.description}</p>
+                  <p className="mt-4 flex-1 text-xs leading-5 text-ink-muted">{node.description}</p>
                 )}
-                <div className="mt-4 border-t border-zinc-800/70 pt-3">
+                <div className="mt-4 border-t border-border/70 pt-3">
                   {isChokepoint ? (
                     <Status icon={ShieldAlert} label={node.isVulnerable ? "Gargalo de Soberania" : "Concentração Crítica"} className="text-red-300" />
                   ) : (
@@ -802,7 +802,7 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
                   )}
                   {node.id === "steel_reduction_br" ? (
                     <div
-                      className="mt-2.5 flex items-center gap-1.5 border-t border-zinc-800/50 pt-2.5 text-[10px] font-medium text-emerald-200/80"
+                      className="mt-2.5 flex items-center gap-1.5 border-t border-border/50 pt-2.5 text-[10px] font-medium text-emerald-200/80"
                       title="Matriz elétrica nacional (SIN): >84% renovável (BEN/EPE). A rota elétrica (EAF, forno a arco) usa cerca de 1/8 da energia da rota integrada a coque -- comparação de intensidade energética por rota (IEA Iron and Steel Technology Roadmap / World Steel Association) disponível no balanço de massa e energia abaixo."
                     >
                       <Plug className="h-3.5 w-3.5 shrink-0" />
@@ -824,21 +824,21 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
             initial={{ opacity: 0, height: 0, y: -8 }}
             animate={{ opacity: 1, height: "auto", y: 0 }}
             exit={{ opacity: 0, height: 0, y: -8 }}
-            className="relative mt-8 overflow-hidden rounded-2xl border border-cyan-300/20 bg-zinc-950/75 p-5 shadow-2xl backdrop-blur-xl"
+            className="relative mt-8 overflow-hidden rounded-2xl border border-cyan-300/20 bg-surface-0/75 p-5 shadow-2xl backdrop-blur-xl"
           >
             <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
               <div className="max-w-3xl">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Etapa selecionada · detalhe da cadeia</p>
-                <h3 className="mt-2 text-xl font-bold text-white">{selectedNode.name}</h3>
-                <p className="mt-1 text-xs text-zinc-500">{selectedNode.stage} · {selectedNode.country}</p>
-                <p className="mt-4 text-sm leading-6 text-zinc-300">{selectedNode.description}</p>
+                <h3 className="mt-2 text-xl font-bold text-ink-heading">{selectedNode.name}</h3>
+                <p className="mt-1 text-xs text-ink-faint">{selectedNode.stage} · {selectedNode.country}</p>
+                <p className="mt-4 text-sm leading-6 text-ink-body">{selectedNode.description}</p>
                 {selectedNode.detailBullets?.length ? (
                   <ol className="mt-3 space-y-2">
                     {selectedNode.detailBullets.map((bullet, index) => (
-                      <li key={bullet.label} className="flex gap-2 text-sm leading-6 text-zinc-300">
+                      <li key={bullet.label} className="flex gap-2 text-sm leading-6 text-ink-body">
                         <span className="font-mono text-xs text-cyan-300">{index + 1}.</span>
                         <span>
-                          <span className="font-semibold text-zinc-100">{bullet.label}: </span>
+                          <span className="font-semibold text-ink-body">{bullet.label}: </span>
                           {bullet.text}
                         </span>
                       </li>
@@ -853,7 +853,7 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
                 ) : null}
                 {selectedNode.relatedDestinations?.length ? (
                   <div className="mt-5">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Destinos e aplicações mapeados</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-faint">Destinos e aplicações mapeados</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {selectedNode.relatedDestinations.map((destination) => (
                         <span key={destination} className="rounded-lg border border-emerald-300/15 bg-emerald-400/[0.07] px-2.5 py-1.5 text-xs text-emerald-100">
@@ -861,25 +861,25 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
                         </span>
                       ))}
                     </div>
-                    <p className="mt-3 text-[10px] leading-4 text-zinc-600">Os destinos são tecnológicos e qualitativos; a largura do Sankey representa a fatura de importação/exportação dos insumos, não a participação do consumo por modal.</p>
+                    <p className="mt-3 text-[10px] leading-4 text-ink-faint">Os destinos são tecnológicos e qualitativos; a largura do Sankey representa a fatura de importação/exportação dos insumos, não a participação do consumo por modal.</p>
                   </div>
                 ) : null}
                 {selectedNode.relatedInputs?.length ? (
                   <div className="mt-5">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Insumos e componentes relacionados</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-faint">Insumos e componentes relacionados</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {selectedNode.relatedInputs.map((input) => (
                         <button
                           type="button"
                           key={input}
                           onClick={() => onAnalysisFocus?.({ nodeId: selectedNode.id, stage: selectedNode.stage, input })}
-                          className="rounded-lg border border-white/[0.08] bg-white/[0.05] px-2.5 py-1.5 text-xs text-zinc-300 transition hover:border-cyan-300/30 hover:bg-cyan-400/10 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                          className="rounded-lg border border-border/[0.08] bg-border/[0.05] px-2.5 py-1.5 text-xs text-ink-body transition hover:border-cyan-300/30 hover:bg-cyan-400/10 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
                         >
                           {input}
                         </button>
                       ))}
                     </div>
-                    <p className="mt-3 text-[10px] leading-4 text-zinc-600">Selecione um insumo para localizar sua evidência no diagnóstico de soberania.</p>
+                    <p className="mt-3 text-[10px] leading-4 text-ink-faint">Selecione um insumo para localizar sua evidência no diagnóstico de soberania.</p>
                   </div>
                 ) : null}
                 <button
@@ -893,7 +893,7 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
                 <button
                   type="button"
                   onClick={() => onAnalysisFocus?.({ nodeId: "all", stage: "Todas as etapas" })}
-                  className="ml-2 mt-5 inline-flex items-center rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                  className="ml-2 mt-5 inline-flex items-center rounded-lg border border-border/10 bg-border/[0.04] px-3 py-2 text-xs font-semibold text-ink-body transition hover:bg-border/[0.08] hover:text-ink-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
                 >
                   Ver todas as etapas
                 </button>
@@ -917,7 +917,7 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
         <div className="relative mt-8">
           <div className="mb-4 flex items-center gap-2">
             <Component className="h-4 w-4 text-amber-400" />
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-300">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-ink-body">
               Insumos e Subcomponentes Paralelos
             </h3>
           </div>
@@ -927,20 +927,20 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
               return (
                 <div
                   key={item.id}
-                  className="flex h-full flex-col rounded-2xl border border-white/[0.08] bg-zinc-900/40 p-5 backdrop-blur-xl transition hover:border-white/20"
+                  className="flex h-full flex-col rounded-2xl border border-border/[0.08] bg-surface-1/40 p-5 backdrop-blur-xl transition hover:border-border/20"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <div className="rounded-xl border border-zinc-700/60 bg-zinc-800/80 p-2.5 text-zinc-300">
+                    <div className="rounded-xl border border-border/60 bg-surface-1/80 p-2.5 text-ink-body">
                       <ParallelIcon className="h-5 w-5" />
                     </div>
                     <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${parallelRiskClass[item.risk]}`}>
                       {parallelRiskLabel[item.risk]}
                     </span>
                   </div>
-                  <h4 className="mt-4 text-sm font-bold text-white">{item.name}</h4>
-                  <p className="mt-1.5 text-xs leading-5 text-zinc-400">{item.description}</p>
+                  <h4 className="mt-4 text-sm font-bold text-ink-heading">{item.name}</h4>
+                  <p className="mt-1.5 text-xs leading-5 text-ink-muted">{item.description}</p>
                   {item.ncmOutsideChain ? (
-                    <p className="mt-2 border-t border-white/10 pt-2 font-mono text-[10px] leading-4 text-amber-300/80">
+                    <p className="mt-2 border-t border-border/10 pt-2 font-mono text-[10px] leading-4 text-amber-300/80">
                       {item.ncmOutsideChain}
                     </p>
                   ) : null}
@@ -952,7 +952,7 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
       ) : null}
 
       {topExposure ? (
-        <div className="relative mt-10 flex flex-col gap-4 rounded-2xl border border-red-500/25 bg-zinc-950/65 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative mt-10 flex flex-col gap-4 rounded-2xl border border-red-500/25 bg-surface-0/65 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-4">
             <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0 text-red-400" />
             <div>
@@ -960,10 +960,10 @@ export function AipnetSystemsFlow({ chainId, inputs = [], onAnalysisFocus, onVie
                 Ponte para o diagnóstico quantitativo
                 {selectedStageTopExposure && selectedNode ? ` · ${selectedNode.name}` : ""}
               </p>
-              <h3 className="mt-1 text-sm font-bold text-white">
+              <h3 className="mt-1 text-sm font-bold text-ink-heading">
                 Maior exposição {selectedStageTopExposure ? "desta etapa" : "mensurada"}: {topExposure.input.label}
               </h3>
-              <p className="mt-2 max-w-4xl text-xs leading-5 text-zinc-400">
+              <p className="mt-2 max-w-4xl text-xs leading-5 text-ink-muted">
                 {topExposure.metric}: <strong className="font-mono text-red-300">{(Math.min(topExposure.value, 1) * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</strong>. Consulte fornecedores, HHI, comércio e ressalvas metodológicas no diagnóstico abaixo.
               </p>
             </div>
@@ -993,8 +993,8 @@ function Status({ icon: Icon, label, className }: { icon: ElementType; label: st
 
 function DetailMetric({ label, value, className = "" }: { label: string; value: string; className?: string }) {
   return (
-    <div className={`rounded-xl border border-white/[0.07] bg-white/[0.04] p-3 ${className}`}>
-      <span className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{label}</span>
+    <div className={`rounded-xl border border-border/[0.07] bg-border/[0.04] p-3 ${className}`}>
+      <span className="block text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{label}</span>
       <strong className="mt-1 block text-sm">{value}</strong>
     </div>
   );
