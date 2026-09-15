@@ -36,6 +36,28 @@ const config: Config = {
           line: "rgba(167,139,250,0.30)",
           text: "#c4b5fd",
         },
+        // Tokens do toggle claro/escuro (Fase A) -- ligados a variáveis CSS
+        // (app/globals.css) que trocam de valor sob `html.light`. Nomeado
+        // "ink", não "text", para não colidir com as utilities text-{size}.
+        // Aviso: o modificador de opacidade do Tailwind (ex. bg-surface-0/50)
+        // não funciona sobre estes tokens (o valor já é hex/rgba via var()) --
+        // cada opacidade usada precisa ser seu próprio token, como já feito
+        // abaixo com surface-0/1/2.
+        surface: {
+          0: "var(--surface-0)",
+          1: "var(--surface-1)",
+          2: "var(--surface-2)",
+        },
+        border: {
+          DEFAULT: "var(--border-default)",
+          subtle: "var(--border-subtle)",
+        },
+        ink: {
+          heading: "var(--text-heading)",
+          body: "var(--text-body)",
+          muted: "var(--text-muted)",
+          faint: "var(--text-faint)",
+        },
       },
     },
   },

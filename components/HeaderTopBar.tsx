@@ -13,6 +13,7 @@ import {
   Sparkles,
   Zap,
 } from "lucide-react";
+import { ThemeToggle } from "./ThemeToggle";
 
 export type HeaderChainOption = { id: string; name: string; group: string };
 export type HeaderNcmShortcut = { id: string; code: string; label: string; riskLabel: string };
@@ -186,6 +187,8 @@ export function HeaderTopBar({
               <Download className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Exportar</span>
             </button>
+
+            <ThemeToggle />
           </div>
         </div>
       </header>
