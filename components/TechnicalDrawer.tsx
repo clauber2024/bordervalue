@@ -15,7 +15,7 @@ type TechnicalDrawerProps = {
 };
 
 const glass =
-  "border border-white/[0.08] bg-zinc-900/40 shadow-2xl shadow-black/25 backdrop-blur-xl";
+  "border border-border/[0.08] bg-surface-1/40 shadow-2xl shadow-black/25 backdrop-blur-xl";
 
 export function TechnicalDrawer({ data, solarInputs, solarMethodologyVersion, className = "" }: TechnicalDrawerProps) {
   const hasCrosswalk = Boolean(solarInputs?.length);
@@ -38,19 +38,19 @@ export function TechnicalDrawer({ data, solarInputs, solarMethodologyVersion, cl
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
               Rastreabilidade e Detalhe Técnico
             </p>
-            <h2 className="mt-1 text-lg font-bold tracking-tight text-white">
+            <h2 className="mt-1 text-lg font-bold tracking-tight text-ink-heading">
               Cruzamentos NCM, CNAE, PRODLIST e alertas metodológicos
             </h2>
           </div>
           <ChevronDown
-            className="h-5 w-5 shrink-0 text-zinc-400 transition group-open:rotate-180"
+            className="h-5 w-5 shrink-0 text-ink-muted transition group-open:rotate-180"
             strokeWidth={1.7}
           />
         </summary>
 
-        <div className="border-t border-white/[0.08] px-4 pb-5 pt-4 sm:px-5">
+        <div className="border-t border-border/[0.08] px-4 pb-5 pt-4 sm:px-5">
           <div className="flex flex-col gap-3 pb-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="grid gap-3 text-sm text-zinc-300 sm:grid-cols-3">
+            <div className="grid gap-3 text-sm text-ink-body sm:grid-cols-3">
               <TraceabilitySummary label="Produtos rastreados" value={String(data.length)} />
               <TraceabilitySummary label="Anos de referência" value={referenceYears.join(", ")} />
               <TraceabilitySummary
@@ -83,7 +83,7 @@ export function TechnicalDrawer({ data, solarInputs, solarMethodologyVersion, cl
             ) : null}
 
             <div className="grid gap-4 lg:grid-cols-2">
-              <section className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-4">
+              <section className="rounded-lg border border-border/[0.08] bg-border/[0.03] p-4">
                 <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-amber-200">
                   <AlertTriangle className="h-4 w-4" strokeWidth={1.7} />
                   Alertas metodológicos
@@ -96,7 +96,7 @@ export function TechnicalDrawer({ data, solarInputs, solarMethodologyVersion, cl
                       </p>
                     ))
                   ) : (
-                    <p className="text-sm leading-6 text-zinc-400">
+                    <p className="text-sm leading-6 text-ink-muted">
                       Nenhum alerta metodológico adicional para o recorte carregado.
                     </p>
                   )}
@@ -106,13 +106,13 @@ export function TechnicalDrawer({ data, solarInputs, solarMethodologyVersion, cl
                 ) : null}
               </section>
 
-              <section className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              <section className="rounded-lg border border-border/[0.08] bg-border/[0.03] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-faint">
                   Fontes e versões
                 </p>
-                <div className="mt-3 flex flex-wrap gap-2 text-xs text-zinc-400">
+                <div className="mt-3 flex flex-wrap gap-2 text-xs text-ink-muted">
                   {methodologies.map((methodology) => (
-                    <span key={methodology} className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1">
+                    <span key={methodology} className="rounded-md border border-border/[0.08] bg-border/[0.03] px-2.5 py-1">
                       {formatMethodologyLabel(methodology)}
                     </span>
                   ))}
@@ -146,7 +146,7 @@ function GenericNcmMethodologicalNote({ affected, total }: { affected: number; t
       <p className="font-bold uppercase tracking-[0.14em] text-amber-200">
         Nota metodológica — NCM não homologado
       </p>
-      <div className="mt-3 grid gap-3 text-zinc-400 sm:grid-cols-2">
+      <div className="mt-3 grid gap-3 text-ink-muted sm:grid-cols-2">
         <MethodNoteItem
           title="O que significa"
           body={`${affected} de ${total} produtos usam código residual, genérico ou marcador interno. O valor 00000000 não representa uma posição oficial da NCM.`}
@@ -185,7 +185,7 @@ function DrawerTabButton({
       className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
         active
           ? "border-cyan-300/40 bg-cyan-400/10 text-cyan-200"
-          : "border-white/10 bg-white/[0.03] text-zinc-400 hover:text-zinc-200"
+          : "border-border/10 bg-border/[0.03] text-ink-muted hover:text-ink-body"
       }`}
     >
       {children}
@@ -196,11 +196,11 @@ function DrawerTabButton({
 function TradeMatrixTable({ data, referenceYears }: { data: ProdutoConceitual[]; referenceYears: number[] }) {
   return (
     <section className="overflow-hidden rounded-lg border border-emerald-300/15 bg-emerald-400/[0.025]">
-      <div className="border-b border-white/[0.08] px-4 py-4">
+      <div className="border-b border-border/[0.08] px-4 py-4">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300">
           Matriz consolidada de comércio exterior (valores FOB)
         </p>
-        <p className="mt-1 text-sm text-zinc-300">
+        <p className="mt-1 text-sm text-ink-body">
           Resultado numérico aplicado às NCMs de cada produto conceitual — importação FOB, déficit comercial,
           fator de proporcionalidade e sigilo estatístico
           {referenceYears.length ? ` (${referenceYears.join(", ")})` : null}.
@@ -209,7 +209,7 @@ function TradeMatrixTable({ data, referenceYears }: { data: ProdutoConceitual[];
 
       <div className="max-h-[440px] overflow-y-auto">
         <table className="min-w-full border-collapse text-left text-xs">
-          <thead className="sticky top-0 bg-zinc-950/95 text-zinc-400 backdrop-blur-xl">
+          <thead className="sticky top-0 bg-surface-0/95 text-ink-muted backdrop-blur-xl">
             <tr>
               <AuditHeader>Produto</AuditHeader>
               <AuditHeader>NCM</AuditHeader>
@@ -222,10 +222,10 @@ function TradeMatrixTable({ data, referenceYears }: { data: ProdutoConceitual[];
               <AuditHeader>Sigilo</AuditHeader>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/[0.06] bg-zinc-950/30">
+          <tbody className="divide-y divide-border/[0.06] bg-surface-0/30">
             {data.map((product) => (
               <tr key={product.conceptual_product_id} className="align-top">
-                <AuditCell className="min-w-56 font-semibold text-zinc-100">
+                <AuditCell className="min-w-56 font-semibold text-ink-body">
                   {product.produto_nome}
                 </AuditCell>
                 <AuditCell>
@@ -248,7 +248,7 @@ function TradeMatrixTable({ data, referenceYears }: { data: ProdutoConceitual[];
                 <AuditCell>{formatUsd(product.comercio.deficit_comercial)}</AuditCell>
                 <AuditCell>{formatPercent(product.fator_proporcionalidade.fator_alpha)}</AuditCell>
                 <AuditCell>
-                  {product.auditoria.has_sigilo_pia ? <SigiloBadge /> : <span className="text-zinc-500">Aberto</span>}
+                  {product.auditoria.has_sigilo_pia ? <SigiloBadge /> : <span className="text-ink-faint">Aberto</span>}
                 </AuditCell>
               </tr>
             ))}
@@ -284,21 +284,21 @@ function SolarInputCrosswalk({
 
   return (
     <section className="overflow-hidden rounded-lg border border-cyan-300/15 bg-cyan-400/[0.025]">
-      <div className="border-b border-white/[0.08] px-4 py-4">
+      <div className="border-b border-border/[0.08] px-4 py-4">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-300">
           Cesta da cadeia por insumo
         </p>
         <div className="mt-1 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
-          <p className="text-sm text-zinc-300">
+          <p className="text-sm text-ink-body">
             {inputs.length} insumos com cesta comercial publicada, incluindo mapeamentos validados e proxies.
           </p>
-          {methodologyVersion ? <span className="text-[11px] text-zinc-500">Versão {formatMethodologyLabel(methodologyVersion)}</span> : null}
+          {methodologyVersion ? <span className="text-[11px] text-ink-faint">Versão {formatMethodologyLabel(methodologyVersion)}</span> : null}
         </div>
       </div>
 
       <div className="max-h-[560px] overflow-y-auto">
         <table className="min-w-full border-collapse text-left text-xs">
-          <thead className="sticky top-0 z-10 bg-zinc-950/95 text-zinc-400 backdrop-blur-xl">
+          <thead className="sticky top-0 z-10 bg-surface-0/95 text-ink-muted backdrop-blur-xl">
             <tr>
               <AuditHeader>Insumo</AuditHeader>
               <AuditHeader>Etapa</AuditHeader>
@@ -308,19 +308,19 @@ function SolarInputCrosswalk({
               <AuditHeader>Limitação</AuditHeader>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/[0.06] bg-zinc-950/25">
+          <tbody className="divide-y divide-border/[0.06] bg-surface-0/25">
             {ordered.map((input) => {
               const hasSubNcm = Boolean(input.sub_ncm_masking_level && input.sub_ncm_breakdown?.length);
               const isExpanded = expandedInputs.has(input.input_id);
               return (
                 <Fragment key={input.input_id}>
                   <tr className="align-top">
-                    <AuditCell className="min-w-48 font-semibold text-zinc-100">{input.label}</AuditCell>
+                    <AuditCell className="min-w-48 font-semibold text-ink-body">{input.label}</AuditCell>
                     <AuditCell><span className="whitespace-nowrap">{technicalStageLabel(input.stage)}</span></AuditCell>
                     <AuditCell><CodeList kind="ncm" codes={input.ncm_codes} /></AuditCell>
                     <AuditCell><CodeList kind="prodlist" codes={(input.prodlist_codes ?? []).filter((code) => code !== "NCM_SEM_PONTE")} /></AuditCell>
                     <AuditCell><SolarMappingBadge input={input} /></AuditCell>
-                    <AuditCell className="min-w-64 leading-5 text-zinc-400">
+                    <AuditCell className="min-w-64 leading-5 text-ink-muted">
                       {input.data_gap_reason ?? "Cesta específica validada para o recorte comercial publicado."}
                       {hasSubNcm ? (
                         <SubNcmMaskingBadge
@@ -334,7 +334,7 @@ function SolarInputCrosswalk({
                   </tr>
                   {hasSubNcm && isExpanded ? (
                     <tr>
-                      <td colSpan={6} className="bg-zinc-950/50 px-4 py-4">
+                      <td colSpan={6} className="bg-surface-0/50 px-4 py-4">
                         <SubNcmBreakdownTable input={input} />
                       </td>
                     </tr>
@@ -346,7 +346,7 @@ function SolarInputCrosswalk({
         </table>
       </div>
 
-      <p className="border-t border-white/[0.08] px-4 py-3 text-[11px] leading-5 text-zinc-500">
+      <p className="border-t border-border/[0.08] px-4 py-3 text-[11px] leading-5 text-ink-faint">
         Insumos estruturais sem classificação comercial exclusiva — como energia elétrica industrial e redutores — permanecem como fonte complementar e não recebem NCM artificial.
       </p>
     </section>
@@ -362,7 +362,7 @@ function SolarMappingBadge({ input }: { input: SolarInputMetric }) {
         : "border-amber-300/20 bg-amber-400/10 text-amber-200"}`}>
         {isValidated ? "Validada" : "Proxy"}
       </span>
-      <p className="mt-1 text-[10px] text-zinc-500">Confiança {technicalConfidenceLabel(input.confidence_level)}</p>
+      <p className="mt-1 text-[10px] text-ink-faint">Confiança {technicalConfidenceLabel(input.confidence_level)}</p>
     </div>
   );
 }
@@ -430,12 +430,12 @@ function SubNcmMaskingBadge({
 function SubNcmBreakdownTable({ input }: { input: SolarInputMetric }) {
   const breakdown = input.sub_ncm_breakdown ?? [];
   return (
-    <div className="overflow-hidden rounded-md border border-white/[0.08]">
-      <p className="border-b border-white/[0.08] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+    <div className="overflow-hidden rounded-md border border-border/[0.08]">
+      <p className="border-b border-border/[0.08] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
         Detalhamento por sub-NCM — {input.label} ({input.reference_period}, direto do Comex Stat)
       </p>
       <table className="min-w-full border-collapse text-left text-[11px]">
-        <thead className="text-zinc-500">
+        <thead className="text-ink-faint">
           <tr>
             <AuditHeader>NCM</AuditHeader>
             <AuditHeader>Importação FOB</AuditHeader>
@@ -445,10 +445,10 @@ function SubNcmBreakdownTable({ input }: { input: SolarInputMetric }) {
             <AuditHeader>Direção</AuditHeader>
           </tr>
         </thead>
-        <tbody className="divide-y divide-white/[0.06]">
+        <tbody className="divide-y divide-border/[0.06]">
           {breakdown.map((row) => (
             <tr key={row.ncm_code}>
-              <AuditCell className="whitespace-nowrap font-mono text-zinc-300">
+              <AuditCell className="whitespace-nowrap font-mono text-ink-body">
                 <CodeTooltip kind="ncm" code={row.ncm_code} />
               </AuditCell>
               <AuditCell>{formatUsd(row.imports_value_usd)}</AuditCell>
@@ -518,11 +518,11 @@ function humanizeTechnicalLabel(value: string) {
 }
 
 function CodeList({ codes, kind }: { codes: string[]; kind: "ncm" | "prodlist" }) {
-  if (!codes.length || codes.every(isResidualCode)) return <span className="text-zinc-500">N/D</span>;
+  if (!codes.length || codes.every(isResidualCode)) return <span className="text-ink-faint">N/D</span>;
   return (
     <div className="flex min-w-28 flex-wrap gap-1">
       {codes.filter((code) => !isResidualCode(code)).map((code) => (
-        <span key={code} className="whitespace-nowrap rounded border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 font-mono text-[11px] text-zinc-300">
+        <span key={code} className="whitespace-nowrap rounded border border-border/[0.08] bg-border/[0.04] px-1.5 py-0.5 font-mono text-[11px] text-ink-body">
           <CodeTooltip kind={kind} code={code} />
         </span>
       ))}
@@ -535,7 +535,7 @@ function MappingStatus({ product }: { product: ProdutoConceitual }) {
   const styles = {
     validada: "border-emerald-300/20 bg-emerald-400/10 text-emerald-200",
     proxy: "border-amber-300/20 bg-amber-400/10 text-amber-200",
-    pendente: "border-zinc-600/40 bg-zinc-700/20 text-zinc-300",
+    pendente: "border-zinc-600/40 bg-zinc-700/20 text-ink-body",
   };
   const labels = { validada: "Validada", proxy: "Proxy", pendente: "Pendente" };
 
@@ -545,10 +545,10 @@ function MappingStatus({ product }: { product: ProdutoConceitual }) {
         {labels[status]}
       </span>
       {product.auditoria.ncm_mapping_version ? (
-        <p className="mt-1 text-[10px] leading-4 text-zinc-500">{product.auditoria.ncm_mapping_version}</p>
+        <p className="mt-1 text-[10px] leading-4 text-ink-faint">{product.auditoria.ncm_mapping_version}</p>
       ) : null}
       {product.auditoria.ncm_mapping_note ? (
-        <p className="mt-1 max-w-52 text-[10px] leading-4 text-zinc-500">{product.auditoria.ncm_mapping_note}</p>
+        <p className="mt-1 max-w-52 text-[10px] leading-4 text-ink-faint">{product.auditoria.ncm_mapping_note}</p>
       ) : null}
     </div>
   );
@@ -556,8 +556,8 @@ function MappingStatus({ product }: { product: ProdutoConceitual }) {
 
 function MethodNoteItem({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-md border border-white/[0.07] bg-zinc-950/45 px-3 py-3">
-      <p className="font-semibold text-zinc-200">{title}</p>
+    <div className="rounded-md border border-border/[0.07] bg-surface-0/45 px-3 py-3">
+      <p className="font-semibold text-ink-body">{title}</p>
       <p className="mt-1 leading-5">{body}</p>
     </div>
   );
@@ -651,10 +651,10 @@ function methodologyPdfHref(version: string): string | null {
 
 function TraceabilitySummary({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-3">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">{label}</p>
-      <p className="mt-1 font-semibold text-zinc-100">{value || "N/D"}</p>
-      {hint ? <p className="mt-1 text-[11px] leading-4 text-zinc-500">{hint}</p> : null}
+    <div className="rounded-lg border border-border/[0.08] bg-border/[0.03] px-3 py-3">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-faint">{label}</p>
+      <p className="mt-1 font-semibold text-ink-body">{value || "N/D"}</p>
+      {hint ? <p className="mt-1 text-[11px] leading-4 text-ink-faint">{hint}</p> : null}
     </div>
   );
 }
@@ -670,7 +670,7 @@ function AuditCell({
   children: React.ReactNode;
   className?: string;
 }) {
-  return <td className={`px-3 py-3 text-zinc-300 ${className}`}>{children}</td>;
+  return <td className={`px-3 py-3 text-ink-body ${className}`}>{children}</td>;
 }
 
 function SigiloBadge() {

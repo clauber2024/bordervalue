@@ -1,5 +1,15 @@
 import type { Config } from "tailwindcss";
 
+// Liga um token de cor a uma variável CSS que guarda só os canais RGB (sem
+// alpha), no padrão que o próprio Tailwind recomenda para cores custom que
+// precisam funcionar com qualquer modificador de opacidade (bg-surface-0/95,
+// border-border/[0.08]...) -- sem isso, o modificador é silenciosamente
+// ignorado sobre uma cor vinda de var().
+function withOpacity(cssVar: string) {
+  return ({ opacityValue }: { opacityValue?: string }) =>
+    opacityValue === undefined ? `rgb(var(${cssVar}))` : `rgb(var(${cssVar}) / ${opacityValue})`;
+}
+
 const config: Config = {
   content: ["./app/**/*.{js,ts,jsx,tsx,mdx}", "./components/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
@@ -39,18 +49,15 @@ const config: Config = {
         // Tokens do toggle claro/escuro (Fase A) -- ligados a variáveis CSS
         // (app/globals.css) que trocam de valor sob `html.light`. Nomeado
         // "ink", não "text", para não colidir com as utilities text-{size}.
-        // Aviso: o modificador de opacidade do Tailwind (ex. bg-surface-0/50)
-        // não funciona sobre estes tokens (o valor já é hex/rgba via var()) --
-        // cada opacidade usada precisa ser seu próprio token, como já feito
-        // abaixo com surface-0/1/2.
+        // surface/border aceitam QUALQUER modificador de opacidade Tailwind
+        // (bg-surface-0/95, border-border/[0.08], divide-border/[0.06]...),
+        // já que a var por trás guarda só os canais RGB, não uma cor pronta.
         surface: {
-          0: "var(--surface-0)",
-          1: "var(--surface-1)",
-          2: "var(--surface-2)",
+          0: withOpacity("--surface-0-rgb"), // era zinc-950 (e /NN de opacidade)
+          1: withOpacity("--surface-1-rgb"), // era zinc-900 (usar com /40, /60 etc.)
         },
         border: {
-          DEFAULT: "var(--border-default)",
-          subtle: "var(--border-subtle)",
+          DEFAULT: withOpacity("--border-rgb"), // era white (border-white/10, /[0.08], divide-white/[0.06], bg-white/[0.03]...)
         },
         ink: {
           heading: "var(--text-heading)",

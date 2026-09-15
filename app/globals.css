@@ -9,16 +9,17 @@
   --accent: #22c55e;
   --neutral: #22d3ee;
 
-  /* Tokens semanticos do toggle claro/escuro (Fase A). Valores escuros
-     abaixo reproduzem exatamente as classes cruas que hoje ja existem
-     (bg-zinc-950, bg-zinc-900/40 e /60, border-white/10 e /[0.08],
-     text-white, text-zinc-100/200, text-zinc-400/500) -- ninguem que
-     nao tocar no toggle deve notar qualquer diferenca. */
-  --surface-0: #09090b;
-  --surface-1: rgba(24, 24, 27, 0.4);
-  --surface-2: rgba(24, 24, 27, 0.6);
-  --border-default: rgba(255, 255, 255, 0.1);
-  --border-subtle: rgba(255, 255, 255, 0.08);
+  /* Tokens semanticos do toggle claro/escuro (Fase A) -- canais RGB "nus"
+     (sem alpha), consumidos via a funcao opacityValue do Tailwind
+     (tailwind.config.ts) para que QUALQUER modificador de opacidade
+     (bg-surface-0/95, border-border/[0.08], divide-border/[0.06]...)
+     funcione automaticamente, sem precisar de um token novo por valor de
+     opacidade. Valores escuros abaixo reproduzem exatamente as cores cruas
+     que hoje ja existem (zinc-950, zinc-900, white, zinc-100/300/400/500)
+     -- ninguem que nao tocar no toggle deve notar qualquer diferenca. */
+  --surface-0-rgb: 9 9 11; /* era zinc-950 */
+  --surface-1-rgb: 24 24 27; /* era zinc-900 (usar com /40, /60 etc.) */
+  --border-rgb: 255 255 255; /* era white (border-white/10, /[0.08], divide-white/[0.06], bg-white/[0.03]...) */
   --text-heading: #ffffff;
   --text-body: #f4f4f5;
   --text-muted: #a1a1aa;
@@ -26,11 +27,9 @@
 }
 
 html.light {
-  --surface-0: #f8fafc;
-  --surface-1: rgba(255, 255, 255, 0.7);
-  --surface-2: rgba(241, 245, 249, 0.9);
-  --border-default: rgba(15, 23, 42, 0.1);
-  --border-subtle: rgba(15, 23, 42, 0.08);
+  --surface-0-rgb: 248 250 252;
+  --surface-1-rgb: 255 255 255;
+  --border-rgb: 15 23 42;
   --text-heading: #0f172a;
   --text-body: #1e293b;
   --text-muted: #475569;
