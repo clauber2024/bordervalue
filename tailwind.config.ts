@@ -19,25 +19,58 @@ const config: Config = {
         // código (bg-emerald-500/10, text-cyan-400, etc.). Só adiciona
         // sub-chaves novas (soft/line/text) às paletas padrão do Tailwind —
         // nenhuma classe numérica existente (emerald-500, cyan-400...) muda.
+        // Sobrescreve os tons pastel (50-400) do Tailwind para reagirem ao
+        // tema quando usados como texto (text-cyan-300 etc.) -- ver
+        // app/globals.css para a justificativa completa. 500+ ficam
+        // intocados (herdados do Tailwind, ja escuros o bastante).
         emerald: {
           soft: "rgba(34,197,94,0.12)",
           line: "rgba(52,211,153,0.28)",
-          text: "#6ee7b7",
+          text: withOpacity("--emerald-300-rgb"),
+          50: withOpacity("--emerald-50-rgb"),
+          100: withOpacity("--emerald-100-rgb"),
+          200: withOpacity("--emerald-200-rgb"),
+          300: withOpacity("--emerald-300-rgb"),
+          400: withOpacity("--emerald-400-rgb"),
+          // Só como FUNDO de badge "invertido" (fundo escuro + texto claro
+          // tier 300/400) -- vira pálido no claro em vez de continuar
+          // escuro atrás de um texto que agora também escureceu.
+          950: withOpacity("--emerald-950-rgb"),
         },
         cyan: {
           soft: "rgba(34,211,238,0.10)",
           line: "rgba(103,232,249,0.22)",
-          text: "#67e8f9",
+          text: withOpacity("--cyan-300-rgb"),
+          50: withOpacity("--cyan-50-rgb"),
+          100: withOpacity("--cyan-100-rgb"),
+          200: withOpacity("--cyan-200-rgb"),
+          300: withOpacity("--cyan-300-rgb"),
+          950: withOpacity("--cyan-950-rgb"),
         },
         amber: {
           soft: "rgba(245,158,11,0.12)",
           line: "rgba(252,211,77,0.24)",
-          text: "#fcd34d",
+          text: withOpacity("--amber-300-rgb"),
+          50: withOpacity("--amber-50-rgb"),
+          100: withOpacity("--amber-100-rgb"),
+          200: withOpacity("--amber-200-rgb"),
+          300: withOpacity("--amber-300-rgb"),
+          400: withOpacity("--amber-400-rgb"),
+          950: withOpacity("--amber-950-rgb"),
+        },
+        red: {
+          50: withOpacity("--red-50-rgb"),
+          100: withOpacity("--red-100-rgb"),
+          200: withOpacity("--red-200-rgb"),
+          300: withOpacity("--red-300-rgb"),
+          400: withOpacity("--red-400-rgb"),
+          950: withOpacity("--red-950-rgb"),
         },
         rose: {
           soft: "rgba(244,63,94,0.14)",
           line: "rgba(248,113,113,0.30)",
-          text: "#fca5a5",
+          text: withOpacity("--rose-300-rgb"),
+          300: withOpacity("--rose-300-rgb"),
         },
         // Extensão proposta, ainda não usada em nenhum componente existente.
         violet: {

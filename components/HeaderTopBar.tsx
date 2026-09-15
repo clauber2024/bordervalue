@@ -155,7 +155,7 @@ export function HeaderTopBar({
               <span className="hidden sm:inline">Powershoring</span>
             </Link>
 
-            <div className="hidden items-center gap-2 rounded-xl border border-red-900/50 bg-red-950/30 px-2.5 py-1 font-mono text-xs lg:flex">
+            <div className="hidden items-center gap-2 rounded-xl border border-red-300/20 bg-red-400/10 px-2.5 py-1 font-mono text-xs lg:flex">
               <span className={`h-2 w-2 rounded-full bg-red-500 ${alertCount ? "animate-pulse" : ""}`} />
               <span className="text-ink-muted">Alerta:</span>
               <strong className="text-red-400">{alertLabel ?? "—"}</strong>
@@ -171,7 +171,7 @@ export function HeaderTopBar({
             <button
               type="button"
               onClick={onOpenNibMatrix}
-              className="hidden items-center gap-1.5 rounded-xl border border-emerald-800/80 bg-emerald-950/80 px-3 py-1.5 font-mono text-xs font-semibold text-emerald-400 shadow-md transition hover:bg-emerald-900 lg:flex"
+              className="hidden items-center gap-1.5 rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-1.5 font-mono text-xs font-semibold text-emerald-400 shadow-md transition hover:bg-emerald-400/20 lg:flex"
             >
               <Zap className="h-3.5 w-3.5" />
               Direcionamento NIB
