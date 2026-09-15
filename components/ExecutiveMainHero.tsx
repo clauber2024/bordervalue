@@ -117,17 +117,17 @@ const defaultKpis: ExecutiveMainKpi[] = [
 
 const toneClasses = {
   neutral: {
-    value: 'text-zinc-100',
-    note: 'text-zinc-400',
-    badge: 'border-zinc-500/20 bg-zinc-500/10 text-zinc-300',
+    value: 'text-ink-body',
+    note: 'text-ink-muted',
+    badge: 'border-zinc-500/20 bg-zinc-500/10 text-ink-body',
   },
   success: {
-    value: 'text-zinc-100',
+    value: 'text-ink-body',
     note: 'text-emerald-400',
     badge: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300',
   },
   warning: {
-    value: 'text-zinc-100',
+    value: 'text-ink-body',
     note: 'text-amber-300',
     badge: 'border-amber-500/20 bg-amber-500/10 text-amber-300',
   },
@@ -228,12 +228,12 @@ const HHI_GAUGE_BANDS: GaugeBand[] = [
 // content or a fabricated placeholder alert.
 function EmptyAlertCard() {
   return (
-    <div className="relative flex flex-col justify-center overflow-hidden rounded-2xl border border-dashed border-white/15 bg-zinc-900/40 p-6 text-center shadow-xl backdrop-blur-xl md:p-8">
-      <Info className="mx-auto h-6 w-6 text-zinc-500" strokeWidth={1.5} />
-      <p className="mt-3 text-sm font-semibold text-zinc-300">
+    <div className="relative flex flex-col justify-center overflow-hidden rounded-2xl border border-dashed border-border/15 bg-surface-1/40 p-6 text-center shadow-xl backdrop-blur-xl md:p-8">
+      <Info className="mx-auto h-6 w-6 text-ink-faint" strokeWidth={1.5} />
+      <p className="mt-3 text-sm font-semibold text-ink-body">
         Nenhum insumo com indicador de risco disponível no momento
       </p>
-      <p className="mx-auto mt-1.5 max-w-md text-xs leading-relaxed text-zinc-500">
+      <p className="mx-auto mt-1.5 max-w-md text-xs leading-relaxed text-ink-faint">
         O catálogo curado de insumos desta cadeia ainda não carregou. Assim que os dados publicados
         estiverem disponíveis, o alerta de maior risco aparece aqui.
       </p>
@@ -287,7 +287,7 @@ export const ExecutiveMainHero = ({
   return (
     <section className="w-full space-y-6">
       <div className="flex flex-col gap-4">
-        <div className="relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/15 bg-zinc-900/55 p-6 shadow-2xl backdrop-blur-xl">
+        <div className="relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/15 bg-surface-1/55 p-6 shadow-2xl backdrop-blur-xl">
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/30 to-transparent" />
           <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl" />
 
@@ -297,60 +297,60 @@ export const ExecutiveMainHero = ({
                 <Sparkles className="h-3 w-3" />
                 Plataforma Analítica de Estado
               </span>
-              <span className="rounded border border-white/5 bg-zinc-950/40 px-2 py-0.5 font-mono text-xs text-zinc-400">
+              <span className="rounded border border-border/5 bg-surface-0/40 px-2 py-0.5 font-mono text-xs text-ink-muted">
                 Border Value v1.0.0-rc.1
               </span>
             </div>
 
-            <h1 className="text-3xl font-extrabold leading-tight tracking-normal text-zinc-100 lg:text-4xl">
+            <h1 className="text-3xl font-extrabold leading-tight tracking-normal text-ink-body lg:text-4xl">
               Soberania Produtiva e Exposição Comercial da Transição Verde
             </h1>
 
-            <p className="mt-3 text-sm leading-relaxed text-zinc-400">
+            <p className="mt-3 text-sm leading-relaxed text-ink-muted">
               Diagnóstico estratégico de vulnerabilidade de suprimento,
               dependência externa e concentração geopolítica de insumos críticos
               para orientar a política industrial brasileira.
             </p>
 
-            <div className="mt-5 flex items-start gap-3 rounded-xl border border-emerald-300/15 bg-zinc-950/50 px-4 py-3">
+            <div className="mt-5 flex items-start gap-3 rounded-xl border border-emerald-300/15 bg-surface-0/50 px-4 py-3">
               <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-400" />
-              <p className="text-sm font-semibold leading-6 text-zinc-200">
-                <span className="text-zinc-400">Pergunta de Estado:</span>{' '}
+              <p className="text-sm font-semibold leading-6 text-ink-body">
+                <span className="text-ink-muted">Pergunta de Estado:</span>{' '}
                 {strategicQuestion}
               </p>
             </div>
           </div>
 
           <div className="relative mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-white/15 bg-zinc-950/60 p-3">
+            <div className="rounded-xl border border-border/15 bg-surface-0/60 p-3">
               <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
                 <Database className="h-3.5 w-3.5" />
                 Cobertura
               </div>
-              <p className="font-mono text-lg font-extrabold text-zinc-100">
+              <p className="font-mono text-lg font-extrabold text-ink-body">
                 2.902
               </p>
-              <p className="text-[11px] text-zinc-400">registros filtrados</p>
+              <p className="text-[11px] text-ink-muted">registros filtrados</p>
             </div>
-            <div className="rounded-xl border border-white/15 bg-zinc-950/60 p-3">
+            <div className="rounded-xl border border-border/15 bg-surface-0/60 p-3">
               <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-cyan-300">
                 <Layers3 className="h-3.5 w-3.5" />
                 Recorte
               </div>
-              <p className="font-mono text-lg font-extrabold text-zinc-100">
+              <p className="font-mono text-lg font-extrabold text-ink-body">
                 Jan-Jun 2026
               </p>
-              <p className="text-[11px] text-zinc-400">comércio exterior</p>
+              <p className="text-[11px] text-ink-muted">comércio exterior</p>
             </div>
-            <div className="rounded-xl border border-white/15 bg-zinc-950/60 p-3">
+            <div className="rounded-xl border border-border/15 bg-surface-0/60 p-3">
               <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-amber-300">
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 Bases
               </div>
-              <p className="font-mono text-lg font-extrabold text-zinc-100">
+              <p className="font-mono text-lg font-extrabold text-ink-body">
                 3
               </p>
-              <p className="text-[11px] text-zinc-400">Comex, PIA e RAIS</p>
+              <p className="text-[11px] text-ink-muted">Comex, PIA e RAIS</p>
             </div>
           </div>
 
@@ -365,7 +365,7 @@ export const ExecutiveMainHero = ({
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4 }}
-          className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-red-500/40 bg-gradient-to-r from-red-950/30 via-zinc-900/70 to-zinc-950/90 p-5 shadow-2xl shadow-red-950/25 backdrop-blur-xl md:p-6"
+          className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-red-500/40 bg-gradient-to-r from-red-950/30 via-surface-1/70 to-surface-0/90 p-5 shadow-2xl shadow-red-950/25 backdrop-blur-xl md:p-6"
         >
           <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-red-500/20 blur-3xl transition-colors group-hover:bg-red-500/30" />
 
@@ -376,14 +376,14 @@ export const ExecutiveMainHero = ({
                   <ShieldAlert className="h-3.5 w-3.5 animate-pulse" />
                   Alerta Máximo de Soberania
                 </span>
-                <span className="hidden text-[11px] font-medium text-zinc-400 md:inline">
+                <span className="hidden text-[11px] font-medium text-ink-muted md:inline">
                   Prioridade de Ação Nacional: Substituição de Importações e Fortalecimento de Etapas Críticas
                 </span>
               </div>
-              <div className="w-fit rounded-lg border border-white/10 bg-zinc-950/80 px-3 py-1 text-xs font-semibold text-zinc-400">
+              <div className="w-fit rounded-lg border border-border/10 bg-surface-0/80 px-3 py-1 text-xs font-semibold text-ink-muted">
                 Fatura Anual de Importação:{' '}
                 <strong className="font-mono text-amber-400">{alert.fobValue}</strong>
-                <span className="text-zinc-400"> (Exposição Comercial)</span>
+                <span className="text-ink-muted"> (Exposição Comercial)</span>
               </div>
             </div>
 
@@ -391,18 +391,18 @@ export const ExecutiveMainHero = ({
               <p className="text-[10px] font-bold uppercase tracking-widest text-red-300/90">
                 Cadeia: {alert.chain}
               </p>
-              <p className="mt-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
+              <p className="mt-2 text-[10px] font-semibold uppercase tracking-widest text-ink-muted">
                 Produto conceitual
               </p>
-              <h2 className="mt-1 text-xl font-bold leading-snug text-zinc-100">
+              <h2 className="mt-1 text-xl font-bold leading-snug text-ink-body">
                 {alert.productName}
               </h2>
-              <p className="font-mono text-xs font-medium text-zinc-400">
+              <p className="font-mono text-xs font-medium text-ink-muted">
                 Rastreabilidade: {alert.traceabilityLabel ?? alert.conceptualCategory}
               </p>
             </div>
 
-            <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-white/5 bg-zinc-950/60 p-3 text-xs text-zinc-300">
+            <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-border/5 bg-surface-0/60 p-3 text-xs text-ink-body">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
               <p className="leading-relaxed">
                 <strong className="text-emerald-400">
@@ -412,9 +412,9 @@ export const ExecutiveMainHero = ({
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 rounded-xl border border-red-500/20 bg-zinc-950/70 p-3 text-center">
+            <div className="grid grid-cols-3 gap-2 rounded-xl border border-red-500/20 bg-surface-0/70 p-3 text-center">
               <div>
-                <span className="block text-[10px] font-semibold uppercase text-zinc-400">
+                <span className="block text-[10px] font-semibold uppercase text-ink-muted">
                   Dependência externa
                 </span>
                 <div className="mt-1 flex items-center justify-center">
@@ -427,8 +427,8 @@ export const ExecutiveMainHero = ({
                   Produção local residual
                 </span>
               </div>
-              <div className="border-x border-white/10 px-1">
-                <span className="block text-[10px] font-semibold uppercase text-zinc-400">
+              <div className="border-x border-border/10 px-1">
+                <span className="block text-[10px] font-semibold uppercase text-ink-muted">
                   Índice HHI
                 </span>
                 <div className="mt-1 flex items-center justify-center">
@@ -442,7 +442,7 @@ export const ExecutiveMainHero = ({
                 </span>
               </div>
               <div>
-                <span className="block text-[10px] font-semibold uppercase text-zinc-400">
+                <span className="block text-[10px] font-semibold uppercase text-ink-muted">
                   Principal País Origem
                 </span>
                 <div className="mt-1.5 flex items-center justify-center">
@@ -451,22 +451,22 @@ export const ExecutiveMainHero = ({
                     <img
                       src={flagAssetPath(supplierIso2)}
                       alt={`Bandeira: ${alert.topSupplier}`}
-                      className="h-4 w-[22px] rounded-[2px] object-cover ring-1 ring-white/25"
+                      className="h-4 w-[22px] rounded-[2px] object-cover ring-1 ring-border/25"
                     />
                   ) : (
-                    <Flag className="h-4 w-4 text-zinc-500" strokeWidth={1.8} />
+                    <Flag className="h-4 w-4 text-ink-faint" strokeWidth={1.8} />
                   )}
                 </div>
                 <span className="mt-1 block truncate text-xs font-bold text-amber-200">
                   {supplierTitle}
                 </span>
-                <span className="mt-0.5 block text-[9px] font-semibold text-zinc-300">
+                <span className="mt-0.5 block text-[9px] font-semibold text-ink-body">
                   {supplierSubtitle}
                 </span>
               </div>
             </div>
 
-            <div className="mt-4 rounded-lg border border-white/5 bg-zinc-900/40 p-3 text-xs leading-relaxed text-zinc-300">
+            <div className="mt-4 rounded-lg border border-border/5 bg-surface-1/40 p-3 text-xs leading-relaxed text-ink-body">
               <span className="mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-red-300">
                 <AlertTriangle className="h-3 w-3 text-red-400" />
                 Impacto de Vulnerabilidade Comercial
@@ -479,7 +479,7 @@ export const ExecutiveMainHero = ({
             <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-amber-400">
               Direcionamento de Política Pública (NIB)
             </span>
-            <div className="flex items-start gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 p-2.5 text-xs font-semibold text-zinc-100">
+            <div className="flex items-start gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 p-2.5 text-xs font-semibold text-ink-body">
               <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
               <span className="leading-snug">{alert.recommendedPolicy}</span>
             </div>
@@ -495,9 +495,9 @@ export const ExecutiveMainHero = ({
           return (
             <article
               key={kpi.label}
-              className="relative overflow-hidden rounded-2xl border border-white/15 bg-zinc-900/55 p-5 shadow-xl backdrop-blur-xl xl:p-6"
+              className="relative overflow-hidden rounded-2xl border border-border/15 bg-surface-1/55 p-5 shadow-xl backdrop-blur-xl xl:p-6"
             >
-              <div className="flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              <div className="flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-wider text-ink-muted">
                 <span>{kpi.label}</span>
                 {kpi.icon ?? (
                   <CheckCircle2 className="h-4 w-4 text-emerald-400" />
